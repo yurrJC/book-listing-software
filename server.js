@@ -1371,7 +1371,7 @@ async function uploadPhotosToEbay(imageFiles) {
       
       const apiEndpoint = process.env.NODE_ENV === 'production'
         ? 'https://api.ebay.com/ws/api.dll'
-        : 'https://api.sandbox.ebay.com/ws/api.dll';
+        : 'https://api.ebay.com';
       
       console.log(`Uploading image to eBay EPS at: ${apiEndpoint}`);
       
@@ -1625,7 +1625,7 @@ async function createEbayDraftListing(listingData) {
       method: 'post',
       url: process.env.NODE_ENV === 'production' 
         ? 'https://api.ebay.com/ws/api.dll' 
-        : 'https://api.sandbox.ebay.com/ws/api.dll',
+        : 'https://api.ebay.com',
       headers: {
         'X-EBAY-API-CALL-NAME': 'AddItem',
         'X-EBAY-API-APP-NAME': appId,
