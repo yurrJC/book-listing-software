@@ -1,0 +1,576 @@
+[
+  {
+    "id": "261257",
+    "name": "Bookcases",
+    "parentId": "20091",
+    "level": "3",
+    "isLeaf": true
+  },
+  {
+    "id": "117388",
+    "name": "Keepsakes, Memory Books",
+    "parentId": "2984",
+    "level": "2",
+    "isLeaf": false
+  },
+  {
+    "id": "117389",
+    "name": "Books & Albums",
+    "parentId": "117388",
+    "level": "3",
+    "isLeaf": true
+  },
+  {
+    "id": "113372",
+    "name": "Casting Kits",
+    "parentId": "117388",
+    "level": "3",
+    "isLeaf": true
+  },
+  {
+    "id": "170171",
+    "name": "Keepsakes",
+    "parentId": "117388",
+    "level": "3",
+    "isLeaf": true
+  },
+  {
+    "id": "146532",
+    "name": "Other",
+    "parentId": "117388",
+    "level": "3",
+    "isLeaf": true
+  },
+  {
+    "id": "267",
+    "name": "Books, Comics & Magazines",
+    "parentId": "267",
+    "level": "1",
+    "isLeaf": false
+  },
+  {
+    "id": "45113",
+    "name": "Book Covers",
+    "parentId": "45110",
+    "level": "3",
+    "isLeaf": true
+  },
+  {
+    "id": "162028",
+    "name": "Book Stands & Holders",
+    "parentId": "45110",
+    "level": "3",
+    "isLeaf": true
+  },
+  {
+    "id": "45114",
+    "name": "Bookmarks",
+    "parentId": "45110",
+    "level": "3",
+    "isLeaf": true
+  },
+  {
+    "id": "29792",
+    "name": "Audio Books",
+    "parentId": "267",
+    "level": "2",
+    "isLeaf": true
+  },
+  {
+    "id": "261186",
+    "name": "Books",
+    "parentId": "267",
+    "level": "2",
+    "isLeaf": true
+  },
+  {
+    "id": "63",
+    "name": "Comic Books & Memorabilia",
+    "parentId": "267",
+    "level": "2",
+    "isLeaf": false
+  },
+  {
+    "id": "259113",
+    "name": "Other Comic Book Traditions",
+    "parentId": "63",
+    "level": "3",
+    "isLeaf": true
+  },
+  {
+    "id": "144062",
+    "name": "Artbooks",
+    "parentId": "63",
+    "level": "3",
+    "isLeaf": true
+  },
+  {
+    "id": "259127",
+    "name": "Comic Book Supplies & Accs",
+    "parentId": "63",
+    "level": "3",
+    "isLeaf": false
+  },
+  {
+    "id": "259131",
+    "name": "Comic Book Boards",
+    "parentId": "259127",
+    "level": "4",
+    "isLeaf": true
+  },
+  {
+    "id": "259134",
+    "name": "Other Comic Book Supplies",
+    "parentId": "259127",
+    "level": "4",
+    "isLeaf": true
+  },
+  {
+    "id": "151093",
+    "name": "Other Comic Books & Memorabilia",
+    "parentId": "63",
+    "level": "3",
+    "isLeaf": true
+  },
+  {
+    "id": "184644",
+    "name": "Textbooks, Education & Reference",
+    "parentId": "267",
+    "level": "2",
+    "isLeaf": false
+  },
+  {
+    "id": "171223",
+    "name": "School Textbooks & Study Guides",
+    "parentId": "184644",
+    "level": "3",
+    "isLeaf": true
+  },
+  {
+    "id": "11829",
+    "name": "Bookshelves",
+    "parentId": "11828",
+    "level": "3",
+    "isLeaf": true
+  },
+  {
+    "id": "45111",
+    "name": "Address Books",
+    "parentId": "58271",
+    "level": "3",
+    "isLeaf": true
+  },
+  {
+    "id": "25350",
+    "name": "Record Books",
+    "parentId": "58271",
+    "level": "3",
+    "isLeaf": true
+  },
+  {
+    "id": "86920",
+    "name": "Bookends",
+    "parentId": "13777",
+    "level": "3",
+    "isLeaf": true
+  },
+  {
+    "id": "8690",
+    "name": "Books",
+    "parentId": "29493",
+    "level": "4",
+    "isLeaf": true
+  },
+  {
+    "id": "8677",
+    "name": "Books",
+    "parentId": "8675",
+    "level": "4",
+    "isLeaf": true
+  },
+  {
+    "id": "262339",
+    "name": "Sticker Albums & Books",
+    "parentId": "262344",
+    "level": "3",
+    "isLeaf": true
+  },
+  {
+    "id": "40052",
+    "name": "Books",
+    "parentId": "1444",
+    "level": "4",
+    "isLeaf": true
+  },
+  {
+    "id": "171485",
+    "name": "Tablets & eBook Readers",
+    "parentId": "58058",
+    "level": "2",
+    "isLeaf": true
+  },
+  {
+    "id": "176970",
+    "name": "Tablet & eBook Reader Accs",
+    "parentId": "58058",
+    "level": "2",
+    "isLeaf": false
+  },
+  {
+    "id": "176982",
+    "name": "Other Tablet & eBook Accs",
+    "parentId": "176970",
+    "level": "3",
+    "isLeaf": true
+  },
+  {
+    "id": "180235",
+    "name": "Tablet & eBook Reader Parts",
+    "parentId": "58058",
+    "level": "2",
+    "isLeaf": true
+  },
+  {
+    "id": "175672",
+    "name": "Laptops & Netbooks",
+    "parentId": "58058",
+    "level": "2",
+    "isLeaf": false
+  },
+  {
+    "id": "177",
+    "name": "PC Laptops & Netbooks",
+    "parentId": "175672",
+    "level": "3",
+    "isLeaf": true
+  },
+  {
+    "id": "160640",
+    "name": "Instruction Books & Media",
+    "parentId": "11783",
+    "level": "3",
+    "isLeaf": true
+  },
+  {
+    "id": "162095",
+    "name": "Instruction Books & Media",
+    "parentId": "31723",
+    "level": "3",
+    "isLeaf": true
+  },
+  {
+    "id": "166018",
+    "name": "Craft Books, Magazines",
+    "parentId": "14339",
+    "level": "2",
+    "isLeaf": false
+  },
+  {
+    "id": "166019",
+    "name": "Books",
+    "parentId": "166018",
+    "level": "3",
+    "isLeaf": true
+  },
+  {
+    "id": "82720",
+    "name": "Other Books, Magazines",
+    "parentId": "166018",
+    "level": "3",
+    "isLeaf": true
+  },
+  {
+    "id": "57740",
+    "name": "Weaving Books & Patterns",
+    "parentId": "183233",
+    "level": "4",
+    "isLeaf": true
+  },
+  {
+    "id": "11788",
+    "name": "Scrapbooking & Paper Crafts",
+    "parentId": "14339",
+    "level": "2",
+    "isLeaf": false
+  },
+  {
+    "id": "103482",
+    "name": "Instruction Books & Media",
+    "parentId": "11788",
+    "level": "3",
+    "isLeaf": true
+  },
+  {
+    "id": "31253",
+    "name": "Scrapbooking",
+    "parentId": "11788",
+    "level": "3",
+    "isLeaf": false
+  },
+  {
+    "id": "103481",
+    "name": "Digital Scrapbooking",
+    "parentId": "31253",
+    "level": "4",
+    "isLeaf": true
+  },
+  {
+    "id": "183244",
+    "name": "Scrapbooking Adhesives",
+    "parentId": "31253",
+    "level": "4",
+    "isLeaf": false
+  },
+  {
+    "id": "183248",
+    "name": "Scrapbooking Albums & Refills",
+    "parentId": "31253",
+    "level": "4",
+    "isLeaf": false
+  },
+  {
+    "id": "121833",
+    "name": "Scrapbooking Embellishments",
+    "parentId": "31253",
+    "level": "4",
+    "isLeaf": false
+  },
+  {
+    "id": "83981",
+    "name": "Scrapbooking Tools",
+    "parentId": "31253",
+    "level": "4",
+    "isLeaf": false
+  },
+  {
+    "id": "146401",
+    "name": "Scrapbooking Totes",
+    "parentId": "31253",
+    "level": "4",
+    "isLeaf": true
+  },
+  {
+    "id": "11789",
+    "name": "Scrapbooking & Card Kits",
+    "parentId": "11788",
+    "level": "3",
+    "isLeaf": true
+  },
+  {
+    "id": "75573",
+    "name": "Other Scrapbooking Supplies",
+    "parentId": "11788",
+    "level": "3",
+    "isLeaf": true
+  },
+  {
+    "id": "134448",
+    "name": "Books & Magazines",
+    "parentId": "183303",
+    "level": "4",
+    "isLeaf": true
+  },
+  {
+    "id": "183149",
+    "name": "Instruction Books & Media",
+    "parentId": "3127",
+    "level": "3",
+    "isLeaf": true
+  },
+  {
+    "id": "170085",
+    "name": "Collectors' Guides & Books",
+    "parentId": "262353",
+    "level": "3",
+    "isLeaf": true
+  },
+  {
+    "id": "262349",
+    "name": "Books & Guides",
+    "parentId": "238",
+    "level": "3",
+    "isLeaf": false
+  },
+  {
+    "id": "262350",
+    "name": "Books",
+    "parentId": "262349",
+    "level": "4",
+    "isLeaf": true
+  },
+  {
+    "id": "160839",
+    "name": "Collectors' Guides & Books",
+    "parentId": "262349",
+    "level": "4",
+    "isLeaf": true
+  },
+  {
+    "id": "170086",
+    "name": "Collectors' Guides & Books",
+    "parentId": "1202",
+    "level": "3",
+    "isLeaf": true
+  },
+  {
+    "id": "115749",
+    "name": "Bookshelves",
+    "parentId": "66741",
+    "level": "4",
+    "isLeaf": true
+  },
+  {
+    "id": "3199",
+    "name": "Bookshelves",
+    "parentId": "3197",
+    "level": "3",
+    "isLeaf": true
+  },
+  {
+    "id": "20551",
+    "name": "Bookends",
+    "parentId": "262984",
+    "level": "4",
+    "isLeaf": true
+  },
+  {
+    "id": "108383",
+    "name": "Guest Books",
+    "parentId": "3205",
+    "level": "4",
+    "isLeaf": true
+  },
+  {
+    "id": "20940",
+    "name": "Guest Books & Pens",
+    "parentId": "11827",
+    "level": "3",
+    "isLeaf": true
+  },
+  {
+    "id": "258092",
+    "name": "Metalworking Manuals, Books & Plans",
+    "parentId": "11804",
+    "level": "3",
+    "isLeaf": true
+  },
+  {
+    "id": "67237",
+    "name": "Woodworking Manuals & Books",
+    "parentId": "11804",
+    "level": "3",
+    "isLeaf": true
+  },
+  {
+    "id": "41519",
+    "name": "Electronic Components Books & Manuals",
+    "parentId": "182412",
+    "level": "4",
+    "isLeaf": true
+  },
+  {
+    "id": "135246",
+    "name": "Books",
+    "parentId": "135245",
+    "level": "4",
+    "isLeaf": true
+  },
+  {
+    "id": "257888",
+    "name": "Heavy Machinery Manuals & Books",
+    "parentId": "41489",
+    "level": "4",
+    "isLeaf": true
+  },
+  {
+    "id": "26220",
+    "name": "Material Handling Manuals & Books",
+    "parentId": "26221",
+    "level": "3",
+    "isLeaf": true
+  },
+  {
+    "id": "25409",
+    "name": "Test Equip. Manuals & Books",
+    "parentId": "181939",
+    "level": "3",
+    "isLeaf": true
+  },
+  {
+    "id": "182150",
+    "name": "Instruction Books, CDs & Video",
+    "parentId": "619",
+    "level": "2",
+    "isLeaf": true
+  },
+  {
+    "id": "180015",
+    "name": "Sheet Music & Song Books",
+    "parentId": "619",
+    "level": "2",
+    "isLeaf": false
+  },
+  {
+    "id": "184366",
+    "name": "Geocaching Logbooks",
+    "parentId": "184364",
+    "level": "4",
+    "isLeaf": true
+  },
+  {
+    "id": "262047",
+    "name": "Sticker Albums & Books",
+    "parentId": "262343",
+    "level": "3",
+    "isLeaf": true
+  },
+  {
+    "id": "3470",
+    "name": "Booklets",
+    "parentId": "153383",
+    "level": "4",
+    "isLeaf": true
+  },
+  {
+    "id": "9047",
+    "name": "Books & Guides",
+    "parentId": "180250",
+    "level": "3",
+    "isLeaf": false
+  },
+  {
+    "id": "9049",
+    "name": "Books",
+    "parentId": "9047",
+    "level": "4",
+    "isLeaf": true
+  },
+  {
+    "id": "184643",
+    "name": "Service Log Books",
+    "parentId": "184632",
+    "level": "3",
+    "isLeaf": true
+  },
+  {
+    "id": "113794",
+    "name": "Books, CDs, DVDs, eBooks",
+    "parentId": "19266",
+    "level": "3",
+    "isLeaf": true
+  },
+  {
+    "id": "116110",
+    "name": "Books",
+    "parentId": "116109",
+    "level": "4",
+    "isLeaf": true
+  },
+  {
+    "id": "113811",
+    "name": "Books, CDs, DVDs",
+    "parentId": "102545",
+    "level": "3",
+    "isLeaf": true
+  }
+]

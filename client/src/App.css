@@ -1,0 +1,178 @@
+/* App.css */
+body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: #f9f9f9;
+  color: #333;
+}
+
+.app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-header {
+  background-color: #0070ba;
+  color: white;
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  margin-right: 20px;
+}
+
+.logo-icon {
+  font-size: 24px;
+  margin-right: 10px;
+}
+
+.logo-text {
+  font-weight: bold;
+  font-size: 20px;
+}
+
+.app-content {
+  flex-grow: 1;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.intro-section {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.intro-section h2 {
+  color: #333;
+  font-size: 28px;
+  margin-bottom: 15px;
+}
+
+.intro-section p {
+  color: #666;
+  margin-bottom: 30px;
+  max-width: 800px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.feature-cards {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin-bottom: 40px;
+}
+
+.feature-card {
+  background: white;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+  flex: 1;
+  min-width: 250px;
+  max-width: 300px;
+  text-align: center;
+}
+
+.feature-icon {
+  color: #0070ba;
+  font-size: 32px;
+  margin-bottom: 15px;
+}
+
+.feature-card h3 {
+  color: #333;
+  margin-bottom: 10px;
+}
+
+.feature-card p {
+  color: #666;
+  line-height: 1.5;
+}
+
+.app-footer {
+  background-color: #333;
+  color: #fff;
+  padding: 20px;
+  text-align: center;
+  font-size: 14px;
+}
+
+@media (max-width: 768px) {
+  .feature-cards {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .feature-card {
+    width: 100%;
+    max-width: 100%;
+  }
+}
+
+.dragging * {
+  cursor: grabbing !important;
+}
+
+/* Button Improvements for eBay Listing Tool */
+input[type="button"],
+input[type="submit"],
+button {
+  padding: 10px 20px;
+  margin: 8px;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 15px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 150px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Primary buttons (like Continue and Upload) */
+input[value*="Continue"],
+input[value*="Upload With"],
+button[type="submit"] {
+  background-color: #0070ba;
+  color: white;
+}
+
+input[value*="Continue"]:hover,
+input[value*="Upload With"]:hover,
+button[type="submit"]:hover {
+  background-color: #005ea6;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Secondary buttons (like Skip and Back) */
+input[value*="Skip"],
+input[value*="Back"] {
+  background-color: #f5f5f5;
+  color: #333;
+  border: 1px solid #ddd;
+}
+
+input[value*="Skip"]:hover,
+input[value*="Back"]:hover {
+  background-color: #e8e8e8;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Button spacing containers */
+.button-group {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+  margin: 20px 0;
+  flex-wrap: wrap;
+}

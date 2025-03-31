@@ -1,0 +1,174 @@
+/* ImageGallery.css */
+.image-gallery {
+    width: 100%;
+  }
+  
+  .gallery-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 15px;
+  }
+  
+  .gallery-item {
+    position: relative;
+    border-radius: 8px;
+    overflow: hidden;
+    transition: all 0.2s ease;
+  }
+  
+  .gallery-item.main-image {
+    border: 3px solid #0070ba;
+  }
+  
+  .image-container {
+    position: relative;
+    width: 100%;
+    height: 150px; /* Fixed height for consistency */
+  }
+  
+  .gallery-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  
+  .main-badge {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background-color: #0070ba;
+    color: white;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  
+  .flaw-badge {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background-color: #ff6b6b;
+    color: white;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: bold;
+  }
+  
+  .gallery-item-actions {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: center;
+    padding: 10px;
+    background: rgba(0, 0, 0, 0.5);
+    opacity: 0;
+    transition: opacity 0.2s ease;
+  }
+  
+  .gallery-item:hover .gallery-item-actions {
+    opacity: 1;
+  }
+  
+  .gallery-action {
+    background: none;
+    border: none;
+    color: white;
+    margin: 0 5px;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  
+  .gallery-action.set-main {
+    background-color: #0070ba;
+  }
+  
+  .gallery-action.set-main:hover {
+    background-color: #005ea6;
+  }
+  
+  .gallery-action.remove {
+    background-color: #d32f2f;
+  }
+  
+  .gallery-action.remove:hover {
+    background-color: #b71c1c;
+  }
+  
+  .empty-gallery {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background-color: #f8f8f8;
+    border-radius: 8px;
+    padding: 30px;
+    color: #aaa;
+    border: 2px dashed #ddd;
+    min-height: 150px;
+  }
+  
+  .empty-gallery p {
+    margin-top: 10px;
+    font-size: 14px;
+  }
+  
+  .flaw-gallery .gallery-item {
+    border: 2px solid #fff0f0;
+  }
+  
+  /* Media Queries for Responsiveness */
+  @media (max-width: 768px) {
+    .gallery-grid {
+      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    }
+    
+    .image-container {
+      height: 120px;
+    }
+  }
+  
+  /* Drag and Drop styling */
+  .gallery-grid.draggable {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+  }
+  
+  .gallery-item.dragging {
+    opacity: 0.6;
+    box-shadow: 0 0 15px rgba(0, 112, 186, 0.4);
+  }
+  
+  .drag-handle {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background-color: rgba(0, 0, 0, 0.5);
+    color: white;
+    border-radius: 3px;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: grab;
+    z-index: 10;
+  }
+  
+  .drag-handle:active {
+    cursor: grabbing;
+  }
+  
+  .gallery-item:hover .drag-handle {
+    display: flex;
+  }
