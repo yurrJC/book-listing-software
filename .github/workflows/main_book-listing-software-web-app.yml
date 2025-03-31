@@ -10,7 +10,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
-      contents: read # This is required for actions/checkout
+      contents: read #This is required for actions/checkout
 
     steps:
       - uses: actions/checkout@v4
@@ -42,8 +42,8 @@ jobs:
       name: 'Production'
       url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
     permissions:
-      id-token: write # This is required for requesting the JWT
-      contents: read # This is required for actions/checkout
+      id-token: write #This is required for requesting the JWT
+      contents: read #This is required for actions/checkout
       
     steps:
       - name: Download artifact from build job
@@ -61,11 +61,6 @@ jobs:
           tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_F3E0B89EC11F4FED8B068B51CD29FC5B }}
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_D13093ED2B8849709EBA5A77FAFC2C21 }}
           
-      - name: Clean up previous deployments
-        run: |
-          az webapp config appsettings set --resource-group <your-actual-resource-group-name> --name book-listing-software-web-app --settings WEBSITES_ENABLE_APP_SERVICE_STORAGE=true
-          az webapp deployment source delete --resource-group <your-actual-resource-group-name> --name book-listing-software-web-app
-
       - name: 'Deploy to Azure Web App'
         id: deploy-to-webapp
         uses: azure/webapps-deploy@v3
@@ -73,6 +68,3 @@ jobs:
           app-name: 'book-listing-software-web-app'
           slot-name: 'Production'
           package: .
-
-      - name: Clean up artifacts
-        run: rm -rf release.zip ./*
