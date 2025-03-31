@@ -1,0 +1,79 @@
+/* Button Improvements */
+.upload-button, 
+button[type="button"],
+button[type="submit"],
+input[type="button"],
+input[type="submit"] {
+  padding: 10px 20px;
+  margin: 5px 8px;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 15px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 120px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Primary button style */
+.upload-button.primary,
+button.primary,
+input[type="submit"],
+[type="button"].primary {
+  background-color: #0070ba;
+  color: white;
+}
+
+.upload-button.primary:hover,
+button.primary:hover,
+input[type="submit"]:hover,
+[type="button"].primary:hover {
+  background-color: #005ea6;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Secondary button style */
+.upload-button.secondary,
+button.secondary,
+input[type="button"],
+[type="button"].secondary {
+  background-color: #f5f5f5;
+  color: #333;
+  border: 1px solid #ddd;
+}
+
+.upload-button.secondary:hover,
+button.secondary:hover,
+input[type="button"]:hover,
+[type="button"].secondary:hover {
+  background-color: #e8e8e8;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Specific button container styling for your upload page buttons */
+.condition-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 15px 0;
+  justify-content: center;
+}
+
+/* Back button container */
+.back-button-container {
+  display: flex;
+  justify-content: center;
+  margin: 15px 0;
+}
+
+/* Apply specific styling to the buttons in your images */
+input[value="Upload With Condition Labels"],
+input[value="Skip - No Condition Labels"] {
+  margin: 10px 5px;
+}
+
+input[value="← Back to Main Images"] {
+  margin: 15px auto;
+  display: block;
+}
