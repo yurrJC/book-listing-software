@@ -1,15 +1,14 @@
 # Dependency directories
 node_modules/
+client/node_modules/
+public/node_modules/
 
 # Environment files
 .env
 .env.local
 .env.development
 .env.production
-.env.sandbox
-
-# Configuration with sensitive data
-config/credentials.json
+.env.staging
 
 # Logs
 logs
@@ -26,13 +25,17 @@ yarn-error.log*
 .DS_Store
 
 # Temporary files
-.tmp/
+tmp/
 temp/
 
 # Compiled files
 dist/
 build/
+client/build/
+public/build/
 
 # Dependency lock files
 package-lock.json
 yarn.lock
+client/package-lock.json
+public/package-lock.json

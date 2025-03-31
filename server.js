@@ -1703,6 +1703,20 @@ app.post('/api/upload', upload.fields([
       });
     }
     
+// Add your eBay Marketplace Account Deletion Notification Endpoint here
+app.post('/ebay-deletion', (req, res) => {
+  console.log('eBay Deletion Notification Received:', req.body);
+  
+  const verificationToken = req.body.verificationToken;
+  if (verificationToken) {
+    // Respond with the token to verify your endpoint with eBay
+    res.status(200).send(verificationToken);
+  } else {
+    // Otherwise, just acknowledge the request
+    res.status(200).send('OK');
+  }
+});
+
     let isbn = null;
     let processedImage = null;
     let detectedFlaws = { flawsDetected: false, flaws: [] };
