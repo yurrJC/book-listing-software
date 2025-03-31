@@ -63,8 +63,8 @@ jobs:
           
       - name: Clean up previous deployments
         run: |
-          az webapp config appsettings set --resource-group <your-resource-group-name> --name book-listing-software-web-app --settings WEBSITES_ENABLE_APP_SERVICE_STORAGE=true
-          az webapp deployment source delete --resource-group <your-resource-group-name> --name book-listing-software-web-app
+          az webapp config appsettings set --resource-group <listing-software> --name book-listing-software-web-app --settings WEBSITES_ENABLE_APP_SERVICE_STORAGE=true
+          az webapp deployment source delete --resource-group <listing-software> --name book-listing-software-web-app
 
       - name: 'Deploy to Azure Web App'
         id: deploy-to-webapp
