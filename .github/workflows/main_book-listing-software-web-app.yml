@@ -66,5 +66,4 @@ jobs:
         uses: azure/webapps-deploy@v3
         with:
           app-name: 'book-listing-software-web-app'
-          slot-name: 'Production'
           package: .
