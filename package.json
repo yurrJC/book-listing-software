@@ -2,13 +2,13 @@
   "name": "listing-software",
   "version": "1.0.0",
   "main": "server.js",
-  "homepage": ".", // Add this line to specify the app is hosted at the root
+  "homepage": ".", 
   "scripts": {
     "start": "node server.js",
     "start:staging": "NODE_ENV=staging node server.js",
     "start:production": "NODE_ENV=production node server.js",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "cd client && npm run build", // Update this line to ensure the build script runs within the client directory
+    "build": "cd client && npm run build", 
     "deploy:staging": "./deploy.sh staging",
     "deploy:production": "./deploy.sh production",
     "health-check": "node healthCheck.js",
