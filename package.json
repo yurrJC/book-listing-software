@@ -4,19 +4,20 @@
   "main": "server.js",
   "homepage": ".",
   "scripts": {
-    "start": "node server.js",
-    "start:staging": "NODE_ENV=staging node server.js",
-    "start:production": "NODE_ENV=production node server.js",
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "cd client && npm install && npm run build",
-    "deploy:staging": "./deploy.sh staging",
-    "deploy:production": "./deploy.sh production",
-    "health-check": "node healthCheck.js",
-    "migrate": "node migrate.js",
-    "pm2:start": "pm2 start ecosystem.config.js",
-    "pm2:restart": "pm2 restart ecosystem.config.js"
-  },
-  "dependencies": {
+  "start": "node server.js",
+  "start:staging": "NODE_ENV=staging node server.js",
+  "start:production": "NODE_ENV=production node server.js",
+  "test": "echo \"Error: no test specified\" && exit 1",
+  "build": "cd client && npm install && npm run build",
+  "postinstall": "npm run build",
+  "deploy:staging": "./deploy.sh staging",
+  "deploy:production": "./deploy.sh production",
+  "health-check": "node healthCheck.js",
+  "migrate": "node migrate.js",
+  "pm2:start": "pm2 start ecosystem.config.js",
+  "pm2:restart": "pm2 restart ecosystem.config.js"
+}
+  ,"dependencies": {
     "express": "^4.21.2",
     "cors": "^2.8.5",
     "multer": "^1.4.5-lts.2",
