@@ -28,7 +28,11 @@ const { processImageAndExtractISBN, processImageForFlaws } = require('./azureVis
 // Import the ISBNdb client
 const isbndbClient = require('./isbndbClient');
 const app = express();
-app.use(cors());
+app.use(cors({
+  origin: ['https://your-netlify-site-name.netlify.app', 'http://localhost:3000'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  credentials: true
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -41,12 +45,13 @@ if (!fs.existsSync(uploadsDir)) {
 // Serve static files from the uploads directory
 app.use('/uploads', express.static('uploads'));
 
-// Serve static files from the React app build directory
-app.use(express.static('client/build'));
-
-// For any routes that don't match, serve the React app
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'client', 'build', 'index.html'));
+// API status endpoint
+app.get('/api/status', (req, res) => {
+  res.json({
+    status: 'ok',
+    message: 'Book Listing API is running',
+    timestamp: new Date().toISOString()
+  });
 });
 
 // Set up Multer for handling file uploads
