@@ -41,6 +41,13 @@ if (!fs.existsSync(uploadsDir)) {
 // Serve static files from the uploads directory
 app.use('/uploads', express.static('uploads'));
 
+// Serve static files from the React app
+app.use(express.static(path.join(__dirname, 'client/build')));
+
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'client/build', 'index.html'));
+});
+
 // Set up Multer for handling file uploads
 const storage = multer.diskStorage({
   destination: function(req, file, cb) {
