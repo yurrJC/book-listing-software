@@ -2,12 +2,13 @@
   "name": "listing-software",
   "version": "1.0.0",
   "main": "server.js",
+  "homepage": ".",
   "scripts": {
     "start": "node server.js",
     "start:staging": "NODE_ENV=staging node server.js",
     "start:production": "NODE_ENV=production node server.js",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "react-scripts build", 
+    "build": "cd client && npm run build",
     "deploy:staging": "./deploy.sh staging",
     "deploy:production": "./deploy.sh production",
     "health-check": "node healthCheck.js",
@@ -41,4 +42,4 @@
     "pm2": "^6.0.5",
     "winston": "^3.17.0"
   }
-}
+ }
