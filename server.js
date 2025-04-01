@@ -41,11 +41,12 @@ if (!fs.existsSync(uploadsDir)) {
 // Serve static files from the uploads directory
 app.use('/uploads', express.static('uploads'));
 
-// Serve static files from the React app
-app.use(express.static(path.join(__dirname, 'client/build')));
+// Serve static files from the React app build directory
+app.use(express.static('client/build'));
 
+// For any routes that don't match, serve the React app
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'client/build', 'index.html'));
+  res.sendFile(path.join(__dirname, 'client', 'build', 'index.html'));
 });
 
 // Set up Multer for handling file uploads
