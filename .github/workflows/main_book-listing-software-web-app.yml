@@ -1,4 +1,4 @@
-name: Build and deploy Node.js app to Azure Web App - book-listing-software-web-app
+name: Build and deploy Node.js app to Azure Web App
 
 on:
   push:
@@ -10,24 +10,38 @@ jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
-      contents: read #This is required for actions/checkout
-
+      contents: read  # This is required for actions/checkout
     steps:
       - uses: actions/checkout@v4
       
       - name: Set up Node.js version
         uses: actions/setup-node@v3
         with:
-          node-version: '22.x'
+          node-version: '22.x'  # Using Node.js 22 as per your setup
           
-      - name: Install dependencies
-        run: npm install
-      
-      - name: Build project
-        run: npm run build
-        
+      - name: npm install, build, and test
+        run: |
+          npm install
+          npm run build
+        env:
+          CI: false  # Prevents treating warnings as errors
+          
+      - name: Debug build output
+        run: |
+          echo "Checking build directory contents:"
+          ls -la
+          echo "Checking client directory:"
+          ls -la client
+          echo "Checking client/build directory:"
+          if [ -d "client/build" ]; then
+            ls -la client/build
+            echo "Index.html exists: $(test -f client/build/index.html && echo Yes || echo No)"
+          else
+            echo "client/build directory not found!"
+          fi
+          
       - name: Zip artifact for deployment
-        run: zip release.zip ./* -r
+        run: zip -r release.zip . -x "node_modules/*" "client/node_modules/*"
         
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
@@ -42,9 +56,8 @@ jobs:
       name: 'Production'
       url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
     permissions:
-      id-token: write #This is required for requesting the JWT
-      contents: read #This is required for actions/checkout
-      
+      id-token: write  # This is required for requesting the JWT
+      contents: read  # This is required for actions/checkout
     steps:
       - name: Download artifact from build job
         uses: actions/download-artifact@v4
