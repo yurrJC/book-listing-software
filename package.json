@@ -41,9 +41,5 @@
     "dotenv": "^16.4.7",
     "pm2": "^6.0.5",
     "winston": "^3.17.0"
-  "devDependencies": {
-    "dotenv": "^16.4.7",
-    "pm2": "^6.0.5",
-    "winston": "^3.17.0"
   }
- }
+}
