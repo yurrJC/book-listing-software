@@ -11,17 +11,6 @@ const axios = require('axios');
 const FormData = require('form-data');
 const OpenAI = require('openai');
 
-const express = require('express');
-const cors = require('cors');
-const multer = require('multer');
-const path = require('path');
-const fs = require('fs');
-require('dotenv').config();
-const xml2js = require('xml2js');
-const axios = require('axios');
-const FormData = require('form-data');
-const OpenAI = require('openai');
-
 // Initialize the OpenAI client
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
@@ -55,9 +44,8 @@ app.use('/uploads', express.static('uploads'));
 // Serve static files from the React app
 app.use(express.static(path.join(__dirname, 'client/build')));
 
-// The "catchall" handler: for any request that doesn't match one above, send back the React index.html file.
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname + '/client/build/index.html'));
+  res.sendFile(path.join(__dirname, 'client/build', 'index.html'));
 });
 
 // Set up Multer for handling file uploads
