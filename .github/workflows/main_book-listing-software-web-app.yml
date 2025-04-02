@@ -10,36 +10,22 @@ jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
-      contents: read # This is required for actions/checkout
+      contents: read
     steps:
       - uses: actions/checkout@v4
       
       - name: Set up Node.js version
         uses: actions/setup-node@v3
         with:
-          node-version: '22.x' # Using Node.js 22 as per your setup
+          node-version: '22.x'
       
-      - name: npm install
-        run: |
-          npm install
-          # Only run build if it exists in package.json
-          if grep -q "\"build\":" package.json; then
-            npm run build
-          fi
-        env:
-          CI: false # Prevents treating warnings as errors
+      - name: Install dependencies
+        run: npm install --omit=dev
       
       - name: Debug directory structure
         run: |
           echo "Checking root directory contents:"
           ls -la
-          # Check if this is a frontend+backend monorepo structure
-          if [ -d "public" ]; then
-            echo "Found public directory - likely an Express server with static assets"
-          fi
-          if [ -f "server.js" ]; then
-            echo "Found server.js - likely an Express server"
-          fi
       
       - name: Zip artifact for deployment
         run: zip -r release.zip . -x "node_modules/*"
@@ -57,8 +43,8 @@ jobs:
       name: 'Production'
       url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
     permissions:
-      id-token: write # This is required for requesting the JWT
-      contents: read # This is required for actions/checkout
+      id-token: write
+      contents: read
     steps:
       - name: Download artifact from build job
         uses: actions/download-artifact@v4
@@ -81,5 +67,5 @@ jobs:
         with:
           app-name: 'book-listing-software-web-app'
           package: .
-          slot-name: 'production' # Explicitly specify the slot
-          respect-pom-xml: false # Skip any Maven POM.xml detection
+          slot-name: 'production'
+          respect-pom-xml: false
