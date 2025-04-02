@@ -29,7 +29,7 @@ const { processImageAndExtractISBN, processImageForFlaws } = require('./azureVis
 const isbndbClient = require('./isbndbClient');
 const app = express();
 app.use(cors({
-  origin: 'https://your-app.onrender.com',
+  origin: 'https://book-listing-software-1.onrender.com',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   credentials: true,
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
