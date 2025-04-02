@@ -29,11 +29,26 @@ const { processImageAndExtractISBN, processImageForFlaws } = require('./azureVis
 const isbndbClient = require('./isbndbClient');
 const app = express();
 app.use(cors({
-  origin: 'https://book-listing-software-1.onrender.com',
+  origin: ['https://book-listing-software-1.onrender.com', 'https://api.ebay.com'],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   credentials: true,
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
+
+// Alternative approach: Allow all origins for the deletion endpoint specifically
+app.options('/ebay-deletion', cors()); // Enable pre-flight for this specific route
+
+// If you need to allow any origin for the deletion endpoint specifically
+const ebayDeletionCors = cors({
+  origin: '*',
+  methods: ['POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+});
+
+// Then update your endpoint to use this specific CORS configuration
+app.post('/ebay-deletion', ebayDeletionCors, (req, res) => {
+  // Same code as above
+});
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -46,7 +61,28 @@ if (!fs.existsSync(uploadsDir)) {
 // Add your eBay Marketplace Account Deletion Notification Endpoint here
 app.post('/ebay-deletion', (req, res) => {
   console.log('Debug - Received body:', req.body);
-  res.status(200).json({ debugBody: req.body });
+  
+  // Check if this is a verification request
+  if (req.body && req.body.verificationToken) {
+    console.log('Verification request received with token:', req.body.verificationToken);
+    
+    // Return the same verification token in the response
+    return res.status(200).json({
+      verificationToken: req.body.verificationToken
+    });
+  }
+  
+  // Handle actual deletion notification
+  console.log('Account deletion notification received:', req.body);
+  
+  // Process the deletion notification as needed
+  // ...
+  
+  // Send a successful response
+  return res.status(200).json({
+    status: 'success',
+    message: 'Account deletion notification received'
+  });
 });
 
 // Serve static files from the uploads directory
