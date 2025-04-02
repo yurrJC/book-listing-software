@@ -10,6 +10,7 @@ const xml2js = require('xml2js');
 const axios = require('axios');
 const FormData = require('form-data');
 const OpenAI = require('openai');
+const crypto = require('crypto');
 
 // Initialize the OpenAI client
 const openai = new OpenAI({
@@ -58,31 +59,56 @@ if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir);
 }
 
-// Add your eBay Marketplace Account Deletion Notification Endpoint here
-app.post('/ebay-deletion', (req, res) => {
-  console.log('Debug - Received body:', req.body);
+// Add this GET endpoint to handle eBay's challenge code verification
+app.get('/ebay-deletion', (req, res) => {
+  console.log('eBay deletion GET verification request received');
+  console.log('Query parameters:', req.query);
   
-  // Check if this is a verification request
-  if (req.body && req.body.verificationToken) {
-    console.log('Verification request received with token:', req.body.verificationToken);
-    
-    // Return the same verification token in the response
-    return res.status(200).json({
-      verificationToken: req.body.verificationToken
-    });
+  // Extract the challenge code from the query parameters
+  const challengeCode = req.query.challenge_code;
+  
+  // Your verification token (must match what you entered in eBay)
+  const verificationToken = process.env.EBAY_VERIFICATION_TOKEN || 'YOUR_VERIFICATION_TOKEN';
+  
+  // Your endpoint URL (must match exactly what you entered in eBay)
+  const endpoint = process.env.EBAY_ENDPOINT_URL || 'https://book-listing-software-1.onrender.com/ebay-deletion';
+  
+  console.log('Challenge code:', challengeCode);
+  console.log('Verification token:', verificationToken);
+  console.log('Endpoint:', endpoint);
+  
+  if (!challengeCode) {
+    console.error('No challenge code provided in the request');
+    return res.status(400).json({ error: 'No challenge code provided' });
   }
   
-  // Handle actual deletion notification
-  console.log('Account deletion notification received:', req.body);
+  try {
+    // Create a SHA-256 hash of the challenge code + verification token + endpoint
+    const hash = crypto.createHash('sha256');
+    hash.update(challengeCode);
+    hash.update(verificationToken);
+    hash.update(endpoint);
+    const challengeResponse = hash.digest('hex');
+    
+    console.log('Generated challenge response:', challengeResponse);
+    
+    // Return the challenge response in the expected format
+    return res.status(200).json({
+      challengeResponse: challengeResponse
+    });
+  } catch (error) {
+    console.error('Error generating challenge response:', error);
+    return res.status(500).json({ error: 'Failed to generate challenge response' });
+  }
+});
+
+app.post('/ebay-deletion', (req, res) => {
+  console.log('eBay deletion notification received:');
+  console.log('Headers:', req.headers);
+  console.log('Body:', req.body);
   
-  // Process the deletion notification as needed
-  // ...
-  
-  // Send a successful response
-  return res.status(200).json({
-    status: 'success',
-    message: 'Account deletion notification received'
-  });
+  // For actual deletion notifications, just acknowledge with 200 OK
+  return res.status(200).json({ status: 'received' });
 });
 
 // Serve static files from the uploads directory
