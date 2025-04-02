@@ -51,35 +51,43 @@ if (!fs.existsSync(uploadsDir)) {
 }
 
 // Add GET endpoint to handle eBay's challenge code verification
+// Add GET endpoint to handle eBay's challenge code verification
 app.get('/ebay-deletion', (req, res) => {
-  console.log('eBay challenge request received');
-  
-  // Extract the challenge code from the query parameters
-  const challengeCode = req.query.challenge_code;
-  if (!challengeCode) {
-    console.error('No challenge code provided');
-    return res.status(400).json({ error: 'No challenge code provided' });
-  }
-  
-  // Your verification token must match exactly what you entered in eBay
-  const verificationToken = process.env.EBAY_VERIFICATION_TOKEN;
-  
-  // Your endpoint URL must match exactly what you entered in eBay
-  const endpoint = process.env.EBAY_ENDPOINT_URL;
-  
-  console.log(`Challenge code: ${challengeCode}`);
-  console.log(`Verification token: ${verificationToken}`);
-  console.log(`Endpoint: ${endpoint}`);
+  console.log('=============================================');
+  console.log('eBay challenge GET request received');
+  console.log('Full request URL:', req.originalUrl);
+  console.log('Query parameters:', req.query);
   
   try {
-    // Using the exact method shown in eBay's NodeJS example
+    // Extract the challenge code from the query parameters
+    const challengeCode = req.query.challenge_code;
+    if (!challengeCode) {
+      console.error('No challenge code provided');
+      return res.status(400).json({ error: 'No challenge code provided' });
+    }
+    
+    // Your verification token must match exactly what you entered in eBay
+    const verificationToken = process.env.EBAY_VERIFICATION_TOKEN || 'SimpleToken123456789';
+    
+    // Your endpoint URL must match exactly what you entered in eBay
+    const endpoint = process.env.EBAY_ENDPOINT_URL || 'https://book-listing-software-1.onrender.com/ebay-deletion';
+    
+    console.log(`Challenge code: ${challengeCode}`);
+    console.log(`Verification token: ${verificationToken}`);
+    console.log(`Endpoint: ${endpoint}`);
+    
+    // Use createHash exactly as shown in eBay's example
     const hash = crypto.createHash('sha256');
     hash.update(challengeCode);
     hash.update(verificationToken);
     hash.update(endpoint);
     const responseHash = hash.digest('hex');
     
+    // Optional: Log the response hash
     console.log(`Generated challenge response: ${responseHash}`);
+    
+    // Set content-type explicitly to application/json
+    res.setHeader('Content-Type', 'application/json');
     
     // Return JSON with the challenge response
     return res.status(200).json({
