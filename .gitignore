@@ -32,6 +32,7 @@ temp/
 dist/
 build/
 client/build/
+!client/build/static.json
 public/build/
 
 # Dependency lock files
@@ -40,4 +41,3 @@ yarn.lock
 client/package-lock.json
 public/package-lock.json
 
-!client/build/static.json
