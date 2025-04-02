@@ -28,28 +28,19 @@ console.log("Auth Token last 10 chars:", process.env.EBAY_AUTH_TOKEN ? process.e
 const { processImageAndExtractISBN, processImageForFlaws } = require('./azureVision');
 // Import the ISBNdb client
 const isbndbClient = require('./isbndbClient');
+
 const app = express();
+
+// 1. First set up all middleware before routes
+// Configure CORS to allow eBay domains and your frontend
 app.use(cors({
-  origin: ['https://book-listing-software-1.onrender.com', 'https://api.ebay.com'],
+  origin: ['https://book-listing-software-1.onrender.com', 'https://api.ebay.com', 'https://api.sandbox.ebay.com'],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   credentials: true,
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
 
-// Alternative approach: Allow all origins for the deletion endpoint specifically
-app.options('/ebay-deletion', cors()); // Enable pre-flight for this specific route
-
-// If you need to allow any origin for the deletion endpoint specifically
-const ebayDeletionCors = cors({
-  origin: '*',
-  methods: ['POST', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-});
-
-// Then update your endpoint to use this specific CORS configuration
-app.post('/ebay-deletion', ebayDeletionCors, (req, res) => {
-  // Same code as above
-});
+// 2. Set up body parsing middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -59,7 +50,7 @@ if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir);
 }
 
-// Add this GET endpoint to handle eBay's challenge code verification
+// Add GET endpoint to handle eBay's challenge code verification
 app.get('/ebay-deletion', (req, res) => {
   console.log('eBay challenge request received');
   
@@ -100,6 +91,7 @@ app.get('/ebay-deletion', (req, res) => {
   }
 });
 
+// Add POST endpoint for actual eBay deletion notifications
 app.post('/ebay-deletion', (req, res) => {
   console.log('eBay deletion notification received:');
   console.log('Headers:', req.headers);
@@ -108,6 +100,8 @@ app.post('/ebay-deletion', (req, res) => {
   // For actual deletion notifications, just acknowledge with 200 OK
   return res.status(200).json({ status: 'received' });
 });
+
+// Continue with the rest of your server code...
 
 // Serve static files from the uploads directory
 app.use('/uploads', express.static('uploads'));
