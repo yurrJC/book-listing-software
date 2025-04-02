@@ -29,9 +29,10 @@ const { processImageAndExtractISBN, processImageForFlaws } = require('./azureVis
 const isbndbClient = require('./isbndbClient');
 const app = express();
 app.use(cors({
-  origin: ['https://your-netlify-site-name.netlify.app', 'http://localhost:3000'],
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  credentials: true
+  origin: ['https://capable-lily-76c728.netlify.app', 'http://localhost:3000'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  credentials: true,
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
