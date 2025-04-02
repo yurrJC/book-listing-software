@@ -8,7 +8,7 @@
     "start:staging": "NODE_ENV=staging node server.js",
     "start:production": "NODE_ENV=production node server.js",
     "test": "echo \"Error: no test specified\" && exit 0",
-    "build": "cd client && npm install && npm run build",
+    "build": "echo 'No build required for backend-only deployment",
     "postinstall": "npm run build",
     "deploy:staging": "./deploy.sh staging",
     "deploy:production": "./deploy.sh production",
@@ -18,7 +18,7 @@
     "pm2:restart": "pm2 restart ecosystem.config.js"
   },
   "engines": {
-    "node": ">=16.x"
+    "node": ">=22.x"
   },
   "dependencies": {
     "express": "^4.21.2",
