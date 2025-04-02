@@ -11,6 +11,8 @@ const axios = require('axios');
 const FormData = require('form-data');
 const OpenAI = require('openai');
 const crypto = require('crypto');
+const isProduction = true; // Force production mode
+console.log('Using production eBay environment:', isProduction);
 
 // Initialize the OpenAI client
 const openai = new OpenAI({
@@ -1454,7 +1456,7 @@ async function uploadPhotosToEbay(imageFiles) {
       formData.append('XML Payload', xmlMetadata, { contentType: 'text/xml' });
       formData.append('image', imageBuffer, { filename: file.filename, contentType: file.mimetype });
       
-      const apiEndpoint = process.env.NODE_ENV === 'production'
+      const apiEndpoint = isProduction
   ? 'https://api.ebay.com/ws/api.dll'
   : 'https://api.sandbox.ebay.com/ws/api.dll';
       
@@ -1462,7 +1464,7 @@ async function uploadPhotosToEbay(imageFiles) {
       
       const response = await axios({
         method: 'post',
-        url: apiEndpoint,
+        url: isProduction,
         headers: {
           'X-EBAY-API-CALL-NAME': 'UploadSiteHostedPictures',
           'X-EBAY-API-APP-NAME': appId,
@@ -1708,7 +1710,7 @@ async function createEbayDraftListing(listingData) {
     
     const response = await axios({
       method: 'post',
-      url: process.env.NODE_ENV === 'production' 
+      url: isProduction
         ? 'https://api.ebay.com/ws/api.dll' 
         : 'https://api.sandbox.ebay.com/ws/api.dll',
       headers: {
