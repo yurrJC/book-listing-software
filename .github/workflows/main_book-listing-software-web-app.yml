@@ -81,3 +81,5 @@ jobs:
         with:
           app-name: 'book-listing-software-web-app'
           package: .
+          slot-name: 'production' # Explicitly specify the slot
+          respect-pom-xml: false # Skip any Maven POM.xml detection
