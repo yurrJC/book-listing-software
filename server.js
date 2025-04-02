@@ -61,40 +61,38 @@ if (!fs.existsSync(uploadsDir)) {
 
 // Add this GET endpoint to handle eBay's challenge code verification
 app.get('/ebay-deletion', (req, res) => {
-  console.log('eBay deletion GET verification request received');
-  console.log('Query parameters:', req.query);
+  console.log('eBay challenge request received');
   
   // Extract the challenge code from the query parameters
   const challengeCode = req.query.challenge_code;
-  
-  // Your verification token (must match what you entered in eBay)
-  const verificationToken = process.env.EBAY_VERIFICATION_TOKEN || 'YOUR_VERIFICATION_TOKEN';
-  
-  // Your endpoint URL (must match exactly what you entered in eBay)
-  const endpoint = process.env.EBAY_ENDPOINT_URL || 'https://book-listing-software-1.onrender.com/ebay-deletion';
-  
-  console.log('Challenge code:', challengeCode);
-  console.log('Verification token:', verificationToken);
-  console.log('Endpoint:', endpoint);
-  
   if (!challengeCode) {
-    console.error('No challenge code provided in the request');
+    console.error('No challenge code provided');
     return res.status(400).json({ error: 'No challenge code provided' });
   }
   
+  // Your verification token must match exactly what you entered in eBay
+  const verificationToken = process.env.EBAY_VERIFICATION_TOKEN;
+  
+  // Your endpoint URL must match exactly what you entered in eBay
+  const endpoint = process.env.EBAY_ENDPOINT_URL;
+  
+  console.log(`Challenge code: ${challengeCode}`);
+  console.log(`Verification token: ${verificationToken}`);
+  console.log(`Endpoint: ${endpoint}`);
+  
   try {
-    // Create a SHA-256 hash of the challenge code + verification token + endpoint
+    // Using the exact method shown in eBay's NodeJS example
     const hash = crypto.createHash('sha256');
     hash.update(challengeCode);
     hash.update(verificationToken);
     hash.update(endpoint);
-    const challengeResponse = hash.digest('hex');
+    const responseHash = hash.digest('hex');
     
-    console.log('Generated challenge response:', challengeResponse);
+    console.log(`Generated challenge response: ${responseHash}`);
     
-    // Return the challenge response in the expected format
+    // Return JSON with the challenge response
     return res.status(200).json({
-      challengeResponse: challengeResponse
+      challengeResponse: responseHash
     });
   } catch (error) {
     console.error('Error generating challenge response:', error);
