@@ -1464,7 +1464,7 @@ async function uploadPhotosToEbay(imageFiles) {
       
       const response = await axios({
         method: 'post',
-        url: isProduction,
+        url: apiEndpoint, // Changed from isProduction to apiEndpoint
         headers: {
           'X-EBAY-API-CALL-NAME': 'UploadSiteHostedPictures',
           'X-EBAY-API-APP-NAME': appId,
@@ -1708,22 +1708,26 @@ async function createEbayDraftListing(listingData) {
     
     console.log('AddItem XML Payload:', xml);
     
-    const response = await axios({
-      method: 'post',
-      url: isProduction
-        ? 'https://api.ebay.com/ws/api.dll' 
-        : 'https://api.sandbox.ebay.com/ws/api.dll',
-      headers: {
-        'X-EBAY-API-CALL-NAME': 'AddItem',
-        'X-EBAY-API-APP-NAME': appId,
-        'X-EBAY-API-DEV-NAME': devId,
-        'X-EBAY-API-CERT-NAME': certId,
-        'X-EBAY-API-SITEID': '15',
-        'X-EBAY-API-COMPATIBILITY-LEVEL': '1155',
-        'Content-Type': 'text/xml'
-      },
-      data: xml
-    });
+    const apiEndpoint = isProduction
+  ? 'https://api.ebay.com/ws/api.dll'
+  : 'https://api.sandbox.ebay.com/ws/api.dll';
+
+console.log(`Creating eBay listing at: ${apiEndpoint}`);
+
+const response = await axios({
+  method: 'post',
+  url: apiEndpoint,
+  headers: {
+    'X-EBAY-API-CALL-NAME': 'AddItem',
+    'X-EBAY-API-APP-NAME': appId,
+    'X-EBAY-API-DEV-NAME': devId,
+    'X-EBAY-API-CERT-NAME': certId,
+    'X-EBAY-API-SITEID': '15',
+    'X-EBAY-API-COMPATIBILITY-LEVEL': '1155',
+    'Content-Type': 'text/xml'
+  },
+  data: xml
+});
     
     const parser = new xml2js.Parser({ explicitArray: false });
     const result = await parser.parseStringPromise(response.data);
