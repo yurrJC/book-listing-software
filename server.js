@@ -11,6 +11,20 @@ const axios = require('axios');
 const FormData = require('form-data');
 const OpenAI = require('openai');
 
+// Add your eBay Marketplace Account Deletion Notification Endpoint here
+app.post('/ebay-deletion', (req, res) => {
+  console.log('eBay Deletion Notification Received:', req.body);
+  
+  const verificationToken = req.body.verificationToken;
+  if (verificationToken) {
+    // Respond with the token to verify your endpoint with eBay
+    res.status(200).send(verificationToken);
+  } else {
+    // Otherwise, just acknowledge the request
+    res.status(200).send('OK');
+  }
+});
+
 // Initialize the OpenAI client
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
@@ -1716,21 +1730,7 @@ app.post('/api/upload', upload.fields([
         error: `Main images (${mainImages.length}) exceeds eBay's limit of 24 images`
       });
     }
-    
-// Add your eBay Marketplace Account Deletion Notification Endpoint here
-app.post('/ebay-deletion', (req, res) => {
-  console.log('eBay Deletion Notification Received:', req.body);
   
-  const verificationToken = req.body.verificationToken;
-  if (verificationToken) {
-    // Respond with the token to verify your endpoint with eBay
-    res.status(200).send(verificationToken);
-  } else {
-    // Otherwise, just acknowledge the request
-    res.status(200).send('OK');
-  }
-});
-
     let isbn = null;
     let processedImage = null;
     let detectedFlaws = { flawsDetected: false, flaws: [] };
