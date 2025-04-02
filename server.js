@@ -50,66 +50,69 @@ if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir);
 }
 
-// Add GET endpoint to handle eBay's challenge code verification
-// Add GET endpoint to handle eBay's challenge code verification
+// GET endpoint for eBay's challenge code verification
 app.get('/ebay-deletion', (req, res) => {
-  console.log('=============================================');
-  console.log('eBay challenge GET request received');
-  console.log('Full request URL:', req.originalUrl);
-  console.log('Query parameters:', req.query);
+  console.log('eBay challenge request received');
+  
+  // Extract the challenge code from the query parameters
+  const challengeCode = req.query.challenge_code;
+  if (!challengeCode) {
+    console.error('No challenge code provided');
+    return res.status(400).json({ error: 'No challenge code provided' });
+  }
+  
+  // Get verification token from environment variables
+  const verificationToken = process.env.EBAY_VERIFICATION_TOKEN;
+  
+  // Get endpoint URL from environment variables - make sure it matches exactly
+  const endpoint = process.env.EBAY_ENDPOINT_URL;
+  
+  console.log(`Challenge code: "${challengeCode}"`);
+  console.log(`Verification token: "${verificationToken}"`);
+  console.log(`Endpoint: "${endpoint}"`);
   
   try {
-    // Extract the challenge code from the query parameters
-    const challengeCode = req.query.challenge_code;
-    if (!challengeCode) {
-      console.error('No challenge code provided');
-      return res.status(400).json({ error: 'No challenge code provided' });
-    }
-    
-    // Your verification token must match exactly what you entered in eBay
-    const verificationToken = process.env.EBAY_VERIFICATION_TOKEN || 'SimpleToken123456789';
-    
-    // Your endpoint URL must match exactly what you entered in eBay
-    const endpoint = process.env.EBAY_ENDPOINT_URL || 'https://book-listing-software-1.onrender.com/ebay-deletion';
-    
-    console.log(`Challenge code: ${challengeCode}`);
-    console.log(`Verification token: ${verificationToken}`);
-    console.log(`Endpoint: ${endpoint}`);
-    
-    // Use createHash exactly as shown in eBay's example
+    // Following EXACTLY the Node.js example from eBay
     const hash = crypto.createHash('sha256');
     hash.update(challengeCode);
     hash.update(verificationToken);
     hash.update(endpoint);
     const responseHash = hash.digest('hex');
     
-    // Optional: Log the response hash
+    // Log response hash as eBay's example does
     console.log(`Generated challenge response: ${responseHash}`);
     
-    // Set content-type explicitly to application/json
+    // Set the Content-Type header explicitly to application/json
     res.setHeader('Content-Type', 'application/json');
     
-    // Return JSON with the challenge response
-    return res.status(200).json({
+    // Return the challenge response in the exact format eBay expects
+    const response = {
       challengeResponse: responseHash
-    });
+    };
+    
+    console.log(`Sending response: ${JSON.stringify(response)}`);
+    
+    return res.status(200).json(response);
   } catch (error) {
     console.error('Error generating challenge response:', error);
     return res.status(500).json({ error: 'Failed to generate challenge response' });
   }
 });
 
-// Add POST endpoint for actual eBay deletion notifications
+// POST endpoint for receiving the actual eBay deletion notifications
 app.post('/ebay-deletion', (req, res) => {
   console.log('eBay deletion notification received:');
-  console.log('Headers:', req.headers);
-  console.log('Body:', req.body);
+  console.log('Headers:', JSON.stringify(req.headers));
+  console.log('Body:', JSON.stringify(req.body));
   
-  // For actual deletion notifications, just acknowledge with 200 OK
+  // Per eBay docs, just acknowledge with 200 OK
   return res.status(200).json({ status: 'received' });
 });
 
-// Continue with the rest of your server code...
+// Test endpoint to verify basic functionality
+app.get('/test', (req, res) => {
+  return res.status(200).json({ message: 'Test endpoint working' });
+});
 
 // Serve static files from the uploads directory
 app.use('/uploads', express.static('uploads'));
