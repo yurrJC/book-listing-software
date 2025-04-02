@@ -39,3 +39,5 @@ package-lock.json
 yarn.lock
 client/package-lock.json
 public/package-lock.json
+
+!client/build/static.json
