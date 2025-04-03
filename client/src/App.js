@@ -1,4 +1,3 @@
-// App.js
 import React, { useState } from 'react';
 import FileUpload from './FileUpload';
 import PriceSettingStep from './PriceSettingStep';
@@ -18,17 +17,21 @@ function App() {
   // Handle price submission
   const handlePriceSubmit = async (price) => {
     try {
-      // Create form data for the API call
-      const formData = new FormData();
-      formData.append('price', price);
-      formData.append('detectedISBN', uploadData.isbn);
+      // This needs to change - we need to create a listing with the price
+      // rather than re-uploading the images
       
-      // You might need to include other data depending on your API
-      
-      // Call your API to create the listing with the custom price
-      const response = await fetch('/api/upload', {
+      // Create a new endpoint for creating the listing with the price
+      const response = await fetch('/api/createListing', {
         method: 'POST',
-        body: formData
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          isbn: uploadData.isbn,
+          price: price,
+          // Any other data needed to identify the book/upload
+          uploadId: uploadData.uploadId || null // If your API uses an upload ID
+        })
       });
       
       const resultData = await response.json();
@@ -62,27 +65,25 @@ function App() {
       }}>
         <h1>eBay Book Listing Tool</h1>
       </header>
-      
       <main style={{ padding: '20px', maxWidth: '1200px', margin: '0 auto' }}>
         {currentStep === 'upload' && (
           <FileUpload onSuccess={handleUploadSuccess} />
         )}
-        
         {currentStep === 'price' && uploadData && (
           <PriceSettingStep
             mainImage={uploadData.mainImage}
             title={uploadData.metadata?.title || ''}
             isbn={uploadData.isbn}
+            // Add the eBay title for display
+            ebayTitle={uploadData.ebayTitle || uploadData.metadata?.title || ''}
             onSubmit={handlePriceSubmit}
             onBack={handleBack}
           />
         )}
-        
         {currentStep === 'result' && result && (
           <ResultView result={result} onReset={handleReset} />
         )}
       </main>
-      
       <footer style={{
         textAlign: 'center',
         marginTop: '40px',

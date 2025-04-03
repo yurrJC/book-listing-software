@@ -1,7 +1,7 @@
 // PriceSettingStep.js
 import React, { useState } from 'react';
 
-function PriceSettingStep({ mainImage, title, isbn, onSubmit, onBack }) {
+function PriceSettingStep({ mainImage, title, isbn, ebayTitle, onSubmit, onBack }) {
   const [price, setPrice] = useState('19.99');
   
   const handleSubmit = (e) => {
@@ -13,19 +13,19 @@ function PriceSettingStep({ mainImage, title, isbn, onSubmit, onBack }) {
     <div className="price-setting-container">
       <h2>Set Listing Price</h2>
       
-      <div className="listing-preview">
+      <div className="book-cover">
         {mainImage && (
-          <img 
-            src={`/uploads/${mainImage}`} 
-            alt="Book Cover" 
+          <img
+            src={`/uploads/${mainImage}`}
+            alt="Book Cover"
             className="preview-image"
           />
         )}
-        
-        <div className="listing-details">
-          <p>ISBN: {isbn}</p>
-          <p>Title: {title}</p>
-        </div>
+      </div>
+      
+      <div className="book-info">
+        <p><strong>ISBN:</strong> {isbn}</p>
+        <p><strong>Title:</strong> {ebayTitle || title}</p>
       </div>
       
       <form onSubmit={handleSubmit}>
@@ -42,10 +42,10 @@ function PriceSettingStep({ mainImage, title, isbn, onSubmit, onBack }) {
         </div>
         
         <div className="action-buttons">
-          <button type="button" onClick={onBack}>
+          <button type="button" onClick={onBack} className="back-button">
             Back
           </button>
-          <button type="submit">
+          <button type="submit" className="list-button">
             List on eBay
           </button>
         </div>

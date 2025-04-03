@@ -1772,9 +1772,9 @@ app.get('/', (req, res) => {
   res.send('Hello from the Express server!');
 });
 
-app.post('/api/upload', upload.fields([
-  { name: 'mainImages', maxCount: 24 },  // Allow up to 24 main images (eBay's limit)
-  { name: 'flawImages', maxCount: 10 }   // Allow up to 10 flaw images
+app.post('/api/processBook', upload.fields([
+  { name: 'mainImages', maxCount: 24 },
+  { name: 'flawImages', maxCount: 10 }
 ]), async (req, res) => {
   console.log('Received files:', req.files);
   
@@ -1782,39 +1782,18 @@ app.post('/api/upload', upload.fields([
     const mainImages = req.files.mainImages || [];
     const flawImages = req.files.flawImages || [];
     
-    // Ensure we have at least one main image
+    // Basic validation
     if (mainImages.length === 0) {
       return res.status(400).json({ error: 'No main images uploaded' });
     }
     
-    // Ensure we don't exceed eBay's limit for main images
-    if (mainImages.length > 24) {
-      return res.status(400).json({ 
-        error: `Main images (${mainImages.length}) exceeds eBay's limit of 24 images`
-      });
-    }
-  
     let isbn = null;
     let processedImage = null;
     let detectedFlaws = { flawsDetected: false, flaws: [] };
-    let allOcrText = ''; // Explicitly initialize
+    let allOcrText = '';
     
-    // Handle client-provided ISBN if available
-    if (req.body.detectedISBN) {
-      const clientIsbn = req.body.detectedISBN;
-      console.log(`Client provided ISBN: ${clientIsbn}`);
-      isbn = isValidISBN(clientIsbn) ? clientIsbn : null;
-      if (isbn) {
-        console.log(`Using client-detected ISBN: ${isbn}`);
-      } else {
-        console.log(`Client-provided ISBN ${clientIsbn} is invalid. Will try server-side detection.`);
-      }
-    }
-    
-    // Try to find ISBN in main images
-  if (!isbn) {
+    // Process images to find ISBN
     console.log('Looking for ISBN in main images...');
-    
     for (const file of mainImages) {
       console.log(`Trying to extract ISBN from ${file.filename}`);
       const result = await processImageAndExtractISBN(file.path);
@@ -1825,33 +1804,23 @@ app.post('/api/upload', upload.fields([
           processedImage = file.filename;
           console.log(`ISBN found in image ${file.filename}: ${isbn}`);
         }
-      
-      // Collect OCR text from each image
-      if (result.ocrText) {
-        allOcrText += result.ocrText + ' ';
-        console.log(`Added OCR text from image ${file.filename}, current length: ${allOcrText.length}`);
+        
+        // Collect OCR text from each image
+        if (result.ocrText) {
+          allOcrText += result.ocrText + ' ';
+        }
       }
     }
-  }
-  
-  // Log collected OCR text
-  if (allOcrText.trim() !== '') {
-    console.log('Collected OCR text for edition detection, total length:', allOcrText.length);
-    console.log('OCR Text sample:', allOcrText.substring(0, 200) + '...');
-  }
-}
     
-    // Check flaw images for condition labels
+    // Process flaw images
     if (flawImages.length > 0) {
       console.log('Processing flaw label images...');
       for (const file of flawImages) {
-        console.log(`Checking for flaws in ${file.filename}`);
         const flawResults = await processImageForFlaws(file.path);
         
         if (flawResults.flawsDetected) {
           detectedFlaws.flawsDetected = true;
           
-          // Add new flaws to the list, avoiding duplicates
           flawResults.flaws.forEach(newFlaw => {
             const existingFlawIndex = detectedFlaws.flaws.findIndex(
               existingFlaw => existingFlaw.type === newFlaw.type
@@ -1861,24 +1830,12 @@ app.post('/api/upload', upload.fields([
               detectedFlaws.flaws.push(newFlaw);
             }
           });
-          
-          console.log(`Found flaws in image ${file.filename}:`, 
-            flawResults.flaws.map(f => f.type).join(', '));
         }
       }
     }
     
-    // Log flaw detection summary
-    if (detectedFlaws.flawsDetected) {
-      console.log('Total flaws detected:', detectedFlaws.flaws.length);
-      console.log('Flaw types:', detectedFlaws.flaws.map(f => f.type).join(', '));
-    } else {
-      console.log('No book flaws detected in any of the uploaded images');
-    }
-    
-    // Ensure we found an ISBN
+    // Ensure ISBN was found
     if (!isbn) {
-      console.log('No ISBN found in any of the uploaded images');
       return res.status(400).json({ error: 'No ISBN could be detected in any of the uploaded images' });
     }
     
@@ -1889,60 +1846,97 @@ app.post('/api/upload', upload.fields([
       return res.status(404).json({ error: 'Could not retrieve book information for the detected ISBN' });
     }
     
-    // Use ONLY main images for the eBay listing
-    const mainImageIndex = req.body.mainImageIndex ? parseInt(req.body.mainImageIndex) : 0;
-
     // Determine book condition based on detected flaws
     const bookCondition = determineBookCondition(detectedFlaws);
-    console.log(`Final book condition determined: ${bookCondition}`);
-
-// Get price from request body if available, otherwise use default
-const customPrice = req.body.price || '19.99';
-
-    // Ensure listingData explicitly includes the OCR text
-  const listingData = {
-    isbn: isbn,
-    title: metadata.title,
-    author: metadata.author,
-    publisher: metadata.publisher,
-    publicationYear: metadata.publishedDate ? metadata.publishedDate.substring(0, 4) : null,
-    synopsis: metadata.synopsis,
-    language: metadata.language || 'English',
-    format: metadata.binding || 'Paperback',
-    condition: bookCondition,
-    conditionDescription: 'Please refer to the attached product photos and description for detailed condition before purchasing',
-    price: customPrice,
-    imageFiles: mainImages,
-    mainImageIndex: mainImageIndex,
-    subjects: metadata.subjects,
-    flaws: detectedFlaws,
-    ocrText: allOcrText, // Ensure OCR text is included
-    edition: metadata.edition // Keep existing edition from metadata as fallback
-  };
-
-  console.log('Listing data prepared with OCR text length:', allOcrText.length);
     
-    // Create the eBay listing
-    const listingResponse = await createEbayDraftListing(listingData);
+    // Generate the eBay title but don't create the listing
+    const bookType = await determineBookTypeUsingGPT(metadata);
+    const optimizedKeyword = await generateOptimizedKeywordUsingGPT(metadata, bookType);
+    const ebayTitle = await generateCompleteEbayTitle({
+      ...metadata,
+      ocrText: allOcrText,
+      format: metadata.binding || 'Paperback'
+    });
     
-    // Send response back to client
+    // Return the data to the client
     res.json({
-      success: listingResponse.success,
+      success: true,
       isbn,
       metadata,
-      listingResponse,
+      ebayTitle, // Important - include the generated eBay title
       processedImage,
-      mainImage: mainImages[mainImageIndex]?.filename || mainImages[0]?.filename,
+      mainImage: mainImages[0]?.filename,
       allImages: mainImages.map(f => f.filename),
       detectedFlaws: detectedFlaws.flawsDetected ? detectedFlaws.flaws.map(f => ({
         type: f.type,
         description: f.description
       })) : [],
-      condition: bookCondition
+      condition: bookCondition,
+      uploadId: Date.now() // Optional - can be used to reference this upload
     });
+    
   } catch (error) {
     console.error('Error processing the images:', error);
     res.status(500).json({ error: 'Processing failed: ' + error.message });
+  }
+});
+
+// In your server.js or routes file
+app.post('/api/createListing', express.json(), async (req, res) => {
+  try {
+    const { isbn, price } = req.body;
+    
+    if (!isbn) {
+      return res.status(400).json({ error: 'ISBN is required' });
+    }
+    
+    if (!price) {
+      return res.status(400).json({ error: 'Price is required' });
+    }
+    
+    // Get the processed data for this ISBN from your database
+    // Or re-process if needed
+    const metadata = await fetchBookMetadata(isbn);
+    
+    // Create the eBay listing with the price
+    const listingData = {
+      isbn,
+      title: metadata.title,
+      author: metadata.author,
+      publisher: metadata.publisher,
+      publicationYear: metadata.publishedDate ? metadata.publishedDate.substring(0, 4) : null,
+      synopsis: metadata.synopsis,
+      language: metadata.language || 'English',
+      format: metadata.binding || 'Paperback',
+      condition: req.body.condition || 'Good',
+      conditionDescription: 'Please refer to the attached product photos and description for detailed condition before purchasing',
+      price: price, // Use the price from the request
+      // Use the image paths from previous step
+      imageFiles: req.body.imageFiles || [], // You would need to store these temporarily
+      mainImageIndex: req.body.mainImageIndex || 0,
+      subjects: metadata.subjects,
+      flaws: req.body.flaws || { flawsDetected: false, flaws: [] },
+      ocrText: req.body.ocrText || '',
+      edition: metadata.edition
+    };
+    
+    // Create the eBay listing
+    const listingResponse = await createEbayDraftListing(listingData);
+    
+    // Return the result
+    res.json({
+      success: listingResponse.success,
+      isbn,
+      metadata,
+      listingResponse,
+      mainImage: req.body.mainImage,
+      ebayTitle: listingResponse.metadata?.ebayTitle || metadata.title,
+      detectedFlaws: req.body.detectedFlaws || []
+    });
+    
+  } catch (error) {
+    console.error('Error creating eBay listing:', error);
+    res.status(500).json({ error: 'Failed to create listing: ' + error.message });
   }
 });
 
