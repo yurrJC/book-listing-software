@@ -1,7 +1,7 @@
 // PriceSettingStep.js
 import React, { useState } from 'react';
 
-// Define the API base URL
+// Define API base URL 
 const API_BASE_URL = 'https://book-listing-software.onrender.com';
 
 function PriceSettingStep({ mainImage, title, isbn, ebayTitle, onSubmit, onBack, metadata, allImages, detectedFlaws, condition, ocrText }) {
@@ -14,19 +14,23 @@ function PriceSettingStep({ mainImage, title, isbn, ebayTitle, onSubmit, onBack,
     setLoading(true);
     setError(null);
     
+    console.log('Starting listing creation with price:', price);
+    
     try {
-      console.log('Creating listing with price:', price);
-      
-      // Create properly formatted image files array
+      // Format image files for the server
+      // This must match exactly what the server expects and can process
       const imageFiles = allImages ? allImages.map(filename => {
+        // Use absolute server path
         return {
-          path: `/uploads/${filename}`,
-          filename: filename,
-          mimetype: 'image/jpeg' // assuming jpeg, this might need to be dynamic
+          path: `uploads/${filename}`, // Must match the directory structure on server
+          filename,
+          mimetype: 'image/jpeg' // Assuming JPEG, adjust if needed
         };
       }) : [];
       
-      // Create complete request payload with all required fields
+      console.log('Sending listing request with image files:', imageFiles);
+      
+      // Prepare the request payload
       const requestData = {
         isbn,
         price,
@@ -34,12 +38,10 @@ function PriceSettingStep({ mainImage, title, isbn, ebayTitle, onSubmit, onBack,
         imageFiles,
         condition: condition || 'Good',
         flaws: detectedFlaws || { flawsDetected: false, flaws: [] },
-        ocrText: ocrText || '',
-        metadata: metadata
+        ocrText: ocrText || ''
       };
       
-      console.log('Sending data to createListing endpoint:', requestData);
-      
+      // Send request to the server
       const response = await fetch(`${API_BASE_URL}/api/createListing`, {
         method: 'POST',
         headers: {
@@ -50,27 +52,29 @@ function PriceSettingStep({ mainImage, title, isbn, ebayTitle, onSubmit, onBack,
         mode: 'cors'
       });
       
-      // Log response for debugging
+      // Get response text first for debugging
       const responseText = await response.text();
       console.log('API response text:', responseText);
       
+      // Check if the response is OK
       if (!response.ok) {
         let errorMessage = 'Failed to create listing. Please try again.';
         try {
           const errorData = JSON.parse(responseText);
           errorMessage = errorData.error || errorMessage;
-        } catch (parseError) {
-          console.error('Error parsing error response:', parseError);
+        } catch (parseErr) {
+          console.error('Failed to parse error response:', parseErr);
         }
         throw new Error(errorMessage);
       }
       
-      // Parse the response as JSON
+      // Parse response as JSON
       let data;
       try {
         data = JSON.parse(responseText);
-      } catch (parseError) {
-        console.error('Error parsing response:', parseError);
+        console.log('Listing creation successful:', data);
+      } catch (parseErr) {
+        console.error('Failed to parse success response:', parseErr);
         throw new Error('Invalid response from server');
       }
       
@@ -94,7 +98,8 @@ function PriceSettingStep({ mainImage, title, isbn, ebayTitle, onSubmit, onBack,
           borderRadius: '4px',
           background: '#ffebee',
           color: '#c62828',
-          border: '1px solid #ef9a9a'
+          border: '1px solid #ef9a9a',
+          fontSize: '14px'
         }}>
           <strong>Error:</strong> {error}
         </div>
@@ -129,20 +134,11 @@ function PriceSettingStep({ mainImage, title, isbn, ebayTitle, onSubmit, onBack,
         </div>
         
         <div className="action-buttons">
-          <button 
-            type="button" 
-            onClick={onBack} 
-            className="back-button"
-            disabled={loading}
-          >
+          <button type="button" onClick={onBack} className="back-button" disabled={loading}>
             Back
           </button>
           
-          <button 
-            type="submit" 
-            className="list-button"
-            disabled={loading}
-          >
+          <button type="submit" className="list-button" disabled={loading}>
             {loading ? 'Creating Listing...' : 'List on eBay'}
           </button>
         </div>

@@ -1883,8 +1883,10 @@ app.post('/api/processBook', upload.fields([
 
 // In your server.js or routes file
 app.post('/api/createListing', express.json(), async (req, res) => {
+  console.log('Creating listing with data:', JSON.stringify(req.body, null, 2));
+  
   try {
-    const { isbn, price } = req.body;
+    const { isbn, price, imageFiles } = req.body;
     
     if (!isbn) {
       return res.status(400).json({ error: 'ISBN is required' });
@@ -1894,11 +1896,35 @@ app.post('/api/createListing', express.json(), async (req, res) => {
       return res.status(400).json({ error: 'Price is required' });
     }
     
-    // Get the processed data for this ISBN from your database
-    // Or re-process if needed
+    if (!imageFiles || !Array.isArray(imageFiles) || imageFiles.length === 0) {
+      console.error('Invalid image files in request:', imageFiles);
+      return res.status(400).json({ error: 'At least one image file is required' });
+    }
+    
+    // Check if all image files exist on the server
+    const validImageFiles = [];
+    for (const file of imageFiles) {
+      const serverPath = path.join(__dirname, file.path);
+      console.log(`Checking if file exists: ${serverPath}`);
+      
+      if (fs.existsSync(serverPath)) {
+        validImageFiles.push({
+          ...file,
+          path: serverPath // Update to use absolute path
+        });
+      } else {
+        console.error(`File not found: ${serverPath}`);
+      }
+    }
+    
+    if (validImageFiles.length === 0) {
+      return res.status(400).json({ error: 'No valid image files found' });
+    }
+    
+    // Fetch metadata
     const metadata = await fetchBookMetadata(isbn);
     
-    // Create the eBay listing with the price
+    // Create the listing with validated files
     const listingData = {
       isbn,
       title: metadata.title,
@@ -1910,9 +1936,8 @@ app.post('/api/createListing', express.json(), async (req, res) => {
       format: metadata.binding || 'Paperback',
       condition: req.body.condition || 'Good',
       conditionDescription: 'Please refer to the attached product photos and description for detailed condition before purchasing',
-      price: price, // Use the price from the request
-      // Use the image paths from previous step
-      imageFiles: req.body.imageFiles || [], // You would need to store these temporarily
+      price: price,
+      imageFiles: validImageFiles,
       mainImageIndex: req.body.mainImageIndex || 0,
       subjects: metadata.subjects,
       flaws: req.body.flaws || { flawsDetected: false, flaws: [] },
