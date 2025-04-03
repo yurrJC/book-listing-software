@@ -1639,7 +1639,7 @@ async function createEbayDraftListing(listingData) {
         'DispatchTimeMax': '3',
         'ListingDuration': 'GTC',
         'ListingType': 'FixedPriceItem',
-        'Location': process.env.SELLER_LOCATION || 'Australia',
+        'Location': process.env.SELLER_LOCATION || 'Ascot Vale, VIC',
         'PictureDetails': {
           'PictureSource': 'EPS',
           'GalleryType': 'Gallery',
