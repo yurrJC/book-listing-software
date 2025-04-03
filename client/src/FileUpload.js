@@ -2,6 +2,9 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 
+// Define the backend API URL
+const API_BASE_URL = 'https://book-listing-software.onrender.com';
+
 function FileUpload({ onSuccess }) {
   const [files, setFiles] = useState({
     mainImages: [],
@@ -15,7 +18,7 @@ function FileUpload({ onSuccess }) {
   useEffect(() => {
     const checkApiStatus = async () => {
       try {
-        const response = await fetch('/api/status');
+        const response = await fetch(`${API_BASE_URL}/api/status`);
         console.log('API status check response:', response.status);
         if (response.ok) {
           const data = await response.json();
@@ -148,13 +151,15 @@ function FileUpload({ onSuccess }) {
     });
 
     try {
-      console.log('Sending POST request to /api/processBook');
+      console.log(`Sending POST request to ${API_BASE_URL}/api/processBook`);
       
-      const response = await fetch('/api/processBook', {
+      const response = await fetch(`${API_BASE_URL}/api/processBook`, {
         method: 'POST',
         body: formData,
-        credentials: 'same-origin',
+        credentials: 'include', // Changed for cross-origin requests
         redirect: 'follow',
+        // Add CORS headers
+        mode: 'cors',
       });
 
       console.log(`Response received - Status: ${response.status} ${response.statusText}`);
