@@ -1,5 +1,5 @@
 // PriceSettingStep.js
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 // Define API base URL 
 const API_BASE_URL = 'https://book-listing-software.onrender.com';
@@ -9,6 +9,18 @@ function PriceSettingStep({ mainImage, title, isbn, ebayTitle, onSubmit, onBack,
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  // Log props on component mount
+  useEffect(() => {
+    console.log('PriceSettingStep received props:', {
+      mainImage,
+      isbn,
+      title: title || 'Not provided',
+      allImages: allImages ? `${allImages.length} images` : 'None',
+      condition: condition || 'Not specified',
+      hasDetectedFlaws: detectedFlaws ? 'Yes' : 'No'
+    });
+  }, [mainImage, isbn, title, allImages, condition, detectedFlaws]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -16,17 +28,26 @@ function PriceSettingStep({ mainImage, title, isbn, ebayTitle, onSubmit, onBack,
     
     console.log('Starting listing creation with price:', price);
     
+    // Check if images are available
+    if (!allImages || allImages.length === 0) {
+      const errorMsg = 'No images available for listing. Please go back and try again.';
+      console.error(errorMsg);
+      setError(errorMsg);
+      setLoading(false);
+      return;
+    }
+    
     try {
       // Format image files for the server
       // This must match exactly what the server expects and can process
-      const imageFiles = allImages ? allImages.map(filename => {
+      const imageFiles = allImages.map(filename => {
         // Use absolute server path
         return {
           path: `uploads/${filename}`, // Must match the directory structure on server
           filename,
           mimetype: 'image/jpeg' // Assuming JPEG, adjust if needed
         };
-      }) : [];
+      });
       
       console.log('Sending listing request with image files:', imageFiles);
       
@@ -40,6 +61,8 @@ function PriceSettingStep({ mainImage, title, isbn, ebayTitle, onSubmit, onBack,
         flaws: detectedFlaws || { flawsDetected: false, flaws: [] },
         ocrText: ocrText || ''
       };
+      
+      console.log('Complete request payload:', JSON.stringify(requestData, null, 2));
       
       // Send request to the server
       const response = await fetch(`${API_BASE_URL}/api/createListing`, {
@@ -118,6 +141,7 @@ function PriceSettingStep({ mainImage, title, isbn, ebayTitle, onSubmit, onBack,
       <div className="book-info">
         <p><strong>ISBN:</strong> {isbn}</p>
         <p><strong>Title:</strong> {ebayTitle || title}</p>
+        <p><strong>Images Available:</strong> {allImages ? allImages.length : 0}</p>
       </div>
       
       <form onSubmit={handleSubmit}>

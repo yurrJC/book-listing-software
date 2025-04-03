@@ -10,37 +10,16 @@ function App() {
 
   // Handle successful upload
   const handleUploadSuccess = (data) => {
+    console.log("Upload success with data:", data);
     setUploadData(data);
     setCurrentStep('price');
   };
 
-  // Handle price submission
-  const handlePriceSubmit = async (price) => {
-    try {
-      // This needs to change - we need to create a listing with the price
-      // rather than re-uploading the images
-      
-      // Create a new endpoint for creating the listing with the price
-      const response = await fetch('/api/createListing', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          isbn: uploadData.isbn,
-          price: price,
-          // Any other data needed to identify the book/upload
-          uploadId: uploadData.uploadId || null // If your API uses an upload ID
-        })
-      });
-      
-      const resultData = await response.json();
-      setResult(resultData);
-      setCurrentStep('result');
-    } catch (error) {
-      console.error('Error creating listing:', error);
-      alert('Failed to create listing. Please try again.');
-    }
+  // Handle price submission result
+  const handleListingCreated = (resultData) => {
+    console.log("Listing created successfully:", resultData);
+    setResult(resultData);
+    setCurrentStep('result');
   };
 
   // Handle going back to upload
@@ -74,9 +53,14 @@ function App() {
             mainImage={uploadData.mainImage}
             title={uploadData.metadata?.title || ''}
             isbn={uploadData.isbn}
-            // Add the eBay title for display
             ebayTitle={uploadData.ebayTitle || uploadData.metadata?.title || ''}
-            onSubmit={handlePriceSubmit}
+            // Pass all the required data:
+            allImages={uploadData.allImages}
+            metadata={uploadData.metadata}
+            detectedFlaws={uploadData.detectedFlaws}
+            condition={uploadData.condition}
+            ocrText={uploadData.ocrText}
+            onSubmit={handleListingCreated}
             onBack={handleBack}
           />
         )}
