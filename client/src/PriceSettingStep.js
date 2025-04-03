@@ -1,22 +1,10 @@
 // PriceSettingStep.js
 import React, { useState } from 'react';
 
-// Define API base URL 
+// Define the API base URL
 const API_BASE_URL = 'https://book-listing-software.onrender.com';
 
-function PriceSettingStep({ 
-  mainImage, 
-  title, 
-  isbn, 
-  ebayTitle, 
-  onSubmit, 
-  onBack, 
-  metadata, 
-  allImages, 
-  detectedFlaws, 
-  condition,
-  ocrText 
-}) {
+function PriceSettingStep({ mainImage, title, isbn, ebayTitle, onSubmit, onBack, metadata, allImages, detectedFlaws, condition, ocrText }) {
   const [price, setPrice] = useState('19.99');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -26,75 +14,66 @@ function PriceSettingStep({
     setLoading(true);
     setError(null);
     
-    console.log('Creating listing with price:', price);
-    
     try {
-      // Create the image files array in the format expected by the server
+      console.log('Creating listing with price:', price);
+      
+      // Create properly formatted image files array
       const imageFiles = allImages ? allImages.map(filename => {
         return {
-          path: `${process.env.NODE_ENV === 'development' ? '' : '/uploads/'}${filename}`,
-          filename,
-          mimetype: 'image/jpeg' // Assuming JPEG, adjust if needed
+          path: `/uploads/${filename}`,
+          filename: filename,
+          mimetype: 'image/jpeg' // assuming jpeg, this might need to be dynamic
         };
       }) : [];
       
-      // Prepare complete data payload matching server expectations
-      const listingData = {
+      // Create complete request payload with all required fields
+      const requestData = {
         isbn,
         price,
         mainImage,
         imageFiles,
-        mainImageIndex: 0,
         condition: condition || 'Good',
         flaws: detectedFlaws || { flawsDetected: false, flaws: [] },
         ocrText: ocrText || '',
-        // Include metadata that was returned from the processBook endpoint
-        metadata
+        metadata: metadata
       };
       
-      console.log('Sending listing data to API:', JSON.stringify(listingData, null, 2));
+      console.log('Sending data to createListing endpoint:', requestData);
       
-      // Make request to the API with full URL and proper options
       const response = await fetch(`${API_BASE_URL}/api/createListing`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(listingData),
+        body: JSON.stringify(requestData),
         credentials: 'include',
         mode: 'cors'
       });
       
-      console.log('Response status:', response.status);
-      
-      // Get raw response text for debugging
+      // Log response for debugging
       const responseText = await response.text();
-      console.log('Raw API response:', responseText.substring(0, 500) + (responseText.length > 500 ? '...' : ''));
+      console.log('API response text:', responseText);
       
       if (!response.ok) {
         let errorMessage = 'Failed to create listing. Please try again.';
         try {
           const errorData = JSON.parse(responseText);
           errorMessage = errorData.error || errorMessage;
-          console.error('Server returned error:', errorData);
         } catch (parseError) {
           console.error('Error parsing error response:', parseError);
-          errorMessage = responseText || `Server error: ${response.status}`;
         }
         throw new Error(errorMessage);
       }
       
-      // Parse the successful response
+      // Parse the response as JSON
       let data;
       try {
         data = JSON.parse(responseText);
-        console.log('Listing created successfully:', data);
       } catch (parseError) {
-        console.error('Error parsing successful response:', parseError);
-        throw new Error('Received invalid response from server');
+        console.error('Error parsing response:', parseError);
+        throw new Error('Invalid response from server');
       }
       
-      // Call the onSubmit callback with the creation result
       onSubmit(data);
     } catch (err) {
       console.error('Error creating listing:', err);
@@ -108,7 +87,6 @@ function PriceSettingStep({
     <div className="price-setting-container">
       <h2>Set Listing Price</h2>
       
-      {/* Error message display */}
       {error && (
         <div style={{
           padding: '12px 15px',
@@ -116,8 +94,7 @@ function PriceSettingStep({
           borderRadius: '4px',
           background: '#ffebee',
           color: '#c62828',
-          border: '1px solid #ef9a9a',
-          fontSize: '14px'
+          border: '1px solid #ef9a9a'
         }}>
           <strong>Error:</strong> {error}
         </div>
@@ -165,10 +142,6 @@ function PriceSettingStep({
             type="submit" 
             className="list-button"
             disabled={loading}
-            style={{
-              opacity: loading ? 0.7 : 1,
-              cursor: loading ? 'not-allowed' : 'pointer'
-            }}
           >
             {loading ? 'Creating Listing...' : 'List on eBay'}
           </button>
