@@ -1896,6 +1896,9 @@ app.post('/api/upload', upload.fields([
     const bookCondition = determineBookCondition(detectedFlaws);
     console.log(`Final book condition determined: ${bookCondition}`);
 
+// Get price from request body if available, otherwise use default
+const customPrice = req.body.price || '19.99';
+
     // Ensure listingData explicitly includes the OCR text
   const listingData = {
     isbn: isbn,
@@ -1908,7 +1911,7 @@ app.post('/api/upload', upload.fields([
     format: metadata.binding || 'Paperback',
     condition: bookCondition,
     conditionDescription: 'Please refer to the attached product photos and description for detailed condition before purchasing',
-    price: '19.99',
+    price: customPrice,
     imageFiles: mainImages,
     mainImageIndex: mainImageIndex,
     subjects: metadata.subjects,

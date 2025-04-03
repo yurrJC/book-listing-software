@@ -3,7 +3,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import ImageGallery from './ImageGallery';
 import './FileUpload.css';
 
-function FileUpload() {
+function FileUpload({ onSuccess }) {  // Add onSuccess prop
   // State for the two-step process
   const [step, setStep] = useState(1); // Step 1: Main images, Step 2: Flaw images
   
@@ -13,7 +13,6 @@ function FileUpload() {
   
   const [mainImageIndex, setMainImageIndex] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
-  const [uploadResult, setUploadResult] = useState(null);
   const [progressBarValue, setProgressBarValue] = useState(0);
   
   // Drag state
@@ -26,7 +25,6 @@ function FileUpload() {
   // Refs for file inputs
   const mainInputRef = useRef(null);
   const flawInputRef = useRef(null);
-  const resultSectionRef = useRef(null);
 
   // Simulate progress during upload
   useEffect(() => {
@@ -221,12 +219,12 @@ function FileUpload() {
       setShowSuccessAnimation(true);
       setTimeout(() => {
         setShowSuccessAnimation(false);
-        setUploadResult(data);
-        setTimeout(() => {
-          if (resultSectionRef.current) {
-            resultSectionRef.current.scrollIntoView({ behavior: 'smooth' });
-          }
-        }, 300);
+        
+        // Instead of setting uploadResult, call onSuccess with the data
+        if (onSuccess) {
+          onSuccess(data);
+        }
+        
       }, 1000);
     } catch (error) {
       console.error('Error uploading images:', error);
@@ -236,54 +234,27 @@ function FileUpload() {
     }
   };
 
-  // Start a new listing
-  const handleNewListing = () => {
-    document.querySelector('.file-upload-container').classList.add('reset-animation');
-    setTimeout(() => {
-      mainGalleryItems.forEach(item => URL.revokeObjectURL(item.url));
-      flawGalleryItems.forEach(item => URL.revokeObjectURL(item.url));
-      setMainGalleryItems([]);
-      setFlawGalleryItems([]);
-      setMainImageIndex(0);
-      setUploadResult(null);
-      setStep(1);
-      document.querySelector('.file-upload-container').classList.remove('reset-animation');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }, 300);
-  };
-
   return (
     <div className="file-upload-container">
-      {/* Removed step indicator block */}
-
       {/* Success Animation Overlay */}
       {showSuccessAnimation && (
         <div className="success-animation">
           <div className="checkmark-circle">
             <div className="checkmark-check"></div>
           </div>
-          <div className="success-text">Listing Created!</div>
+          <div className="success-text">Processing Complete!</div>
         </div>
       )}
 
-{isUploading && (
-  <div className="progress-bar-container">
-    <div className="progress-bar-label">Uploading Images...</div>
-    <div className="progress-bar">
-      <div 
-        className="progress-bar-fill" 
-        style={{ width: `${progressBarValue}%` }}
-      ></div>
-    </div>
-  </div>
-)}
-
-      {/* New Listing Button */}
-      {uploadResult && (
-        <div className="new-listing-button-container">
-          <button onClick={handleNewListing} className="new-listing-button">
-            &#x2795; Create New Listing
-          </button>
+      {isUploading && (
+        <div className="progress-bar-container">
+          <div className="progress-bar-label">Uploading Images...</div>
+          <div className="progress-bar">
+            <div 
+              className="progress-bar-fill" 
+              style={{ width: `${progressBarValue}%` }}
+            ></div>
+          </div>
         </div>
       )}
 
@@ -420,7 +391,7 @@ function FileUpload() {
                   </>
                 ) : (
                   <>
-                    Upload With Condition Labels
+                    Continue With Condition Labels
                     <span className="button-icon">&#x2714;</span>
                   </>
                 )}
@@ -448,76 +419,6 @@ function FileUpload() {
             </button>
           </div>
         </>
-      )}
-
-      {/* Upload Result */}
-      {uploadResult && (
-        <div className="result-section animate-in" ref={resultSectionRef}>
-          <div className="result-header">
-            <h2>
-              <span className="success-icon">&#x2705;</span> Listing Successfully Created
-            </h2>
-          </div>
-          <div className="result-details">
-            <div className="result-image">
-              {uploadResult.mainImage && (
-                <img
-                  src={`http://localhost:3001/uploads/${uploadResult.mainImage}`}
-                  alt="Main book image"
-                />
-              )}
-            </div>
-            <div className="result-data">
-              <h3>{uploadResult.metadata?.title}</h3>
-              <p className="author">by {uploadResult.metadata?.author}</p>
-              <div className="data-grid">
-                <div className="data-item">
-                  <span className="label">ISBN</span>
-                  <span className="value">{uploadResult.isbn}</span>
-                </div>
-                <div className="data-item">
-                  <span className="label">Publisher</span>
-                  <span className="value">{uploadResult.metadata?.publisher || 'Unknown'}</span>
-                </div>
-                <div className="data-item">
-                  <span className="label">Condition</span>
-                  <span className="value">{uploadResult.condition || 'Good'}</span>
-                </div>
-                <div className="data-item">
-                  <span className="label">Listing ID</span>
-                  <span className="value">{uploadResult.listingResponse?.listingId || 'Processing...'}</span>
-                </div>
-                {uploadResult.detectedFlaws && uploadResult.detectedFlaws.length > 0 && (
-                  <div className="data-item full-width">
-                    <span className="label">Detected Flaws</span>
-                    <ul className="flaws-list">
-                      {uploadResult.detectedFlaws.map((flaw, index) => (
-                        <li key={index}>{flaw.type}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
-              <div className="action-buttons">
-                {uploadResult.listingResponse?.ebayUrl && (
-                  <a 
-                    href={uploadResult.listingResponse.ebayUrl} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="view-listing-button"
-                  >
-                    View on eBay
-                    <span className="button-icon">&#x2197;</span>
-                  </a>
-                )}
-                <button onClick={handleNewListing} className="new-listing-button">
-                  Create Another Listing
-                  <span className="button-icon">&#x2795;</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
       )}
     </div>
   );
