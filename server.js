@@ -1792,25 +1792,26 @@ app.post('/api/processBook', upload.fields([
     let detectedFlaws = { flawsDetected: false, flaws: [] };
     let allOcrText = '';
     
-    // Process images to find ISBN
-    console.log('Looking for ISBN in main images...');
-    for (const file of mainImages) {
-      console.log(`Trying to extract ISBN from ${file.filename}`);
-      const result = await processImageAndExtractISBN(file.path);
-      
-      if (result) {
-        if (result.isbn) {
-          isbn = result.isbn;
-          processedImage = file.filename;
-          console.log(`ISBN found in image ${file.filename}: ${isbn}`);
-        }
-        
-        // Collect OCR text from each image
-        if (result.ocrText) {
-          allOcrText += result.ocrText + ' ';
-        }
-      }
+    // Process only the first three main images for ISBN and OCR extraction
+console.log('Looking for ISBN in main images (first 3 only)...');
+for (let i = 0; i < Math.min(mainImages.length, 3); i++) {
+  const file = mainImages[i];
+  console.log(`Trying to extract ISBN from ${file.filename}`);
+  const result = await processImageAndExtractISBN(file.path);
+  
+  if (result) {
+    if (result.isbn) {
+      isbn = result.isbn;
+      processedImage = file.filename;
+      console.log(`ISBN found in image ${file.filename}: ${isbn}`);
     }
+    
+    // Collect OCR text from each processed image
+    if (result.ocrText) {
+      allOcrText += result.ocrText + ' ';
+    }
+  }
+}
     
     // Process flaw images
     if (flawImages.length > 0) {
@@ -1954,7 +1955,7 @@ app.post('/api/createListing', express.json(), async (req, res) => {
       isbn,
       metadata,
       listingResponse,
-      mainImage: req.body.mainImage,
+      mainImage: listingData.imageFiles[0]?.filename,
       ebayTitle: listingResponse.metadata?.ebayTitle || metadata.title,
       detectedFlaws: req.body.detectedFlaws || []
     });
