@@ -26,22 +26,29 @@ function FileUpload({ onSuccess }) {
     }));
   }, []);
 
-  const { getRootProps: getMainRootProps, getInputProps: getMainInputProps, isDragActive: isMainDragActive } = useDropzone({
+  const {
+    getRootProps: getMainRootProps,
+    getInputProps: getMainInputProps,
+    isDragActive: isMainDragActive
+  } = useDropzone({
     onDrop: onDropMain,
     accept: 'image/*',
     multiple: true
   });
 
-  const { getRootProps: getFlawRootProps, getInputProps: getFlawInputProps, isDragActive: isFlawDragActive } = useDropzone({
+  const {
+    getRootProps: getFlawRootProps,
+    getInputProps: getFlawInputProps,
+    isDragActive: isFlawDragActive
+  } = useDropzone({
     onDrop: onDropFlaw,
     accept: 'image/*',
     multiple: true
   });
 
-  // Handle reordering of main images using react-beautiful-dnd
+  // Reordering logic for main images (react-beautiful-dnd)
   const onDragEnd = (result) => {
     if (!result.destination) return;
-
     const reordered = Array.from(files.mainImages);
     const [removed] = reordered.splice(result.source.index, 1);
     reordered.splice(result.destination.index, 0, removed);
@@ -66,7 +73,7 @@ function FileUpload({ onSuccess }) {
     // Create form data to send files
     const formData = new FormData();
 
-    // Append main images (in their reordered order)
+    // Append main images
     files.mainImages.forEach(file => {
       formData.append('mainImages', file);
     });
@@ -148,69 +155,109 @@ function FileUpload({ onSuccess }) {
           </div>
         </div>
 
-        <button 
-          type="submit" 
-          className="submit-button" 
+        <button
+          type="submit"
+          className="submit-button"
           disabled={loading || files.mainImages.length === 0}
         >
           {loading ? 'Processing...' : 'Process Book'}
         </button>
       </form>
 
-      {/* Display selected files with reordering for main images */}
+      {/* Display selected files */}
       <div style={{ marginTop: '20px' }}>
+        {/* 1) Reorderable Thumbnails for Main Images */}
         <h4>Selected Main Images (Reorderable):</h4>
         <DragDropContext onDragEnd={onDragEnd}>
-          <Droppable droppableId="mainImages">
+          <Droppable droppableId="mainImages" direction="horizontal">
             {(provided) => (
-              <ul 
+              <div
                 ref={provided.innerRef}
                 {...provided.droppableProps}
-                style={{ listStyleType: 'none', padding: 0 }}
+                style={{
+                  display: 'flex',
+                  gap: '8px',
+                  flexWrap: 'wrap',
+                  padding: '8px 0'
+                }}
               >
-                {files.mainImages.map((file, index) => (
-                  <Draggable key={index} draggableId={`main-${index}`} index={index}>
-                    {(provided, snapshot) => (
-                      <li
-                        ref={provided.innerRef}
-                        {...provided.draggableProps}
-                        {...provided.dragHandleProps}
-                        style={{
-                          userSelect: 'none',
-                          padding: '8px',
-                          margin: '0 0 8px 0',
-                          background: snapshot.isDragging ? '#e0e0e0' : '#fff',
-                          border: '1px solid #ddd',
-                          borderRadius: '4px',
-                          cursor: snapshot.isDragging ? 'grabbing' : 'grab',
-                          ...provided.draggableProps.style
-                        }}
-                      >
-                        {file.name}
-                      </li>
-                    )}
-                  </Draggable>
-                ))}
+                {files.mainImages.map((file, index) => {
+                  const previewUrl = URL.createObjectURL(file);
+                  return (
+                    <Draggable
+                      key={file.name + index}
+                      draggableId={file.name + index}
+                      index={index}
+                    >
+                      {(provided, snapshot) => (
+                        <div
+                          ref={provided.innerRef}
+                          {...provided.draggableProps}
+                          {...provided.dragHandleProps}
+                          style={{
+                            userSelect: 'none',
+                            margin: '0 8px 8px 0',
+                            cursor: snapshot.isDragging ? 'grabbing' : 'grab',
+                            ...provided.draggableProps.style
+                          }}
+                        >
+                          <img
+                            src={previewUrl}
+                            alt={file.name}
+                            style={{
+                              width: '100px',
+                              height: 'auto',
+                              display: 'block',
+                              borderRadius: '4px',
+                              boxShadow: snapshot.isDragging
+                                ? '0 2px 8px rgba(0,0,0,0.2)'
+                                : 'none'
+                            }}
+                          />
+                        </div>
+                      )}
+                    </Draggable>
+                  );
+                })}
                 {provided.placeholder}
-              </ul>
+              </div>
             )}
           </Droppable>
         </DragDropContext>
 
+        {/* 2) Simple Thumbnails for Flaw Images (not reorderable) */}
         <h4>Selected Flaw Images:</h4>
-        <ul style={{ listStyleType: 'none', padding: 0 }}>
-          {files.flawImages.map((file, index) => (
-            <li key={index} style={{
-              padding: '8px',
-              margin: '0 0 8px 0',
-              background: '#fff',
-              border: '1px solid #ddd',
-              borderRadius: '4px'
-            }}>
-              {file.name}
-            </li>
-          ))}
-        </ul>
+        <div style={{
+          display: 'flex',
+          gap: '8px',
+          flexWrap: 'wrap',
+          padding: '8px 0'
+        }}>
+          {files.flawImages.map((file, index) => {
+            const previewUrl = URL.createObjectURL(file);
+            return (
+              <div
+                key={file.name + index}
+                style={{
+                  width: '100px',
+                  position: 'relative'
+                }}
+              >
+                <img
+                  src={previewUrl}
+                  alt={file.name}
+                  style={{
+                    width: '100px',
+                    height: 'auto',
+                    display: 'block',
+                    borderRadius: '4px',
+                    border: '1px solid #ccc'
+                  }}
+                />
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
