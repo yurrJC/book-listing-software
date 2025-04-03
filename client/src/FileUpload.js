@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 
@@ -9,9 +9,34 @@ function FileUpload({ onSuccess }) {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [apiStatus, setApiStatus] = useState(null);
+
+  // Check API connectivity on component mount
+  useEffect(() => {
+    const checkApiStatus = async () => {
+      try {
+        const response = await fetch('/api/status');
+        console.log('API status check response:', response.status);
+        if (response.ok) {
+          const data = await response.json();
+          setApiStatus({ connected: true, message: data.message || 'Connected to API' });
+          console.log('API status:', data);
+        } else {
+          setApiStatus({ connected: false, message: 'API is not responding correctly' });
+          console.error('API status check failed with status:', response.status);
+        }
+      } catch (err) {
+        setApiStatus({ connected: false, message: 'Cannot connect to API' });
+        console.error('API connectivity error:', err);
+      }
+    };
+
+    checkApiStatus();
+  }, []);
 
   // Drop handler for main images
   const onDropMain = useCallback((acceptedFiles) => {
+    console.log('Main images dropped:', acceptedFiles.length);
     setFiles(prev => ({
       ...prev,
       mainImages: [...prev.mainImages, ...acceptedFiles]
@@ -20,6 +45,7 @@ function FileUpload({ onSuccess }) {
 
   // Drop handler for flaw images
   const onDropFlaw = useCallback((acceptedFiles) => {
+    console.log('Flaw images dropped:', acceptedFiles.length);
     setFiles(prev => ({
       ...prev,
       flawImages: [...prev.flawImages, ...acceptedFiles]
@@ -33,7 +59,9 @@ function FileUpload({ onSuccess }) {
     isDragActive: isMainDragActive
   } = useDropzone({
     onDrop: onDropMain,
-    accept: 'image/*',
+    accept: {
+      'image/*': []
+    },
     multiple: true
   });
 
@@ -44,7 +72,9 @@ function FileUpload({ onSuccess }) {
     isDragActive: isFlawDragActive
   } = useDropzone({
     onDrop: onDropFlaw,
-    accept: 'image/*',
+    accept: {
+      'image/*': []
+    },
     multiple: true
   });
 
@@ -60,6 +90,7 @@ function FileUpload({ onSuccess }) {
       ...prev,
       mainImages: reordered
     }));
+    console.log('Images reordered');
   };
 
   // Delete a main image by index
@@ -67,6 +98,7 @@ function FileUpload({ onSuccess }) {
     setFiles(prev => {
       const updated = [...prev.mainImages];
       updated.splice(index, 1);
+      console.log(`Deleted main image at index ${index}`);
       return { ...prev, mainImages: updated };
     });
   };
@@ -76,6 +108,7 @@ function FileUpload({ onSuccess }) {
     setFiles(prev => {
       const updated = [...prev.flawImages];
       updated.splice(index, 1);
+      console.log(`Deleted flaw image at index ${index}`);
       return { ...prev, flawImages: updated };
     });
   };
@@ -83,50 +116,122 @@ function FileUpload({ onSuccess }) {
   // Submit form
   const handleSubmit = async (e) => {
     e.preventDefault();
+    console.log('=== FORM SUBMISSION STARTED ===');
 
     if (files.mainImages.length === 0) {
-      setError('Please select at least one main image');
+      const errorMsg = 'Please select at least one main image';
+      setError(errorMsg);
+      console.error(errorMsg);
       return;
     }
 
     setLoading(true);
     setError(null);
 
+    // Log file information for debugging
+    console.log(`Uploading ${files.mainImages.length} main images and ${files.flawImages.length} flaw images`);
+    files.mainImages.forEach((file, i) => {
+      console.log(`Main image ${i+1}: ${file.name}, ${file.size} bytes, type: ${file.type}`);
+    });
+
     // Create form data
     const formData = new FormData();
+    
     // Append main images in their reordered order
     files.mainImages.forEach(file => {
       formData.append('mainImages', file);
     });
+    
     // Append flaw images
     files.flawImages.forEach(file => {
       formData.append('flawImages', file);
     });
 
     try {
+      console.log('Sending POST request to /api/processBook');
+      
       const response = await fetch('/api/processBook', {
         method: 'POST',
-        body: formData
+        body: formData,
+        credentials: 'same-origin',
+        redirect: 'follow',
       });
 
+      console.log(`Response received - Status: ${response.status} ${response.statusText}`);
+      
+      // Get the raw response text first
+      const responseText = await response.text();
+      console.log('Raw response:', responseText.substring(0, 200) + (responseText.length > 200 ? '...' : ''));
+      
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to process images');
+        let errorMessage = 'Failed to process images';
+        try {
+          // Try to parse the error response as JSON
+          const errorData = JSON.parse(responseText);
+          errorMessage = errorData.error || errorMessage;
+          console.error('Server returned error:', errorData);
+        } catch (parseError) {
+          // If not JSON, use the raw text or status
+          console.error('Error parsing error response:', parseError);
+          errorMessage = responseText || `Server error: ${response.status}`;
+        }
+        throw new Error(errorMessage);
       }
 
-      const data = await response.json();
+      // Parse the successful response as JSON
+      let data;
+      try {
+        data = JSON.parse(responseText);
+        console.log('Successfully parsed response data:', data);
+      } catch (parseError) {
+        console.error('Error parsing successful response:', parseError);
+        throw new Error('Received invalid response from server');
+      }
+      
+      console.log('Processing successful, calling onSuccess callback');
       onSuccess(data);
     } catch (err) {
-      setError(err.message);
+      const errorMsg = `Error: ${err.message}`;
+      console.error('Submission error:', err);
+      setError(errorMsg);
     } finally {
       setLoading(false);
+      console.log('=== FORM SUBMISSION COMPLETED ===');
     }
   };
 
   return (
     <div className="upload-container">
       <h2>Upload Book Images</h2>
-      {error && <div className="error-message">{error}</div>}
+      
+      {/* API Status indicator */}
+      {apiStatus && (
+        <div style={{
+          padding: '8px 12px',
+          marginBottom: '15px',
+          borderRadius: '4px',
+          background: apiStatus.connected ? '#e8f5e9' : '#ffebee',
+          color: apiStatus.connected ? '#2e7d32' : '#c62828',
+          border: `1px solid ${apiStatus.connected ? '#a5d6a7' : '#ef9a9a'}`
+        }}>
+          <span style={{ fontWeight: 'bold' }}>API Status:</span> {apiStatus.message}
+        </div>
+      )}
+      
+      {/* Error message display */}
+      {error && (
+        <div style={{
+          padding: '12px 15px',
+          marginBottom: '20px',
+          borderRadius: '4px',
+          background: '#ffebee',
+          color: '#c62828',
+          border: '1px solid #ef9a9a',
+          fontSize: '14px'
+        }}>
+          <strong>Error:</strong> {error}
+        </div>
+      )}
 
       <form onSubmit={handleSubmit}>
         {/* 1) MAIN IMAGES */}
@@ -242,20 +347,69 @@ function FileUpload({ onSuccess }) {
           </div>
         </div>
 
+        {/* Submit button with clear loading state */}
         <button
           type="submit"
           className="submit-button"
           disabled={loading || files.mainImages.length === 0}
-          style={{ marginTop: '20px' }}
+          style={{
+            marginTop: '20px',
+            position: 'relative',
+            backgroundColor: loading ? '#cccccc' : '#0053a0',
+            color: 'white',
+            padding: '10px 20px',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: loading ? 'not-allowed' : 'pointer',
+            fontWeight: 'bold',
+            minWidth: '150px',
+            minHeight: '44px'
+          }}
         >
-          {loading ? 'Processing...' : 'Process Book'}
+          {loading ? (
+            <>
+              <span style={{ visibility: 'hidden' }}>Process Book</span>
+              <div style={{
+                position: 'absolute',
+                left: '50%',
+                top: '50%',
+                transform: 'translate(-50%, -50%)',
+                display: 'flex',
+                alignItems: 'center'
+              }}>
+                <LoadingSpinner /> Processing...
+              </div>
+            </>
+          ) : 'Process Book'}
         </button>
       </form>
     </div>
   );
 }
 
-/* ========== Inline Styles for convenience ========== */
+// Simple loading spinner component
+const LoadingSpinner = () => (
+  <div style={{ 
+    display: 'inline-block',
+    width: '16px',
+    height: '16px',
+    border: '3px solid rgba(255,255,255,0.3)',
+    borderRadius: '50%',
+    borderTopColor: 'white',
+    animation: 'spin 1s ease-in-out infinite',
+    marginRight: '8px'
+  }}>
+    <style>
+      {`
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+      `}
+    </style>
+  </div>
+);
+
+/* ========== Styles ========== */
 const dropZoneStyle = (isActive) => ({
   border: '2px dashed #cccccc',
   borderRadius: '8px',
@@ -263,7 +417,8 @@ const dropZoneStyle = (isActive) => ({
   textAlign: 'center',
   marginBottom: '10px',
   cursor: 'pointer',
-  backgroundColor: isActive ? '#f0f8ff' : 'transparent'
+  backgroundColor: isActive ? '#f0f8ff' : 'transparent',
+  transition: 'background-color 0.2s ease'
 });
 
 const thumbsContainer = {
@@ -275,6 +430,9 @@ const thumbsContainer = {
 
 const thumbnailWrapperStyle = {
   position: 'relative',
+  border: '1px solid #eee',
+  borderRadius: '4px',
+  overflow: 'hidden'
 };
 
 const thumbnailStyle = (isDragging) => ({
@@ -286,17 +444,17 @@ const thumbnailStyle = (isDragging) => ({
 
 const deleteButtonStyle = {
   position: 'absolute',
-  top: 0,
-  right: 0,
+  top: '5px',
+  right: '5px',
   border: 'none',
-  background: 'rgba(0,0,0,0.5)',
+  background: 'rgba(0,0,0,0.6)',
   color: '#fff',
-  width: '24px',
-  height: '24px',
+  width: '22px',
+  height: '22px',
   borderRadius: '50%',
   cursor: 'pointer',
   fontSize: '16px',
-  lineHeight: '24px',
+  lineHeight: '1',
   textAlign: 'center',
   padding: 0,
 };
