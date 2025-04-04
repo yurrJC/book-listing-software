@@ -218,7 +218,6 @@ function PriceSettingStep({ mainImage, title, isbn, ebayTitle, onSubmit, onBack,
                 placeholder="Enter SKU (optional)"
               />
             </div>
-            
             <div className="form-group">
               <label htmlFor="price">Price (AUD):</label>
               <input
@@ -230,12 +229,10 @@ function PriceSettingStep({ mainImage, title, isbn, ebayTitle, onSubmit, onBack,
                 required
               />
             </div>
-            
             <div className="action-buttons">
               <button type="button" onClick={onBack} className="btn back-button" disabled={loading}>
                 Back
               </button>
-              
               <button type="submit" className="btn submit-button" disabled={loading}>
                 {loading ? 'Creating Listing...' : 'List on eBay'}
               </button>
