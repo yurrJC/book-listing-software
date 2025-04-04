@@ -1588,21 +1588,25 @@ async function createEbayDraftListing(listingData) {
       });
     }
     
-    // Add all Topics as separate entries
-    bookTopics.forEach(topic => {
-      nameValueList.push({
-        'Name': 'Topic',
-        'Value': topic
-      });
-    });
+    // Add topics with numbered names for eBay's API
+bookTopics.forEach((topic, index) => {
+  const topicName = index === 0 ? 'Topic' : `Topic_${index + 1}`;
+  console.log(`Adding ${topicName}: ${topic}`);
+  nameValueList.push({
+    'Name': topicName,
+    'Value': topic
+  });
+});
 
-    // Add all Genres as separate entries
-    bookGenres.forEach(genre => {
-      nameValueList.push({
-        'Name': 'Genre',
-        'Value': genre
-      });
-    });
+// Add genres with numbered names for eBay's API
+bookGenres.forEach((genre, index) => {
+  const genreName = index === 0 ? 'Genre' : `Genre_${index + 1}`;
+  console.log(`Adding ${genreName}: ${genre}`);
+  nameValueList.push({
+    'Name': genreName,
+    'Value': genre
+  });
+});
     
     // Add other item specifics
     if (listingData.publisher && listingData.publisher !== 'Unknown') {
