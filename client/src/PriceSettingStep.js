@@ -1,5 +1,6 @@
 // PriceSettingStep.js
 import React, { useState, useEffect } from 'react';
+import './PriceSettingStep.css'; // We'll create this CSS file
 
 // Define API base URL 
 const API_BASE_URL = 'https://book-listing-software.onrender.com';
@@ -114,74 +115,86 @@ function PriceSettingStep({ mainImage, title, isbn, ebayTitle, onSubmit, onBack,
   };
 
   return (
-    <div className="price-setting-container">
-      <h2>Set Listing Price</h2>
+    <div className="listing-container">
+      <div className="listing-header">
+        <h2>Set Listing Price</h2>
+      </div>
       
       {error && (
-        <div style={{
-          padding: '12px 15px',
-          marginBottom: '20px',
-          borderRadius: '4px',
-          background: '#ffebee',
-          color: '#c62828',
-          border: '1px solid #ef9a9a',
-          fontSize: '14px'
-        }}>
+        <div className="error-message">
           <strong>Error:</strong> {error}
         </div>
       )}
       
-      <div className="book-cover">
-        {mainImage && (
-          <img
-            src={`/uploads/${mainImage}`}
-            alt="Book Cover"
-            className="preview-image"
-          />
-        )}
-      </div>
-      
-      <div className="book-info">
-        <p><strong>ISBN:</strong> {isbn}</p>
-        <p><strong>Title:</strong> {ebayTitle || title}</p>
-        <p><strong>Images Available:</strong> {allImages ? allImages.length : 0}</p>
-      </div>
-      
-      <form onSubmit={handleSubmit}>
-        <div className="price-input">
-          <label htmlFor="price">Price (AUD):</label>
-          <input
-            id="price"
-            type="text"
-            value={price}
-            onChange={(e) => setPrice(e.target.value)}
-            placeholder="19.99"
-            required
-          />
-        </div>
-        
-        {/* Add the SKU input field here */}
-        <div className="price-input">
-          <label htmlFor="sku">SKU:</label>
-          <input
-            id="sku"
-            type="text"
-            value={sku}
-            onChange={(e) => setSku(e.target.value)}
-            placeholder="Enter SKU (optional)"
-          />
-        </div>
-        
-        <div className="action-buttons">
-          <button type="button" onClick={onBack} className="back-button" disabled={loading}>
-            Back
-          </button>
+      <div className="listing-content">
+        <div className="book-details">
+          <div className="book-cover">
+            {mainImage && (
+              <img
+                src={`/uploads/${mainImage}`}
+                alt="Book Cover"
+                className="preview-image"
+              />
+            )}
+          </div>
           
-          <button type="submit" className="list-button" disabled={loading}>
-            {loading ? 'Creating Listing...' : 'List on eBay'}
-          </button>
+          <div className="book-info">
+            <table className="info-table">
+              <tbody>
+                <tr>
+                  <td><strong>ISBN:</strong></td>
+                  <td>{isbn}</td>
+                </tr>
+                <tr>
+                  <td><strong>Title:</strong></td>
+                  <td>{ebayTitle || title}</td>
+                </tr>
+                <tr>
+                  <td><strong>Images:</strong></td>
+                  <td>{allImages ? allImages.length : 0}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
-      </form>
+        
+        <div className="listing-form">
+          <form onSubmit={handleSubmit}>
+            <div className="form-group">
+              <label htmlFor="price">Price (AUD):</label>
+              <input
+                id="price"
+                type="text"
+                value={price}
+                onChange={(e) => setPrice(e.target.value)}
+                placeholder="19.99"
+                required
+              />
+            </div>
+            
+            <div className="form-group">
+              <label htmlFor="sku">SKU:</label>
+              <input
+                id="sku"
+                type="text"
+                value={sku}
+                onChange={(e) => setSku(e.target.value)}
+                placeholder="Enter SKU (optional)"
+              />
+            </div>
+            
+            <div className="action-buttons">
+              <button type="button" onClick={onBack} className="btn back-button" disabled={loading}>
+                Back
+              </button>
+              
+              <button type="submit" className="btn submit-button" disabled={loading}>
+                {loading ? 'Creating Listing...' : 'List on eBay'}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
     </div>
   );
 }
