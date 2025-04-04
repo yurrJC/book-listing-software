@@ -209,6 +209,17 @@ function PriceSettingStep({ mainImage, title, isbn, ebayTitle, onSubmit, onBack,
         <div className="listing-form">
           <form onSubmit={handleSubmit}>
             <div className="form-group">
+              <label htmlFor="sku">SKU:</label>
+              <input
+                id="sku"
+                type="text"
+                value={sku}
+                onChange={(e) => setSku(e.target.value)}
+                placeholder="Enter SKU (optional)"
+              />
+            </div>
+            
+            <div className="form-group">
               <label htmlFor="price">Price (AUD):</label>
               <input
                 id="price"
@@ -217,17 +228,6 @@ function PriceSettingStep({ mainImage, title, isbn, ebayTitle, onSubmit, onBack,
                 onChange={(e) => setPrice(e.target.value)}
                 placeholder="19.99"
                 required
-              />
-            </div>
-            
-            <div className="form-group">
-              <label htmlFor="sku">SKU:</label>
-              <input
-                id="sku"
-                type="text"
-                value={sku}
-                onChange={(e) => setSku(e.target.value)}
-                placeholder="Enter SKU (optional)"
               />
             </div>
             
