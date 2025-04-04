@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import './PriceSettingStep.css';
 
-// Define API base URL 
+// Define API base URL - corrected to backend URL
 const API_BASE_URL = 'https://book-listing-software.onrender.com';
 
 function PriceSettingStep({ mainImage, title, isbn, ebayTitle, onSubmit, onBack, metadata, allImages, detectedFlaws, condition, ocrText }) {
@@ -95,6 +95,7 @@ function PriceSettingStep({ mainImage, title, isbn, ebayTitle, onSubmit, onBack,
       };
       
       console.log('Complete request payload:', JSON.stringify(requestData, null, 2));
+      console.log('Sending to API endpoint:', `${API_BASE_URL}/api/createListing`);
       
       // Send request to the server
       const response = await fetch(`${API_BASE_URL}/api/createListing`, {
@@ -109,6 +110,7 @@ function PriceSettingStep({ mainImage, title, isbn, ebayTitle, onSubmit, onBack,
       
       // Get response text first for debugging
       const responseText = await response.text();
+      console.log('API response status:', response.status);
       console.log('API response text:', responseText);
       
       // Check if the response is OK
@@ -117,8 +119,11 @@ function PriceSettingStep({ mainImage, title, isbn, ebayTitle, onSubmit, onBack,
         try {
           const errorData = JSON.parse(responseText);
           errorMessage = errorData.error || errorMessage;
+          console.error('Server error details:', errorData);
         } catch (parseErr) {
           console.error('Failed to parse error response:', parseErr);
+          // Include status code and response text in the error
+          errorMessage = `Error ${response.status}: ${responseText.substring(0, 100)}...`;
         }
         throw new Error(errorMessage);
       }
