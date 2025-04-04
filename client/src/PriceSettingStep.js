@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import './PriceSettingStep.css';
 
-// Define API base URL - corrected to backend URL
+// Define API base URL 
 const API_BASE_URL = 'https://book-listing-software.onrender.com';
 
 function PriceSettingStep({ mainImage, title, isbn, ebayTitle, onSubmit, onBack, metadata, allImages, detectedFlaws, condition, ocrText }) {
@@ -95,7 +95,6 @@ function PriceSettingStep({ mainImage, title, isbn, ebayTitle, onSubmit, onBack,
       };
       
       console.log('Complete request payload:', JSON.stringify(requestData, null, 2));
-      console.log('Sending to API endpoint:', `${API_BASE_URL}/api/createListing`);
       
       // Send request to the server
       const response = await fetch(`${API_BASE_URL}/api/createListing`, {
@@ -110,7 +109,6 @@ function PriceSettingStep({ mainImage, title, isbn, ebayTitle, onSubmit, onBack,
       
       // Get response text first for debugging
       const responseText = await response.text();
-      console.log('API response status:', response.status);
       console.log('API response text:', responseText);
       
       // Check if the response is OK
@@ -119,11 +117,8 @@ function PriceSettingStep({ mainImage, title, isbn, ebayTitle, onSubmit, onBack,
         try {
           const errorData = JSON.parse(responseText);
           errorMessage = errorData.error || errorMessage;
-          console.error('Server error details:', errorData);
         } catch (parseErr) {
           console.error('Failed to parse error response:', parseErr);
-          // Include status code and response text in the error
-          errorMessage = `Error ${response.status}: ${responseText.substring(0, 100)}...`;
         }
         throw new Error(errorMessage);
       }
@@ -214,16 +209,6 @@ function PriceSettingStep({ mainImage, title, isbn, ebayTitle, onSubmit, onBack,
         <div className="listing-form">
           <form onSubmit={handleSubmit}>
             <div className="form-group">
-              <label htmlFor="sku">SKU:</label>
-              <input
-                id="sku"
-                type="text"
-                value={sku}
-                onChange={(e) => setSku(e.target.value)}
-                placeholder="Enter SKU (optional)"
-              />
-            </div>
-            <div className="form-group">
               <label htmlFor="price">Price (AUD):</label>
               <input
                 id="price"
@@ -234,10 +219,23 @@ function PriceSettingStep({ mainImage, title, isbn, ebayTitle, onSubmit, onBack,
                 required
               />
             </div>
+            
+            <div className="form-group">
+              <label htmlFor="sku">SKU:</label>
+              <input
+                id="sku"
+                type="text"
+                value={sku}
+                onChange={(e) => setSku(e.target.value)}
+                placeholder="Enter SKU (optional)"
+              />
+            </div>
+            
             <div className="action-buttons">
               <button type="button" onClick={onBack} className="btn back-button" disabled={loading}>
                 Back
               </button>
+              
               <button type="submit" className="btn submit-button" disabled={loading}>
                 {loading ? 'Creating Listing...' : 'List on eBay'}
               </button>
