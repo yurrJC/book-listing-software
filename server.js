@@ -1811,13 +1811,15 @@ app.post('/api/processBook', upload.fields([
   { name: 'flawImages', maxCount: 10 }
 ]), async (req, res) => {
   console.log('Received files:', req.files);
+  console.log('Request body:', req.body); // Log the request body to see the manualIsbn
   
   try {
     const mainImages = req.files.mainImages || [];
     const flawImages = req.files.flawImages || [];
-
+    const manualIsbn = req.body.manualIsbn; // Get the manual ISBN from the request body
+    
     // Always set the first uploaded image as the main image
-const mainImage = mainImages[0].filename;
+    const mainImage = mainImages[0].filename;
     
     // Basic validation
     if (mainImages.length === 0) {
@@ -1829,26 +1831,47 @@ const mainImage = mainImages[0].filename;
     let detectedFlaws = { flawsDetected: false, flaws: [] };
     let allOcrText = '';
     
-    // Process only the first three main images for ISBN and OCR extraction
-console.log('Looking for ISBN in main images (first 3 only)...');
-for (let i = 0; i < Math.min(mainImages.length, 3); i++) {
-  const file = mainImages[i];
-  console.log(`Trying to extract ISBN from ${file.filename}`);
-  const result = await processImageAndExtractISBN(file.path);
-  
-  if (result) {
-    if (result.isbn) {
-      isbn = result.isbn;
-      processedImage = file.filename;
-      console.log(`ISBN found in image ${file.filename}: ${isbn}`);
+    // First check if a manual ISBN was provided
+    if (manualIsbn && manualIsbn.trim()) {
+      isbn = manualIsbn.trim();
+      processedImage = mainImage; // Use the main image as processed image
+      console.log(`Using manually entered ISBN: ${isbn}`);
+      
+      // Still process images for OCR text (for edition detection, etc.)
+      console.log('Processing images for OCR text...');
+      for (let i = 0; i < Math.min(mainImages.length, 3); i++) {
+        const file = mainImages[i];
+        try {
+          const result = await processImageAndExtractISBN(file.path, false); // Flag to only extract OCR text
+          if (result && result.ocrText) {
+            allOcrText += result.ocrText + ' ';
+          }
+        } catch (err) {
+          console.error(`Error extracting OCR text from ${file.filename}:`, err);
+        }
+      }
+    } else {
+      // If no manual ISBN, try to detect from images
+      console.log('Looking for ISBN in main images (first 3 only)...');
+      for (let i = 0; i < Math.min(mainImages.length, 3); i++) {
+        const file = mainImages[i];
+        console.log(`Trying to extract ISBN from ${file.filename}`);
+        const result = await processImageAndExtractISBN(file.path);
+        
+        if (result) {
+          if (result.isbn) {
+            isbn = result.isbn;
+            processedImage = file.filename;
+            console.log(`ISBN found in image ${file.filename}: ${isbn}`);
+          }
+          
+          // Collect OCR text from each processed image
+          if (result.ocrText) {
+            allOcrText += result.ocrText + ' ';
+          }
+        }
+      }
     }
-    
-    // Collect OCR text from each processed image
-    if (result.ocrText) {
-      allOcrText += result.ocrText + ' ';
-    }
-  }
-}
     
     // Process flaw images
     if (flawImages.length > 0) {
@@ -1872,16 +1895,16 @@ for (let i = 0; i < Math.min(mainImages.length, 3); i++) {
       }
     }
     
-    // Ensure ISBN was found
+    // Ensure ISBN was found or provided
     if (!isbn) {
-      return res.status(400).json({ error: 'No ISBN could be detected in any of the uploaded images' });
+      return res.status(400).json({ error: 'No ISBN could be detected in any of the uploaded images and no manual ISBN was provided' });
     }
     
     // Get book metadata
     const metadata = await fetchBookMetadata(isbn);
     
     if (!metadata) {
-      return res.status(404).json({ error: 'Could not retrieve book information for the detected ISBN' });
+      return res.status(404).json({ error: 'Could not retrieve book information for the ISBN' });
     }
     
     // Determine book condition based on detected flaws
@@ -1910,104 +1933,13 @@ for (let i = 0; i < Math.min(mainImages.length, 3); i++) {
         description: f.description
       })) : [],
       condition: bookCondition,
-      uploadId: Date.now() // Optional - can be used to reference this upload
+      uploadId: Date.now(), // Optional - can be used to reference this upload
+      manualIsbnUsed: Boolean(manualIsbn && manualIsbn.trim()) // Indicate if manual ISBN was used
     });
     
   } catch (error) {
     console.error('Error processing the images:', error);
     res.status(500).json({ error: 'Processing failed: ' + error.message });
-  }
-});
-
-// In your server.js or routes file
-app.post('/api/createListing', express.json(), async (req, res) => {
-  console.log('Creating listing with data:', JSON.stringify(req.body, null, 2));
-  
-  try {
-    // Explicitly log the SKU field for debugging
-    console.log('SKU from request body:', req.body.sku);
-    
-    const { isbn, price, imageFiles, sku } = req.body;
-    
-    // Add additional validation for SKU, defaulting to empty string if undefined
-    const normalizedSku = sku || '';
-    console.log('Normalized SKU:', normalizedSku);
-    
-    if (!isbn) {
-      return res.status(400).json({ error: 'ISBN is required' });
-    }
-    
-    if (!price) {
-      return res.status(400).json({ error: 'Price is required' });
-    }
-    
-    if (!imageFiles || !Array.isArray(imageFiles) || imageFiles.length === 0) {
-      console.error('Invalid image files in request:', imageFiles);
-      return res.status(400).json({ error: 'At least one image file is required' });
-    }
-    
-    // Check if all image files exist on the server
-    const validImageFiles = [];
-    for (const file of imageFiles) {
-      const serverPath = path.join(__dirname, file.path);
-      console.log(`Checking if file exists: ${serverPath}`);
-      
-      if (fs.existsSync(serverPath)) {
-        validImageFiles.push({
-          ...file,
-          path: serverPath // Update to use absolute path
-        });
-      } else {
-        console.error(`File not found: ${serverPath}`);
-      }
-    }
-    
-    if (validImageFiles.length === 0) {
-      return res.status(400).json({ error: 'No valid image files found' });
-    }
-    
-    // Fetch metadata
-    const metadata = await fetchBookMetadata(isbn);
-    
-    // Create the listing with validated files
-    const listingData = {
-      isbn,
-      title: metadata.title,
-      author: metadata.author,
-      publisher: metadata.publisher,
-      publicationYear: metadata.publishedDate ? metadata.publishedDate.substring(0, 4) : null,
-      synopsis: metadata.synopsis,
-      language: metadata.language || 'English',
-      format: metadata.binding || 'Paperback',
-      condition: req.body.condition || 'Good',
-      conditionDescription: 'Please refer to the attached product photos and description for detailed condition before purchasing',
-      price: price,
-      sku: sku,
-      imageFiles: validImageFiles,
-      mainImageIndex: req.body.mainImageIndex || 0,
-      subjects: metadata.subjects,
-      flaws: req.body.flaws || { flawsDetected: false, flaws: [] },
-      ocrText: req.body.ocrText || '',
-      edition: metadata.edition
-    };
-    
-    // Create the eBay listing
-    const listingResponse = await createEbayDraftListing(listingData);
-    
-    // Return the result
-    res.json({
-      success: listingResponse.success,
-      isbn,
-      metadata,
-      listingResponse,
-      mainImage: listingData.imageFiles[0]?.filename,
-      ebayTitle: listingResponse.metadata?.ebayTitle || metadata.title,
-      detectedFlaws: req.body.detectedFlaws || []
-    });
-    
-  } catch (error) {
-    console.error('Error creating eBay listing:', error);
-    res.status(500).json({ error: 'Failed to create listing: ' + error.message });
   }
 });
 

@@ -156,7 +156,7 @@ function FileUpload({ onSuccess }) {
       formData.append('flawImages', file);
     });
     
-    // Add manual ISBN if provided
+    // Add manual ISBN if provided - make sure it's clearly distinguished for the server
     if (manualIsbn.trim()) {
       formData.append('manualIsbn', manualIsbn.trim());
       console.log('Adding manual ISBN to request:', manualIsbn.trim());
