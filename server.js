@@ -1815,6 +1815,9 @@ app.post('/api/processBook', upload.fields([
   try {
     const mainImages = req.files.mainImages || [];
     const flawImages = req.files.flawImages || [];
+
+    // Always set the first uploaded image as the main image
+const mainImage = mainImages[0].filename;
     
     // Basic validation
     if (mainImages.length === 0) {
@@ -1900,7 +1903,7 @@ for (let i = 0; i < Math.min(mainImages.length, 3); i++) {
       metadata,
       ebayTitle, // Important - include the generated eBay title
       processedImage,
-      mainImage: mainImages[0]?.filename,
+      mainImage: mainImage,
       allImages: mainImages.map(f => f.filename),
       detectedFlaws: detectedFlaws.flawsDetected ? detectedFlaws.flaws.map(f => ({
         type: f.type,

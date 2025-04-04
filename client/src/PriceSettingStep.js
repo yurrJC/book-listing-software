@@ -1,27 +1,52 @@
 // PriceSettingStep.js
 import React, { useState, useEffect } from 'react';
-import './PriceSettingStep.css'; // We'll create this CSS file
+import './PriceSettingStep.css';
 
 // Define API base URL 
 const API_BASE_URL = 'https://book-listing-software.onrender.com';
 
 function PriceSettingStep({ mainImage, title, isbn, ebayTitle, onSubmit, onBack, metadata, allImages, detectedFlaws, condition, ocrText }) {
   const [price, setPrice] = useState('19.99');
-  const [sku, setSku] = useState(''); // Add state for SKU
+  const [sku, setSku] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [copySuccess, setCopySuccess] = useState(false);
 
   // Log props on component mount
   useEffect(() => {
     console.log('PriceSettingStep received props:', {
-      mainImage,
+      mainImage: mainImage || 'No main image provided',
       isbn,
       title: title || 'Not provided',
       allImages: allImages ? `${allImages.length} images` : 'None',
+      firstImage: allImages && allImages.length > 0 ? allImages[0] : 'No images available',
       condition: condition || 'Not specified',
       hasDetectedFlaws: detectedFlaws ? 'Yes' : 'No'
     });
   }, [mainImage, isbn, title, allImages, condition, detectedFlaws]);
+
+  // Reset copy success message after 3 seconds
+  useEffect(() => {
+    if (copySuccess) {
+      const timer = setTimeout(() => {
+        setCopySuccess(false);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [copySuccess]);
+
+  const handleCopyISBN = () => {
+    if (isbn) {
+      navigator.clipboard.writeText(isbn)
+        .then(() => {
+          setCopySuccess(true);
+          console.log('ISBN copied to clipboard');
+        })
+        .catch(err => {
+          console.error('Failed to copy ISBN:', err);
+        });
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -54,12 +79,15 @@ function PriceSettingStep({ mainImage, title, isbn, ebayTitle, onSubmit, onBack,
       
       console.log('Sending listing request with image files:', imageFiles);
       
+      // Use mainImage if provided, otherwise use the first image from allImages
+      const effectiveMainImage = mainImage || (allImages.length > 0 ? allImages[0] : null);
+      
       // Prepare the request payload
       const requestData = {
         isbn,
         price,
         sku, // Include SKU in the request data
-        mainImage,
+        mainImage: effectiveMainImage,
         imageFiles,
         condition: condition || 'Good',
         flaws: detectedFlaws || { flawsDetected: false, flaws: [] },
@@ -129,12 +157,20 @@ function PriceSettingStep({ mainImage, title, isbn, ebayTitle, onSubmit, onBack,
       <div className="listing-content">
         <div className="book-details">
           <div className="book-cover">
-            {mainImage && (
+            {mainImage ? (
               <img
                 src={`/uploads/${mainImage}`}
                 alt="Book Cover"
                 className="preview-image"
               />
+            ) : allImages && allImages.length > 0 ? (
+              <img
+                src={`/uploads/${allImages[0]}`}
+                alt="Book Cover"
+                className="preview-image"
+              />
+            ) : (
+              <div className="no-image">No Cover Image</div>
             )}
           </div>
           
@@ -143,7 +179,19 @@ function PriceSettingStep({ mainImage, title, isbn, ebayTitle, onSubmit, onBack,
               <tbody>
                 <tr>
                   <td><strong>ISBN:</strong></td>
-                  <td>{isbn}</td>
+                  <td>
+                    <div className="isbn-container">
+                      <span>{isbn}</span>
+                      <button 
+                        type="button" 
+                        className="copy-button"
+                        onClick={handleCopyISBN}
+                        title="Copy ISBN to clipboard"
+                      >
+                        {copySuccess ? 'Copied!' : 'Copy'}
+                      </button>
+                    </div>
+                  </td>
                 </tr>
                 <tr>
                   <td><strong>Title:</strong></td>
