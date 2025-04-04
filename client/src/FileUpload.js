@@ -13,6 +13,7 @@ function FileUpload({ onSuccess }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [apiStatus, setApiStatus] = useState(null);
+  const [manualIsbn, setManualIsbn] = useState('');
 
   // Check API connectivity on component mount
   useEffect(() => {
@@ -36,6 +37,11 @@ function FileUpload({ onSuccess }) {
 
     checkApiStatus();
   }, []);
+
+  // Handle ISBN input change
+  const handleIsbnChange = (e) => {
+    setManualIsbn(e.target.value);
+  };
 
   // Drop handler for main images
   const onDropMain = useCallback((acceptedFiles) => {
@@ -149,6 +155,12 @@ function FileUpload({ onSuccess }) {
     files.flawImages.forEach(file => {
       formData.append('flawImages', file);
     });
+    
+    // Add manual ISBN if provided
+    if (manualIsbn.trim()) {
+      formData.append('manualIsbn', manualIsbn.trim());
+      console.log('Adding manual ISBN to request:', manualIsbn.trim());
+    }
 
     try {
       console.log(`Sending POST request to ${API_BASE_URL}/api/processBook`);
@@ -308,6 +320,43 @@ function FileUpload({ onSuccess }) {
               )}
             </Droppable>
           </DragDropContext>
+          
+          {/* Manual ISBN entry field */}
+          <div style={{ marginTop: '15px' }}>
+            <label 
+              htmlFor="manualIsbn" 
+              style={{ 
+                display: 'block', 
+                marginBottom: '5px', 
+                fontWeight: 'bold',
+                fontSize: '14px'
+              }}
+            >
+              Manual ISBN Entry (optional):
+            </label>
+            <input
+              id="manualIsbn"
+              type="text"
+              value={manualIsbn}
+              onChange={handleIsbnChange}
+              placeholder="Enter ISBN manually if detection fails"
+              style={{
+                width: '100%',
+                padding: '10px',
+                border: '1px solid #ccc',
+                borderRadius: '4px',
+                fontSize: '14px',
+                boxSizing: 'border-box'
+              }}
+            />
+            <p style={{ 
+              margin: '5px 0 0', 
+              fontSize: '12px', 
+              color: '#666' 
+            }}>
+              Use this field to manually enter an ISBN if automatic detection is unsuccessful.
+            </p>
+          </div>
         </div>
 
         {/* 2) FLAW IMAGES */}
