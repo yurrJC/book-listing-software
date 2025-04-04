@@ -1566,6 +1566,13 @@ async function createEbayDraftListing(listingData) {
           : listingData.title }
     ];
     
+    // Add SKU to item specifics if provided
+    if (listingData.sku) {
+      nameValueList.push({
+        'Name': 'SKU',
+        'Value': listingData.sku
+      });
+    }
     // Add Narrative Type
     if (narrativeType) {
       nameValueList.push({
@@ -1742,6 +1749,7 @@ const response = await axios({
         ebayUrl: `https://www.ebay.com.au/itm/${result.AddItemResponse.ItemID}`,
         status: 'ACTIVE',
         isbn: listingData.isbn,
+        sku: listingData.sku,
         metadata: {
           title: listingData.title,
           author: listingData.author,
@@ -1938,6 +1946,7 @@ app.post('/api/createListing', express.json(), async (req, res) => {
       condition: req.body.condition || 'Good',
       conditionDescription: 'Please refer to the attached product photos and description for detailed condition before purchasing',
       price: price,
+      sku: sku,
       imageFiles: validImageFiles,
       mainImageIndex: req.body.mainImageIndex || 0,
       subjects: metadata.subjects,

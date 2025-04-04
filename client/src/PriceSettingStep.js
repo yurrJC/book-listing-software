@@ -6,6 +6,7 @@ const API_BASE_URL = 'https://book-listing-software.onrender.com';
 
 function PriceSettingStep({ mainImage, title, isbn, ebayTitle, onSubmit, onBack, metadata, allImages, detectedFlaws, condition, ocrText }) {
   const [price, setPrice] = useState('19.99');
+  const [sku, setSku] = useState(''); // Add state for SKU
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -27,6 +28,7 @@ function PriceSettingStep({ mainImage, title, isbn, ebayTitle, onSubmit, onBack,
     setError(null);
     
     console.log('Starting listing creation with price:', price);
+    console.log('SKU value:', sku);
     
     // Check if images are available
     if (!allImages || allImages.length === 0) {
@@ -55,6 +57,7 @@ function PriceSettingStep({ mainImage, title, isbn, ebayTitle, onSubmit, onBack,
       const requestData = {
         isbn,
         price,
+        sku, // Include SKU in the request data
         mainImage,
         imageFiles,
         condition: condition || 'Good',
@@ -154,6 +157,18 @@ function PriceSettingStep({ mainImage, title, isbn, ebayTitle, onSubmit, onBack,
             onChange={(e) => setPrice(e.target.value)}
             placeholder="19.99"
             required
+          />
+        </div>
+        
+        {/* Add the SKU input field here */}
+        <div className="price-input">
+          <label htmlFor="sku">SKU:</label>
+          <input
+            id="sku"
+            type="text"
+            value={sku}
+            onChange={(e) => setSku(e.target.value)}
+            placeholder="Enter SKU (optional)"
           />
         </div>
         
