@@ -1511,6 +1511,9 @@ async function createEbayDraftListing(listingData) {
     const uploadedImages = await uploadPhotosToEbay(listingData.imageFiles);
     const epsImageUrls = uploadedImages.map(img => img.epsUrl);
 
+    // Explicitly log SKU to verify it's present
+    console.log('SKU value being used:', listingData.sku);
+
     console.log('Number of uploaded images:', uploadedImages.length);
     console.log('Image URLs to include in listing:', epsImageUrls);
     console.log('Main image URL:', epsImageUrls.length > 0 ? epsImageUrls[0] : 'No images');
@@ -1567,12 +1570,16 @@ async function createEbayDraftListing(listingData) {
     ];
     
     // Add SKU to item specifics if provided
-    if (listingData.sku) {
+    if (listingData.sku !== undefined && listingData.sku !== null) {
+      console.log('Adding SKU to item specifics:', listingData.sku);
       nameValueList.push({
         'Name': 'SKU',
-        'Value': listingData.sku
+        'Value': String(listingData.sku) // Convert to string to ensure it's valid
       });
+    } else {
+      console.log('SKU not provided or is null/undefined, not adding to item specifics');
     }
+
     // Add Narrative Type
     if (narrativeType) {
       nameValueList.push({
@@ -1664,6 +1671,12 @@ async function createEbayDraftListing(listingData) {
         }
       }
     };
+
+    // Add SKU at the Item level if provided - ADD THIS CODE HERE
+if (typeof listingData.sku === 'string' && listingData.sku.trim() !== '') {
+  console.log('Setting SKU at Item level:', listingData.sku);
+  requestObj.Item.SKU = listingData.sku.trim();
+}
     
     // Conditional logic based on environment and available policy IDs
     if (process.env.NODE_ENV === 'production' && (shippingPolicyId || returnPolicyId || paymentPolicyId)) {
@@ -1770,6 +1783,14 @@ const response = await axios({
     }
   } catch (error) {
     console.error('Error creating eBay listing:', error);
+    // If there's an error specifically related to SKU, provide a clearer message
+  if (error.message && error.message.includes('sku')) {
+    console.error('SKU-related error detected:', error.message);
+    return {
+      success: false,
+      error: 'There was an issue with the SKU field: ' + error.message
+    };
+  }
     return {
       success: false,
       error: error.message
@@ -1895,7 +1916,14 @@ app.post('/api/createListing', express.json(), async (req, res) => {
   console.log('Creating listing with data:', JSON.stringify(req.body, null, 2));
   
   try {
-    const { isbn, price, imageFiles } = req.body;
+    // Explicitly log the SKU field for debugging
+    console.log('SKU from request body:', req.body.sku);
+    
+    const { isbn, price, imageFiles, sku } = req.body;
+    
+    // Add additional validation for SKU, defaulting to empty string if undefined
+    const normalizedSku = sku || '';
+    console.log('Normalized SKU:', normalizedSku);
     
     if (!isbn) {
       return res.status(400).json({ error: 'ISBN is required' });
