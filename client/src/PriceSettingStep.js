@@ -1,4 +1,4 @@
-// PriceSettingStep.js
+/* PriceSettingStep.js */
 import React, { useState, useEffect } from 'react';
 import './PriceSettingStep.css';
 
@@ -67,13 +67,11 @@ function PriceSettingStep({ mainImage, title, isbn, ebayTitle, onSubmit, onBack,
     
     try {
       // Format image files for the server
-      // This must match exactly what the server expects and can process
       const imageFiles = allImages.map(filename => {
-        // Use absolute server path
         return {
-          path: `uploads/${filename}`, // Must match the directory structure on server
+          path: `uploads/${filename}`,
           filename,
-          mimetype: 'image/jpeg' // Assuming JPEG, adjust if needed
+          mimetype: 'image/jpeg'
         };
       });
       
@@ -86,7 +84,7 @@ function PriceSettingStep({ mainImage, title, isbn, ebayTitle, onSubmit, onBack,
       const requestData = {
         isbn,
         price,
-        sku, // Include SKU in the request data
+        sku,
         mainImage: effectiveMainImage,
         imageFiles,
         condition: condition || 'Good',
@@ -107,11 +105,9 @@ function PriceSettingStep({ mainImage, title, isbn, ebayTitle, onSubmit, onBack,
         mode: 'cors'
       });
       
-      // Get response text first for debugging
       const responseText = await response.text();
       console.log('API response text:', responseText);
       
-      // Check if the response is OK
       if (!response.ok) {
         let errorMessage = 'Failed to create listing. Please try again.';
         try {
@@ -123,7 +119,6 @@ function PriceSettingStep({ mainImage, title, isbn, ebayTitle, onSubmit, onBack,
         throw new Error(errorMessage);
       }
       
-      // Parse response as JSON
       let data;
       try {
         data = JSON.parse(responseText);
@@ -157,7 +152,13 @@ function PriceSettingStep({ mainImage, title, isbn, ebayTitle, onSubmit, onBack,
       <div className="listing-content">
         <div className="book-details">
           <div className="book-cover">
-            {mainImage ? (
+            {metadata?.coverUrl ? (
+              <img
+                src={metadata.coverUrl}
+                alt="Book Cover"
+                className="preview-image"
+              />
+            ) : mainImage ? (
               <img
                 src={`/uploads/${mainImage}`}
                 alt="Book Cover"
@@ -209,6 +210,16 @@ function PriceSettingStep({ mainImage, title, isbn, ebayTitle, onSubmit, onBack,
         <div className="listing-form">
           <form onSubmit={handleSubmit}>
             <div className="form-group">
+              <label htmlFor="sku">SKU:</label>
+              <input
+                id="sku"
+                type="text"
+                value={sku}
+                onChange={(e) => setSku(e.target.value)}
+                placeholder="Enter SKU (optional)"
+              />
+            </div>
+            <div className="form-group">
               <label htmlFor="price">Price (AUD):</label>
               <input
                 id="price"
@@ -217,17 +228,6 @@ function PriceSettingStep({ mainImage, title, isbn, ebayTitle, onSubmit, onBack,
                 onChange={(e) => setPrice(e.target.value)}
                 placeholder="19.99"
                 required
-              />
-            </div>
-            
-            <div className="form-group">
-              <label htmlFor="sku">SKU:</label>
-              <input
-                id="sku"
-                type="text"
-                value={sku}
-                onChange={(e) => setSku(e.target.value)}
-                placeholder="Enter SKU (optional)"
               />
             </div>
             

@@ -48,7 +48,18 @@ function ResultView({ result, onReset }) {
       }}>
         {/* Book Image */}
         <div style={{ flex: '0 0 200px', marginRight: '20px' }}>
-          {mainImage ? (
+          {metadata?.coverUrl ? (
+            <img
+              src={metadata.coverUrl}
+              alt="Book Cover"
+              style={{
+                width: '100%',
+                height: 'auto',
+                borderRadius: '4px',
+                boxShadow: '0 2px 6px rgba(0,0,0,0.1)'
+              }}
+            />
+          ) : mainImage ? (
             <img
               src={`/uploads/${mainImage}`}
               alt="Book Cover"
