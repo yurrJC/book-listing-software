@@ -1222,7 +1222,7 @@ async function detectBookFlaws(ocrText) {
   console.log(upperText);
   
   // Detect present flaws
-  const detectedFlaws = [];
+  const detectedFlaws = { flawsDetected: false, flaws: [] };
   
   // Check for each flaw type in the OCR text - adding more detailed logging
   for (const [flawName, flawInfo] of Object.entries(flawTypes)) {
@@ -1847,7 +1847,7 @@ app.post('/api/processBook', upload.fields([
     console.log('Manual ISBN provided:', manualIsbn);
 
     // Always set the first uploaded image as the main image
-    const mainImage = mainImages[0].filename;
+    const mainImage = validImageFiles[0].filename;
     
     // Basic validation
     if (mainImages.length === 0) {
@@ -1976,26 +1976,25 @@ listingDataForGeneration.narrativeType = narrativeType;
 const bookTopics = await determineBookTopicsUsingGPT(listingDataForGeneration);
 const bookGenres = await determineBookGenresUsingGPT(listingDataForGeneration);
 
-    res.json({
-      success: true,
-      isbn,
-      metadata,
-      ebayTitle, 
-      processedImage,
-      mainImage: mainImage,
-      allImages: mainImages.map(f => f.filename),
-      detectedFlaws: detectedFlaws.flawsDetected ? detectedFlaws.flaws.map(f => ({
-        type: f.type,
-        description: f.description
-      })) : [],
-      condition: bookCondition,
-      uploadId: Date.now(),
-      manualIsbnUsed: !!manualIsbn && isbn === isValidISBN(manualIsbn),
-      // Add these additional fields:
-      bookTopics,
-      bookGenres,
-      narrativeType,
-    });
+res.json({
+  success: true,
+  isbn,
+  metadata,
+  ebayTitle, 
+  processedImage,
+  mainImage,
+  allImages: mainImages.map(f => f.filename),
+  detectedFlaws: detectedFlaws.flawsDetected
+    ? detectedFlaws.flaws.map(f => ({ type: f.type, description: f.description }))
+    : [],
+  condition: bookCondition,
+  uploadId: Date.now(),
+  manualIsbnUsed: !!manualIsbn && isbn === isValidISBN(manualIsbn),
+  bookTopics,
+  bookGenres,
+  narrativeType
+});
+
     
   } catch (error) {
     console.error('Error processing the images:', error);
