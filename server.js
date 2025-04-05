@@ -1532,13 +1532,39 @@ async function createEbayDraftListing(listingData) {
     console.log("Auth Token Preview:", authToken ? authToken.substring(0, 20) + "..." : "Not found");
 
     // Determine book narrative type, topics, and genres using enhanced GPT functions
-    const narrativeType = await determineNarrativeTypeUsingGPT(listingData);
-    // Save narrative type to listingData for use in Genre determination
-    listingData.narrativeType = narrativeType;
+    let narrativeType;
+let bookTopics;
+let bookGenres;
 
-    // Get more comprehensive Topics and Genres using the enhanced functions
-    const bookTopics = await determineBookTopicsUsingGPT(listingData);
-    const bookGenres = await determineBookGenresUsingGPT(listingData);
+// Check if provided genres and topics exist
+if (listingData.providedTopics && listingData.providedTopics.length > 0) {
+  console.log('Using provided topics:', listingData.providedTopics);
+  bookTopics = listingData.providedTopics;
+} else {
+  // Generate topics if not provided
+  bookTopics = await determineBookTopicsUsingGPT(listingData);
+}
+
+if (providedBookGenres && providedBookGenres.length > 0) {
+  console.log('Using provided genres:', providedBookGenres);
+  bookGenres = providedBookGenres;
+  
+  // Extract narrative type from the first genre if possible
+  if (bookGenres[0] === "Fiction" || bookGenres.includes("Fiction")) {
+    narrativeType = "Fiction";
+  } else if (bookGenres[0] === "Non-Fiction" || bookGenres.includes("Non-Fiction")) {
+    narrativeType = "Non-Fiction";
+  } else {
+    // Determine narrative type if not clear from genres
+    narrativeType = await determineNarrativeTypeUsingGPT(listingData);
+  }
+} else {
+  // Determine narrative type and genres if not provided
+  narrativeType = await determineNarrativeTypeUsingGPT(listingData);
+  // Save narrative type to listingData for use in Genre determination
+  listingData.narrativeType = narrativeType;
+  bookGenres = await determineBookGenresUsingGPT(listingData);
+}
 
     console.log(`Book categorization results:
     - Narrative Type: ${narrativeType}
@@ -1931,12 +1957,34 @@ app.post('/api/processBook', upload.fields([
       format: metadata.binding || 'Paperback'
     });
     
-    // Return the data to the client
+// Create a listingData object that matches the structure used by the existing functions
+const listingDataForGeneration = {
+  isbn,
+  title: metadata.title,
+  author: metadata.author,
+  publisher: metadata.publisher,
+  publishedDate: metadata.publishedDate,
+  synopsis: metadata.synopsis,
+  language: metadata.language || 'English',
+  format: metadata.binding || 'Paperback',
+  subjects: metadata.subjects || [],
+  ocrText: allOcrText
+};
+
+// Use the existing functions to determine narrative type, topics, and genres
+console.log('Generating narrative type, topics, and genres for price setting page...');
+const narrativeType = await determineNarrativeTypeUsingGPT(listingDataForGeneration);
+listingDataForGeneration.narrativeType = narrativeType;
+
+// Get topics and genres using the existing functions
+const bookTopics = await determineBookTopicsUsingGPT(listingDataForGeneration);
+const bookGenres = await determineBookGenresUsingGPT(listingDataForGeneration);
+
     res.json({
       success: true,
       isbn,
       metadata,
-      ebayTitle, // Important - include the generated eBay title
+      ebayTitle, 
       processedImage,
       mainImage: mainImage,
       allImages: mainImages.map(f => f.filename),
@@ -1945,8 +1993,12 @@ app.post('/api/processBook', upload.fields([
         description: f.description
       })) : [],
       condition: bookCondition,
-      uploadId: Date.now(), // Optional - can be used to reference this upload
-      manualIsbnUsed: !!manualIsbn && isbn === isValidISBN(manualIsbn) // Flag to indicate manual ISBN was used
+      uploadId: Date.now(),
+      manualIsbnUsed: !!manualIsbn && isbn === isValidISBN(manualIsbn),
+      // Add these additional fields:
+      bookTopics,
+      bookGenres,
+      narrativeType,
     });
     
   } catch (error) {
@@ -1963,7 +2015,7 @@ app.post('/api/createListing', express.json(), async (req, res) => {
     // Explicitly log the SKU field for debugging
     console.log('SKU from request body:', req.body.sku);
     
-    const { isbn, price, imageFiles, sku } = req.body;
+    const { isbn, price, imageFiles, sku, providedBookGenres, bookTopics: providedTopics } = req.body;
     
     // Add additional validation for SKU, defaulting to empty string if undefined
     const normalizedSku = sku || '';
@@ -2024,21 +2076,70 @@ app.post('/api/createListing', express.json(), async (req, res) => {
       subjects: metadata.subjects,
       flaws: req.body.flaws || { flawsDetected: false, flaws: [] },
       ocrText: req.body.ocrText || '',
-      edition: metadata.edition
+      edition: metadata.edition,
+      providedGenres: bookGenres,
+      providedTopics: bookTopics
     };
     
-    // Create the eBay listing
-    const listingResponse = await createEbayDraftListing(listingData);
+    // Use the existing functions to determine narrative type, topics, and genres
+    let narrativeType;
+let bookTopics;
+let bookGenres;
+
+// Check if provided genres and topics exist
+if (listingData.providedTopics && listingData.providedTopics.length > 0) {
+  console.log('Using provided topics:', listingData.providedTopics);
+  bookTopics = listingData.providedTopics;
+} else {
+  // Generate topics if not provided
+  bookTopics = await determineBookTopicsUsingGPT(listingData);
+}
+
+if (listingData.providedGenres && listingData.providedGenres.length > 0) {
+  console.log('Using provided genres:', listingData.providedGenres);
+  bookGenres = listingData.providedGenres;
+  
+  // Extract narrative type from the first genre if possible
+  if (bookGenres[0] === "Fiction" || bookGenres.includes("Fiction")) {
+    narrativeType = "Fiction";
+  } else if (bookGenres[0] === "Non-Fiction" || bookGenres.includes("Non-Fiction")) {
+    narrativeType = "Non-Fiction";
+  } else {
+    // Determine narrative type if not clear from genres
+    narrativeType = await determineNarrativeTypeUsingGPT(listingData);
+  }
+} else {
+  // Determine narrative type and genres if not provided
+  narrativeType = await determineNarrativeTypeUsingGPT(listingData);
+  // Save narrative type to listingData for use in Genre determination
+  listingData.narrativeType = narrativeType;
+  bookGenres = await determineBookGenresUsingGPT(listingData);
+}
     
-    // Return the result
+    console.log(`Book categorization results for price setting page:
+    - Narrative Type: ${narrativeType}
+    - Topics (${bookTopics.length}): ${bookTopics.join(', ')}
+    - Genres (${bookGenres.length}): ${bookGenres.join(', ')}`);
+    
+    // Include the additional data in the response
     res.json({
-      success: listingResponse.success,
+      success: true,
       isbn,
       metadata,
-      listingResponse,
-      mainImage: listingData.imageFiles[0]?.filename,
-      ebayTitle: listingResponse.metadata?.ebayTitle || metadata.title,
-      detectedFlaws: req.body.detectedFlaws || []
+      ebayTitle, 
+      processedImage,
+      mainImage: mainImage,
+      allImages: mainImages.map(f => f.filename),
+      detectedFlaws: detectedFlaws.flawsDetected ? detectedFlaws.flaws.map(f => ({
+        type: f.type,
+        description: f.description
+      })) : [],
+      condition: bookCondition,
+      uploadId: Date.now(),
+      manualIsbnUsed: !!manualIsbn && isbn === isValidISBN(manualIsbn),
+      bookTopics,
+      bookGenres,
+      narrativeType
     });
     
   } catch (error) {
