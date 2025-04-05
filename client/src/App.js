@@ -34,6 +34,9 @@ function App() {
     setResult(null);
   };
 
+  // Log the uploadData to see what's available
+  console.log("Current uploadData:", uploadData);
+
   return (
     <div className="App">
       <header style={{
@@ -60,6 +63,10 @@ function App() {
             detectedFlaws={uploadData.detectedFlaws}
             condition={uploadData.condition}
             ocrText={uploadData.ocrText}
+            // Add these new properties:
+            bookGenres={uploadData.bookGenres || []}
+            bookTopics={uploadData.bookTopics || []}
+            narrativeType={uploadData.narrativeType || ''}
             onSubmit={handleListingCreated}
             onBack={handleBack}
           />
