@@ -2076,6 +2076,10 @@ app.post('/api/createListing', express.json(), async (req, res) => {
   providedGenres: providedGenres,
   providedTopics: providedTopics
 };
+
+// Generate the eBay title using the listingData object
+const ebayTitle = await generateCompleteEbayTitle(listingData);
+listingData.ebayTitle = ebayTitle;
     
     // Use the existing functions to determine narrative type, topics, and genres
     let narrativeType;
