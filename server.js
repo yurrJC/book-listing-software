@@ -1546,22 +1546,18 @@ if (listingData.providedTopics && listingData.providedTopics.length > 0) {
 }
 
 if (listingData.providedGenres && listingData.providedGenres.length > 0) {
-  console.log('Using provided genres:', providedBookGenres);
-  bookGenres = providedBookGenres;
-  
+  console.log('Using provided genres:', listingData.providedGenres);
+  bookGenres = listingData.providedGenres;
   // Extract narrative type from the first genre if possible
   if (bookGenres[0] === "Fiction" || bookGenres.includes("Fiction")) {
     narrativeType = "Fiction";
   } else if (bookGenres[0] === "Non-Fiction" || bookGenres.includes("Non-Fiction")) {
     narrativeType = "Non-Fiction";
   } else {
-    // Determine narrative type if not clear from genres
     narrativeType = await determineNarrativeTypeUsingGPT(listingData);
   }
 } else {
-  // Determine narrative type and genres if not provided
   narrativeType = await determineNarrativeTypeUsingGPT(listingData);
-  // Save narrative type to listingData for use in Genre determination
   listingData.narrativeType = narrativeType;
   bookGenres = await determineBookGenresUsingGPT(listingData);
 }
