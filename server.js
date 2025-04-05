@@ -1658,6 +1658,9 @@ bookGenres.forEach((genre, index) => {
         'DispatchTimeMax': '3',
         'ListingDuration': 'GTC',
         'ListingType': 'FixedPriceItem',
+        'BestOfferDetails': {
+  'BestOfferEnabled': 'true'
+},
         'Location': process.env.SELLER_LOCATION || 'Ascot Vale, VIC',
         'PictureDetails': {
           'PictureSource': 'EPS',
