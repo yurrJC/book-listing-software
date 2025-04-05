@@ -5,16 +5,12 @@ import './PriceSettingStep.css';
 // Define API base URL 
 const API_BASE_URL = 'https://book-listing-software.onrender.com';
 
-function PriceSettingStep({ mainImage, title, isbn, ebayTitle, onSubmit, onBack, metadata, allImages, detectedFlaws, condition, ocrText, bookTopics = [], bookGenres = [], narrativeType }) {
+function PriceSettingStep({ mainImage, title, isbn, ebayTitle, onSubmit, onBack, metadata, allImages, detectedFlaws, condition, ocrText }) {
   const [price, setPrice] = useState('19.99');
   const [sku, setSku] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [copySuccess, setCopySuccess] = useState(false);
-  const [selectedTopic, setSelectedTopic] = useState('');
-  const [selectedGenre, setSelectedGenre] = useState('');
-  const [topics, setTopics] = useState([]);
-  const [genres, setGenres] = useState([]);
 
   // Log props on component mount
   useEffect(() => {
@@ -25,23 +21,9 @@ function PriceSettingStep({ mainImage, title, isbn, ebayTitle, onSubmit, onBack,
       allImages: allImages ? `${allImages.length} images` : 'None',
       firstImage: allImages && allImages.length > 0 ? allImages[0] : 'No images available',
       condition: condition || 'Not specified',
-      hasDetectedFlaws: detectedFlaws ? 'Yes' : 'No',
-      bookTopics,
-      bookGenres,
-      narrativeType
+      hasDetectedFlaws: detectedFlaws ? 'Yes' : 'No'
     });
-    
-    // Initialize topics and genres from props
-    if (bookTopics && bookTopics.length > 0) {
-      setTopics(bookTopics);
-      setSelectedTopic(bookTopics[0]); // Default to first topic
-    }
-    
-    if (bookGenres && bookGenres.length > 0) {
-      setGenres(bookGenres);
-      setSelectedGenre(bookGenres[0]); // Default to first genre
-    }
-  }, [mainImage, isbn, title, allImages, condition, detectedFlaws, bookTopics, bookGenres, narrativeType]);
+  }, [mainImage, isbn, title, allImages, condition, detectedFlaws]);
 
   // Reset copy success message after 3 seconds
   useEffect(() => {
@@ -73,8 +55,6 @@ function PriceSettingStep({ mainImage, title, isbn, ebayTitle, onSubmit, onBack,
     
     console.log('Starting listing creation with price:', price);
     console.log('SKU value:', sku);
-    console.log('Selected primary topic:', selectedTopic);
-    console.log('Selected primary genre:', selectedGenre);
     
     // Check if images are available
     if (!allImages || allImages.length === 0) {
@@ -102,21 +82,6 @@ function PriceSettingStep({ mainImage, title, isbn, ebayTitle, onSubmit, onBack,
       // Use mainImage if provided, otherwise use the first image from allImages
       const effectiveMainImage = mainImage || (allImages.length > 0 ? allImages[0] : null);
       
-      // Reorder genres and topics to prioritize selected ones
-      const reorderedGenres = [selectedGenre];
-      genres.forEach(genre => {
-        if (genre !== selectedGenre) {
-          reorderedGenres.push(genre);
-        }
-      });
-      
-      const reorderedTopics = [selectedTopic];
-      topics.forEach(topic => {
-        if (topic !== selectedTopic) {
-          reorderedTopics.push(topic);
-        }
-      });
-      
       // Prepare the request payload
       const requestData = {
         isbn,
@@ -126,9 +91,7 @@ function PriceSettingStep({ mainImage, title, isbn, ebayTitle, onSubmit, onBack,
         imageFiles,
         condition: condition || 'Good',
         flaws: detectedFlaws || { flawsDetected: false, flaws: [] },
-        ocrText: ocrText || '',
-        bookGenres: reorderedGenres,
-        bookTopics: reorderedTopics
+        ocrText: ocrText || ''
       };
       
       console.log('Complete request payload:', JSON.stringify(requestData, null, 2));
@@ -182,7 +145,7 @@ function PriceSettingStep({ mainImage, title, isbn, ebayTitle, onSubmit, onBack,
   return (
     <div className="listing-container">
       <div className="listing-header">
-        <h2>Set Listing Price and Categories</h2>
+        <h2>Set Listing Price</h2>
       </div>
       
       {error && (
@@ -238,10 +201,6 @@ function PriceSettingStep({ mainImage, title, isbn, ebayTitle, onSubmit, onBack,
                   <td><strong>Images:</strong></td>
                   <td>{allImages ? allImages.length : 0}</td>
                 </tr>
-                <tr>
-                  <td><strong>Type:</strong></td>
-                  <td>{narrativeType || 'Unknown'}</td>
-                </tr>
               </tbody>
             </table>
           </div>
@@ -270,40 +229,6 @@ function PriceSettingStep({ mainImage, title, isbn, ebayTitle, onSubmit, onBack,
                 onChange={(e) => setSku(e.target.value)}
                 placeholder="Enter SKU (optional)"
               />
-            </div>
-            
-            {/* Primary Genre Selection */}
-            <div className="form-group">
-              <label>Primary Genre:</label>
-              <div className="selection-box">
-                {genres.map((genre, index) => (
-                  <div 
-                    key={index}
-                    className={`selection-item ${selectedGenre === genre ? 'selected' : ''}`}
-                    onClick={() => setSelectedGenre(genre)}
-                  >
-                    {genre}
-                  </div>
-                ))}
-              </div>
-              <p className="selection-help">Click to select the primary genre. Other genres will still be included.</p>
-            </div>
-            
-            {/* Primary Topic Selection */}
-            <div className="form-group">
-              <label>Primary Topic:</label>
-              <div className="selection-box">
-                {topics.map((topic, index) => (
-                  <div 
-                    key={index}
-                    className={`selection-item ${selectedTopic === topic ? 'selected' : ''}`}
-                    onClick={() => setSelectedTopic(topic)}
-                  >
-                    {topic}
-                  </div>
-                ))}
-              </div>
-              <p className="selection-help">Click to select the primary topic. Other topics will still be included.</p>
             </div>
             
             <div className="action-buttons">
