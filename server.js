@@ -2032,23 +2032,24 @@ app.post('/api/createListing', express.json(), async (req, res) => {
     
     // Check if all image files exist on the server
     const validImageFiles = [];
-    for (const file of imageFiles) {
-      const serverPath = path.join(__dirname, file.path);
-      console.log(`Checking if file exists: ${serverPath}`);
-      
-      if (fs.existsSync(serverPath)) {
-        validImageFiles.push({
-          ...file,
-          path: serverPath // Update to use absolute path
-        });
-      } else {
-        console.error(`File not found: ${serverPath}`);
-      }
-    }
-    
-    if (validImageFiles.length === 0) {
-      return res.status(400).json({ error: 'No valid image files found' });
-    }
+for (const file of imageFiles) {
+  const serverPath = path.join(__dirname, file.path);
+  if (fs.existsSync(serverPath)) {
+    validImageFiles.push({
+      ...file,
+      path: serverPath
+    });
+  } else {
+    console.error(`File not found: ${serverPath}`);
+  }
+}
+
+if (validImageFiles.length === 0) {
+  return res.status(400).json({ error: 'No valid image files found' });
+}
+
+// Define processedImage for use later in the response.
+let processedImage = null;
     
     // Fetch metadata
     const metadata = await fetchBookMetadata(isbn);
