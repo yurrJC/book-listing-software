@@ -1811,13 +1811,18 @@ app.post('/api/processBook', upload.fields([
   { name: 'flawImages', maxCount: 10 }
 ]), async (req, res) => {
   console.log('Received files:', req.files);
+  console.log('Received form data fields:', req.body);
   
   try {
     const mainImages = req.files.mainImages || [];
     const flawImages = req.files.flawImages || [];
+    
+    // Check for manually entered ISBN
+    const manualIsbn = req.body.manualIsbn ? req.body.manualIsbn.trim() : null;
+    console.log('Manual ISBN provided:', manualIsbn);
 
     // Always set the first uploaded image as the main image
-const mainImage = mainImages[0].filename;
+    const mainImage = mainImages[0].filename;
     
     // Basic validation
     if (mainImages.length === 0) {
@@ -1829,26 +1834,41 @@ const mainImage = mainImages[0].filename;
     let detectedFlaws = { flawsDetected: false, flaws: [] };
     let allOcrText = '';
     
-    // Process only the first three main images for ISBN and OCR extraction
-console.log('Looking for ISBN in main images (first 3 only)...');
-for (let i = 0; i < Math.min(mainImages.length, 3); i++) {
-  const file = mainImages[i];
-  console.log(`Trying to extract ISBN from ${file.filename}`);
-  const result = await processImageAndExtractISBN(file.path);
-  
-  if (result) {
-    if (result.isbn) {
-      isbn = result.isbn;
-      processedImage = file.filename;
-      console.log(`ISBN found in image ${file.filename}: ${isbn}`);
+    // Try to use manual ISBN first if provided
+    if (manualIsbn) {
+      // Validate the manually entered ISBN
+      const validatedIsbn = isValidISBN(manualIsbn);
+      if (validatedIsbn) {
+        isbn = validatedIsbn;
+        console.log(`Using manually entered ISBN: ${isbn}`);
+      } else {
+        console.warn(`Invalid manual ISBN format: ${manualIsbn}`);
+      }
     }
     
-    // Collect OCR text from each processed image
-    if (result.ocrText) {
-      allOcrText += result.ocrText + ' ';
+    // If no valid manual ISBN, then try to extract from images
+    if (!isbn) {
+      console.log('Looking for ISBN in main images (first 3 only)...');
+      for (let i = 0; i < Math.min(mainImages.length, 3); i++) {
+        const file = mainImages[i];
+        console.log(`Trying to extract ISBN from ${file.filename}`);
+        const result = await processImageAndExtractISBN(file.path);
+        
+        if (result) {
+          if (result.isbn) {
+            isbn = result.isbn;
+            processedImage = file.filename;
+            console.log(`ISBN found in image ${file.filename}: ${isbn}`);
+            break; // Stop once we find an ISBN
+          }
+          
+          // Collect OCR text from each processed image
+          if (result.ocrText) {
+            allOcrText += result.ocrText + ' ';
+          }
+        }
+      }
     }
-  }
-}
     
     // Process flaw images
     if (flawImages.length > 0) {
@@ -1872,16 +1892,28 @@ for (let i = 0; i < Math.min(mainImages.length, 3); i++) {
       }
     }
     
-    // Ensure ISBN was found
+    // Still collect OCR text from images even if manual ISBN was used
+    if (!allOcrText && mainImages.length > 0) {
+      console.log('Collecting OCR text for edition detection...');
+      for (let i = 0; i < Math.min(mainImages.length, 3); i++) {
+        const file = mainImages[i];
+        const result = await processImageAndExtractISBN(file.path);
+        if (result && result.ocrText) {
+          allOcrText += result.ocrText + ' ';
+        }
+      }
+    }
+    
+    // Ensure ISBN was found (either manually or via OCR)
     if (!isbn) {
-      return res.status(400).json({ error: 'No ISBN could be detected in any of the uploaded images' });
+      return res.status(400).json({ error: 'No ISBN could be detected in any of the uploaded images and no valid manual ISBN was provided' });
     }
     
     // Get book metadata
     const metadata = await fetchBookMetadata(isbn);
     
     if (!metadata) {
-      return res.status(404).json({ error: 'Could not retrieve book information for the detected ISBN' });
+      return res.status(404).json({ error: 'Could not retrieve book information for the ISBN' });
     }
     
     // Determine book condition based on detected flaws
@@ -1910,7 +1942,8 @@ for (let i = 0; i < Math.min(mainImages.length, 3); i++) {
         description: f.description
       })) : [],
       condition: bookCondition,
-      uploadId: Date.now() // Optional - can be used to reference this upload
+      uploadId: Date.now(), // Optional - can be used to reference this upload
+      manualIsbnUsed: !!manualIsbn && isbn === isValidISBN(manualIsbn) // Flag to indicate manual ISBN was used
     });
     
   } catch (error) {
