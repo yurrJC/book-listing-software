@@ -1545,7 +1545,7 @@ if (listingData.providedTopics && listingData.providedTopics.length > 0) {
   bookTopics = await determineBookTopicsUsingGPT(listingData);
 }
 
-if (providedBookGenres && providedBookGenres.length > 0) {
+if (listingData.providedGenres && listingData.providedGenres.length > 0) {
   console.log('Using provided genres:', providedBookGenres);
   bookGenres = providedBookGenres;
   
@@ -2015,8 +2015,8 @@ app.post('/api/createListing', express.json(), async (req, res) => {
     // Explicitly log the SKU field for debugging
     console.log('SKU from request body:', req.body.sku);
     
-    const { isbn, price, imageFiles, sku, providedBookGenres, bookTopics: providedTopics } = req.body;
-    
+    const { isbn, price, imageFiles, sku, bookGenres: providedGenres, bookTopics: providedTopics } = req.body;
+
     // Add additional validation for SKU, defaulting to empty string if undefined
     const normalizedSku = sku || '';
     console.log('Normalized SKU:', normalizedSku);
@@ -2059,27 +2059,27 @@ app.post('/api/createListing', express.json(), async (req, res) => {
     
     // Create the listing with validated files
     const listingData = {
-      isbn,
-      title: metadata.title,
-      author: metadata.author,
-      publisher: metadata.publisher,
-      publicationYear: metadata.publishedDate ? metadata.publishedDate.substring(0, 4) : null,
-      synopsis: metadata.synopsis,
-      language: metadata.language || 'English',
-      format: metadata.binding || 'Paperback',
-      condition: req.body.condition || 'Good',
-      conditionDescription: 'Please refer to the attached product photos and description for detailed condition before purchasing',
-      price: price,
-      sku: sku,
-      imageFiles: validImageFiles,
-      mainImageIndex: req.body.mainImageIndex || 0,
-      subjects: metadata.subjects,
-      flaws: req.body.flaws || { flawsDetected: false, flaws: [] },
-      ocrText: req.body.ocrText || '',
-      edition: metadata.edition,
-      providedGenres: bookGenres,
-      providedTopics: bookTopics
-    };
+  isbn,
+  title: metadata.title,
+  author: metadata.author,
+  publisher: metadata.publisher,
+  publicationYear: metadata.publishedDate ? metadata.publishedDate.substring(0, 4) : null,
+  synopsis: metadata.synopsis,
+  language: metadata.language || 'English',
+  format: metadata.binding || 'Paperback',
+  condition: req.body.condition || 'Good',
+  conditionDescription: 'Please refer to the attached product photos and description for detailed condition before purchasing',
+  price: price,
+  sku: sku,
+  imageFiles: validImageFiles,
+  mainImageIndex: req.body.mainImageIndex || 0,
+  subjects: metadata.subjects,
+  flaws: req.body.flaws || { flawsDetected: false, flaws: [] },
+  ocrText: req.body.ocrText || '',
+  edition: metadata.edition,
+  providedGenres: bookGenres,
+  providedTopics: bookTopics
+};
     
     // Use the existing functions to determine narrative type, topics, and genres
     let narrativeType;
