@@ -2073,8 +2073,8 @@ app.post('/api/createListing', express.json(), async (req, res) => {
   flaws: req.body.flaws || { flawsDetected: false, flaws: [] },
   ocrText: req.body.ocrText || '',
   edition: metadata.edition,
-  providedGenres: bookGenres,
-  providedTopics: bookTopics
+  providedGenres: providedGenres,
+  providedTopics: providedTopics
 };
     
     // Use the existing functions to determine narrative type, topics, and genres
