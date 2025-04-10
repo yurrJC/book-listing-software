@@ -803,6 +803,35 @@ function formatLanguage(lang) {
   return lang.charAt(0).toUpperCase() + lang.slice(1).toLowerCase();
 }
 /**
+ * Deletes uploaded image files from the server
+ * 
+ * @param {Array} imageFiles - Array of image file objects
+ */
+function deleteUploadedImages(imageFiles) {
+  if (!imageFiles || !Array.isArray(imageFiles)) {
+    console.log('No image files to delete');
+    return;
+  }
+  
+  console.log(`Deleting ${imageFiles.length} uploaded image files`);
+  
+  imageFiles.forEach(file => {
+    try {
+      // Handle both full path and filename-only scenarios
+      const filePath = file.path || path.join(__dirname, 'uploads', file.filename);
+      
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+        console.log(`Deleted image file: ${filePath}`);
+      } else {
+        console.log(`File not found, cannot delete: ${filePath}`);
+      }
+    } catch (error) {
+      console.error(`Error deleting file ${file.filename || file.path}:`, error);
+    }
+  });
+}
+/**
  * Uses OpenAI to intelligently determine appropriate eBay topics for a book
  * by evaluating each potential topic against a high confidence threshold
  * 
@@ -1507,6 +1536,8 @@ async function uploadPhotosToEbay(imageFiles) {
 async function createEbayDraftListing(listingData) {
   try {
     console.log('Creating eBay draft book listing with data:', listingData);
+
+    const imagesToDelete = [...listingData.imageFiles];
     
     const uploadedImages = await uploadPhotosToEbay(listingData.imageFiles);
     const epsImageUrls = uploadedImages.map(img => img.epsUrl);
@@ -1764,6 +1795,9 @@ const response = await axios({
     
     if (result.AddItemResponse.Ack === 'Success' || 
         result.AddItemResponse.Ack === 'Warning') {
+          
+          deleteUploadedImages(imagesToDelete);
+
       return {
         success: true,
         listingId: result.AddItemResponse.ItemID,
@@ -1951,6 +1985,8 @@ app.post('/api/processBook', upload.fields([
     
   } catch (error) {
     console.error('Error processing the images:', error);
+    const allUploadedFiles = [...mainImages, ...flawImages];
+  deleteUploadedImages(allUploadedFiles);
     res.status(500).json({ error: 'Processing failed: ' + error.message });
   }
 });
@@ -2043,6 +2079,9 @@ app.post('/api/createListing', express.json(), async (req, res) => {
     
   } catch (error) {
     console.error('Error creating eBay listing:', error);
+    if (validImageFiles && validImageFiles.length > 0) {
+      deleteUploadedImages(validImageFiles);
+    }
     res.status(500).json({ error: 'Failed to create listing: ' + error.message });
   }
 });
