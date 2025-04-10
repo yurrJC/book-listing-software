@@ -1995,7 +1995,10 @@ app.post('/api/createListing', express.json(), async (req, res) => {
     // Explicitly log the SKU field for debugging
     console.log('SKU from request body:', req.body.sku);
     
-    const { isbn, price, imageFiles, sku } = req.body;
+    const { isbn, price, imageFiles, sku, customTitle } = req.body;
+    
+    // Log the custom title for debugging
+    console.log('Custom title from request:', customTitle || 'None');
     
     // Add additional validation for SKU, defaulting to empty string if undefined
     const normalizedSku = sku || '';
