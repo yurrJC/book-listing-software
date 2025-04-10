@@ -1536,53 +1536,49 @@ async function uploadPhotosToEbay(imageFiles) {
 async function createEbayDraftListing(listingData) {
   try {
     console.log('Creating eBay draft book listing with data:', listingData);
-
     const imagesToDelete = [...listingData.imageFiles];
-    
     const uploadedImages = await uploadPhotosToEbay(listingData.imageFiles);
     const epsImageUrls = uploadedImages.map(img => img.epsUrl);
-
     // Explicitly log SKU to verify it's present
     console.log('SKU value being used:', listingData.sku);
-
     console.log('Number of uploaded images:', uploadedImages.length);
     console.log('Image URLs to include in listing:', epsImageUrls);
     console.log('Main image URL:', epsImageUrls.length > 0 ? epsImageUrls[0] : 'No images');
-    
     const devId = process.env.EBAY_DEV_ID;
     const appId = process.env.EBAY_APP_ID;
     const certId = process.env.EBAY_CERT_ID;
     const authToken = process.env.EBAY_AUTH_TOKEN;
-    
     // Get policy IDs from environment variables
     const shippingPolicyId = process.env.EBAY_SHIPPING_POLICY_ID;
     const returnPolicyId = process.env.EBAY_RETURN_POLICY_ID;
     const paymentPolicyId = process.env.EBAY_PAYMENT_POLICY_ID;
-    
     console.log("Auth Token Length:", authToken ? authToken.length : 0);
     console.log("Auth Token Preview:", authToken ? authToken.substring(0, 20) + "..." : "Not found");
-
     // Determine book narrative type, topics, and genres using enhanced GPT functions
     const narrativeType = await determineNarrativeTypeUsingGPT(listingData);
     // Save narrative type to listingData for use in Genre determination
     listingData.narrativeType = narrativeType;
-
     // Get more comprehensive Topics and Genres using the enhanced functions
     const bookTopics = await determineBookTopicsUsingGPT(listingData);
     const bookGenres = await determineBookGenresUsingGPT(listingData);
-
     console.log(`Book categorization results:
-    - Narrative Type: ${narrativeType}
-    - Topics (${bookTopics.length}): ${bookTopics.join(', ')}
-    - Genres (${bookGenres.length}): ${bookGenres.join(', ')}`);
-
-    // Generate the complete eBay title using the new unified approach
-    const ebayTitle = await generateCompleteEbayTitle(listingData);
+     - Narrative Type: ${narrativeType}
+     - Topics (${bookTopics.length}): ${bookTopics.join(', ')}
+     - Genres (${bookGenres.length}): ${bookGenres.join(', ')}`);
+    
+    // Check if customTitle was provided and use it, otherwise generate one
+    let ebayTitle;
+    if (listingData.customTitle) {
+      ebayTitle = listingData.customTitle;
+      console.log(`Using custom title: "${ebayTitle}"`);
+    } else {
+      // Generate the complete eBay title using the new unified approach
+      ebayTitle = await generateCompleteEbayTitle(listingData);
+      console.log(`Generated eBay title: "${ebayTitle}"`);
+    }
+    
     // Add it to the listingData object so the description function can access it
     listingData.ebayTitle = ebayTitle;
-    
-    console.log(`Generated eBay title: "${ebayTitle}"`);
-
     const builder = new xml2js.Builder({
       rootName: 'AddItemRequest',
       xmldec: { version: '1.0', encoding: 'UTF-8' },
@@ -2060,7 +2056,8 @@ app.post('/api/createListing', express.json(), async (req, res) => {
       subjects: metadata.subjects,
       flaws: req.body.flaws || { flawsDetected: false, flaws: [] },
       ocrText: req.body.ocrText || '',
-      edition: metadata.edition
+      edition: metadata.edition,
+      customTitle: customTitle // Add the custom title if provided
     };
     
     // Create the eBay listing

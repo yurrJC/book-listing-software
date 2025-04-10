@@ -8,9 +8,18 @@ const API_BASE_URL = 'https://book-listing-software.onrender.com';
 function PriceSettingStep({ mainImage, title, isbn, ebayTitle, onSubmit, onBack, metadata, allImages, detectedFlaws, condition, ocrText }) {
   const [price, setPrice] = useState('19.99');
   const [sku, setSku] = useState('');
+  // Add a new state for the editable title, initialized with ebayTitle or title
+  const [listingTitle, setListingTitle] = useState(ebayTitle || title || '');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [copySuccess, setCopySuccess] = useState(false);
+
+  // Update title when ebayTitle prop changes
+  useEffect(() => {
+    if (ebayTitle) {
+      setListingTitle(ebayTitle);
+    }
+  }, [ebayTitle]);
 
   // Log props on component mount
   useEffect(() => {
@@ -18,12 +27,13 @@ function PriceSettingStep({ mainImage, title, isbn, ebayTitle, onSubmit, onBack,
       mainImage: mainImage || 'No main image provided',
       isbn,
       title: title || 'Not provided',
+      ebayTitle: ebayTitle || 'Not provided',
       allImages: allImages ? `${allImages.length} images` : 'None',
       firstImage: allImages && allImages.length > 0 ? allImages[0] : 'No images available',
       condition: condition || 'Not specified',
       hasDetectedFlaws: detectedFlaws ? 'Yes' : 'No'
     });
-  }, [mainImage, isbn, title, allImages, condition, detectedFlaws]);
+  }, [mainImage, isbn, title, ebayTitle, allImages, condition, detectedFlaws]);
 
   // Reset copy success message after 3 seconds
   useEffect(() => {
@@ -55,6 +65,7 @@ function PriceSettingStep({ mainImage, title, isbn, ebayTitle, onSubmit, onBack,
     
     console.log('Starting listing creation with price:', price);
     console.log('SKU value:', sku);
+    console.log('Listing title:', listingTitle);
     
     // Check if images are available
     if (!allImages || allImages.length === 0) {
@@ -89,7 +100,9 @@ function PriceSettingStep({ mainImage, title, isbn, ebayTitle, onSubmit, onBack,
         imageFiles,
         condition: condition || 'Good',
         flaws: detectedFlaws || { flawsDetected: false, flaws: [] },
-        ocrText: ocrText || ''
+        ocrText: ocrText || '',
+        // Add the custom title if it was edited
+        customTitle: listingTitle !== ebayTitle ? listingTitle : null
       };
       
       console.log('Complete request payload:', JSON.stringify(requestData, null, 2));
@@ -195,10 +208,6 @@ function PriceSettingStep({ mainImage, title, isbn, ebayTitle, onSubmit, onBack,
                   </td>
                 </tr>
                 <tr>
-                  <td><strong>Title:</strong></td>
-                  <td>{ebayTitle || title}</td>
-                </tr>
-                <tr>
                   <td><strong>Images:</strong></td>
                   <td>{allImages ? allImages.length : 0}</td>
                 </tr>
@@ -209,6 +218,24 @@ function PriceSettingStep({ mainImage, title, isbn, ebayTitle, onSubmit, onBack,
         
         <div className="listing-form">
           <form onSubmit={handleSubmit}>
+            {/* Add editable title field */}
+            <div className="form-group">
+              <label htmlFor="listingTitle">eBay Listing Title:</label>
+              <input
+                id="listingTitle"
+                type="text"
+                value={listingTitle}
+                onChange={(e) => setListingTitle(e.target.value)}
+                placeholder="Enter listing title"
+                maxLength={80}
+                className="title-input"
+                required
+              />
+              <div className="character-count">
+                {listingTitle.length}/80 characters
+              </div>
+            </div>
+            
             <div className="form-group">
               <label htmlFor="sku">SKU:</label>
               <input
@@ -219,6 +246,7 @@ function PriceSettingStep({ mainImage, title, isbn, ebayTitle, onSubmit, onBack,
                 placeholder="Enter SKU (optional)"
               />
             </div>
+            
             <div className="form-group">
               <label htmlFor="price">Price (AUD):</label>
               <input
