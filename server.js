@@ -37,7 +37,7 @@ const DOWNGRADE_FLAW_KEYS = [
 // Initialize the OpenAI client
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
-});
+  }); // Ensure this is the correct closing brace for the previous block
 
 // Add more verbose token debugging
 console.log("ENV VARS CHECK:");
@@ -1243,7 +1243,10 @@ function generateBookDescription(bookData, selectedFlawKeys = []) { // Now accep
   
   return `
     <div style="font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto;">
-      <h1 style="color: #0053a0;">${ebayTitle}</h1>
+            
+<h1 style="color: #333; font-size: 24px; margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px;">${displayTitle}</h1>
+
+    
       
       <p><strong>ISBN:</strong> ${bookData.isbn}</p>
       
@@ -1815,9 +1818,13 @@ app.post('/api/processBook', upload.fields([
     
   } catch (error) {
     console.error('Error processing the images:', error);
-    const allUploadedFiles = [...mainImages, ...flawImages];
-  deleteUploadedImages(allUploadedFiles);
-    res.status(500).json({ error: 'Processing failed: ' + error.message });
+    const uploadedFilesOnError = req.files?.mainImages || []; // Get files actually uploaded
+    if (uploadedFilesOnError.length > 0) {
+        console.log(`Attempting cleanup of ${uploadedFilesOnError.length} file(s) after error...`);
+        deleteUploadedImages(uploadedFilesOnError); // Use the correct variable
+    } else {
+        console.log('No req.files.mainImages found to clean up after error.');
+    }
   }
 });
 
@@ -1929,12 +1936,12 @@ app.post('/api/createListing', upload.fields([{ name: 'imageFiles', maxCount: 24
         console.log('No req.files found to clean up after handler error.');
     }
 
-    res.status(500).json({
-        success: false,
-        error: `An unexpected server error occurred: ${error.message || 'Unknown error'}`
-    });
-  }
-});
+  res.status(500).json({
+    success: false, // Indicate failure
+    error: `Processing failed unexpectedly: ${error.message || 'Unknown server error'}`
+  });
+} // Close the catch block
+}); // Close the app.post('/api/createListing') route handler
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
