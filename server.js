@@ -1483,7 +1483,13 @@ async function createEbayDraftListing(listingData) {
     if (listingData.publicationYear) { nameValueList.push({ 'Name': 'Publication Year', 'Value': listingData.publicationYear }); }
     // --- End ItemSpecifics ---
 
-
+    console.log('--- Data for generateBookDescription ---');
+    console.log('listingData:', JSON.stringify(listingData, null, 2));
+    console.log('selectedFlawKeys:', selectedFlawKeys);
+    console.log('--------------------------------------');
+    const itemDescription = generateBookDescription(listingData, selectedFlawKeys); // Call separately first
+    console.log('Generated Description Length:', itemDescription.length);
+    
     // --- Build Request Object ---
     const requestObj = {
       '$': { xmlns: 'urn:ebay:apis:eBLBaseComponents' },
