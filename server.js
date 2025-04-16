@@ -1489,7 +1489,7 @@ async function createEbayDraftListing(listingData) {
     console.log('--------------------------------------');
     const itemDescription = generateBookDescription(listingData, selectedFlawKeys); // Call separately first
     console.log('Generated Description Length:', itemDescription.length);
-    
+
     // --- Build Request Object ---
     const requestObj = {
       '$': { xmlns: 'urn:ebay:apis:eBLBaseComponents' },
@@ -1774,129 +1774,143 @@ app.post('/api/processBook', upload.fields([
 });
 
 // In your server.js or routes file
-app.post('/api/createListing', express.json(), async (req, res) => {
-  console.log('Creating listing with request body:', JSON.stringify(req.body, null, 2)); // Log entire body
+app.post('/api/createListing', upload.fields([{ name: 'imageFiles', maxCount: 24 }]), async (req, res) => {
+  // Image files are now in req.files.imageFiles
+  // Other data is in req.body
+  console.log('createListing received files:', req.files);
+  console.log('createListing received body:', req.body);
 
   try {
-    // --- Destructure Request Body (keep as is) ---
+    const imageFileObjects = req.files.imageFiles || []; // Get files from multer
     const {
-        isbn, price, imageFiles, sku, customTitle, selectedCondition,
-        selectedFlawKeys, ocrText, title, author, publisher, publicationYear,
-        synopsis, language, format, subjects, ebayTitle
+        isbn, price, sku, customTitle, selectedCondition, ocrText,
+        title, author, publisher, publicationYear, synopsis, language,
+        format, subjects, ebayTitle
+        // Note: selectedFlawKeys might need special handling if not standard form fields
     } = req.body;
 
-    // --- Validation (keep as is) ---
-     console.log('SKU from request body:', sku);
-     console.log('Selected Condition from request:', selectedCondition);
-     console.log('Selected Flaw Keys from request:', selectedFlawKeys);
-     const normalizedSku = sku || '';
+    // ** Parse selectedFlawKeys if sent as JSON string in body **
+     let selectedFlawKeys = [];
+     if (req.body.selectedFlawKeys) {
+         try {
+             selectedFlawKeys = JSON.parse(req.body.selectedFlawKeys);
+             if (!Array.isArray(selectedFlawKeys)) selectedFlawKeys = []; // Ensure array
+         } catch (e) {
+             console.error("Failed to parse selectedFlawKeys:", e);
+             // Handle error appropriately, maybe return 400
+             return res.status(400).json({ success: false, error: 'Invalid flaw data format.' });
+         }
+     }
 
-    if (!isbn) return res.status(400).json({ success: false, error: 'ISBN is required' }); // Add success: false
+
+    // --- Validation ---
+    if (!isbn) return res.status(400).json({ success: false, error: 'ISBN is required' });
     if (!price) return res.status(400).json({ success: false, error: 'Price is required' });
-    if (!imageFiles || !Array.isArray(imageFiles) || imageFiles.length === 0) {
-        console.error('Invalid image files in request:', imageFiles);
-        return res.status(400).json({ success: false, error: 'At least one image file reference is required' });
+    if (imageFileObjects.length === 0) { // Check multer files
+        return res.status(400).json({ success: false, error: 'At least one image file is required' });
     }
-     if (!selectedCondition || !EBAY_CONDITION_MAP[selectedCondition]) {
-        console.error('Invalid or missing selected condition:', selectedCondition);
-        // Send specific error back to frontend
+    if (!selectedCondition || !EBAY_CONDITION_MAP[selectedCondition]) {
         return res.status(400).json({ success: false, error: 'A valid condition selection is required' });
     }
-     if (!Array.isArray(selectedFlawKeys)) {
-        console.error('Invalid selectedFlawKeys format:', selectedFlawKeys);
-        return res.status(400).json({ success: false, error: 'Flaws data is invalid' });
-     }
-    // --- End Validation ---
+    // selectedFlawKeys validation done during parsing above
 
-
-    // --- Reconstruct File Paths (keep as is) ---
-    const validImageFiles = imageFiles.map(file => ({
-        ...file,
-        path: path.join(__dirname, 'uploads', file.filename)
-    })).filter(file => {
-        if (fs.existsSync(file.path)) {
-            return true;
-        } else {
-            console.error(`File not found for listing creation: ${file.path}`);
-            return false;
-        }
-    });
-
-     if (validImageFiles.length === 0) {
-        return res.status(400).json({ success: false, error: 'No valid image files found for listing creation' });
-    }
-    // --- End File Path ---
-
-    // --- Prepare listingData (keep as is) ---
+    // --- Prepare listingData ---
     const listingData = {
-      isbn, price, sku: normalizedSku, customTitle, selectedCondition,
-      selectedFlawKeys, ocrText, imageFiles: validImageFiles, title, author,
-      publisher, publicationYear, synopsis, language, format, subjects, ebayTitle
+      isbn, price, sku: sku || '', customTitle, selectedCondition,
+      selectedFlawKeys, ocrText,
+      imageFiles: imageFileObjects, // Pass the actual file objects from multer
+      title, author, publisher, publicationYear, synopsis, language, format, subjects, ebayTitle
     };
 
     // --- Create eBay Listing ---
     console.log('Calling createEbayDraftListing...');
-    const listingResponse = await createEbayDraftListing(listingData);
+    const listingResponse = await createEbayDraftListing(listingData); // This function now receives multer file objects
     console.log('Received response from createEbayDraftListing:', listingResponse);
-    // --- End Listing Creation ---
 
-
-    // ******************************************************
-    // ***** CRITICAL FIX: Check listingResponse.success ****
-    // ******************************************************
+    // --- Check success / Send Response (Keep the fix from previous step) ---
     if (!listingResponse || !listingResponse.success) {
-      console.error('createEbayDraftListing indicated failure:', listingResponse);
+        // ... (handle error response, return 400/500) ...
+        // IMPORTANT: DO NOT delete images here if listing failed
+         console.error('createEbayDraftListing indicated failure:', listingResponse);
+         let statusCode = 500;
+         let errorMessage = listingResponse?.error || 'Failed to create listing on eBay.';
+         if (listingResponse && listingResponse.errors) { /* ... extract eBay error ... */ }
+         return res.status(statusCode).json({ /* ... error details ... */ });
 
-      // Determine appropriate status code
-      // 400 for bad data (like eBay validation errors), 500 for internal/API issues
-      let statusCode = 500;
-      let errorMessage = listingResponse?.error || 'Failed to create listing on eBay.';
-
-      // Check if there are specific eBay errors
-      if (listingResponse && listingResponse.errors) {
-          const ebayError = Array.isArray(listingResponse.errors) ? listingResponse.errors[0] : listingResponse.errors;
-          // If eBay explicitly says it's an Error (not Warning), treat as 400
-          if (ebayError && ebayError.SeverityCode === 'Error') {
-              statusCode = 400;
-          }
-          errorMessage = ebayError?.LongMessage || ebayError?.ShortMessage || errorMessage;
-      }
-
-      // Send the error response back to the frontend with the correct status code
-      return res.status(statusCode).json({
-          success: false,
-          error: errorMessage,
-          details: listingResponse?.errors // Include details if available
-      });
+    } else {
+      // SUCCESS: listingResponse contains success:true
+      // Image deletion happens inside createEbayDraftListing upon its success
+      console.log('Sending success response from /api/createListing');
+      res.json({ /* ... success details ... */ });
     }
-    // ******************************************************
-    // ***************** END OF CRITICAL FIX ****************
-    // ******************************************************
-
-
-    // --- Send SUCCESS Response (Only if listingResponse.success was true) ---
-    console.log('Sending success response from /api/createListing');
-    res.json({
-      success: true, // Explicitly set to true
-      isbn: listingData.isbn,
-      // Pass the fully populated metadata from listingResponse
-      metadata: listingResponse.metadata,
-      listingResponse, // Contains listingId, ebayUrl, etc.
-      mainImage: listingData.imageFiles[0]?.filename, // Keep for potential display consistency
-      ebayTitle: listingData.ebayTitle,
-      selectedCondition: listingData.selectedCondition,
-      selectedFlaws: listingData.selectedFlawKeys.map(key => FLAW_DEFINITIONS[key]?.label || key)
-    });
 
   } catch (error) {
-    // Catch errors *within* the /api/createListing handler itself (e.g., validation, file path issues)
-    console.error('Unexpected error in /api/createListing endpoint:', error);
-    res.status(500).json({
-        success: false,
-        error: 'An unexpected server error occurred while preparing the listing request: ' + error.message
-    });
+      console.error('Unexpected error in /api/createListing endpoint:', error);
+      // Clean up uploaded files if an error occurs *before* createEbayDraftListing finishes
+      if (req.files && req.files.imageFiles) {
+           deleteUploadedImages(req.files.imageFiles);
+      }
+      res.status(500).json({ /* ... generic error ... */ });
   }
 });
+
+// server.js - Update createEbayDraftListing
+
+async function createEbayDraftListing(listingData) {
+  // listingData.imageFiles now contains the actual file objects from multer
+  const imageFileObjects = listingData.imageFiles;
+  let uploadedImages = []; // To store EPS URLs
+  let successful = false; // Track overall success
+
+  try {
+    // --- Image Upload Logic ---
+    // Pass file objects directly to upload function
+    uploadedImages = await uploadPhotosToEbay(imageFileObjects);
+    const epsImageUrls = uploadedImages.map(img => img.epsUrl);
+
+    // --- Continue with metadata, title gen, XML build, eBay AddItem API call ---
+    // ... (rest of the logic as before) ...
+
+    // --- Process eBay AddItem Response ---
+    // ... (parse result) ...
+
+    if (result.AddItemResponse.Ack === 'Success' || result.AddItemResponse.Ack === 'Warning') {
+      successful = true; // Mark as successful
+      // *** Crucially, delete images only AFTER AddItem success ***
+      deleteUploadedImages(imageFileObjects); // Delete the temp files from multer upload
+      console.log('Successfully deleted local image files after eBay listing success.');
+
+      return {
+        success: true,
+        // ... (rest of the success data, including populated metadata) ...
+      };
+    } else {
+      // eBay AddItem failed
+      console.error('eBay API Error in AddItem:', result.AddItemResponse.Errors);
+      // Don't delete files if AddItem failed
+      return {
+        success: false,
+        errors: result.AddItemResponse.Errors
+      };
+    }
+  } catch (error) {
+    // Catch errors during image upload, XML build, API call etc.
+    console.error('Error during createEbayDraftListing function:', error);
+    // Don't delete files on error
+    return {
+      success: false,
+      error: error.message || 'An unexpected error occurred during listing creation.'
+      // Optionally parse/return specific eBay errors from Axios response if available
+    };
+  } finally {
+      // Optional: Could attempt deletion here if !successful and files exist,
+      // but safer to let them be cleaned up eventually or manually if needed on error.
+      // if (!successful && imageFileObjects && imageFileObjects.length > 0) {
+      //    console.log("Attempting cleanup of image files after failure...");
+      //    deleteUploadedImages(imageFileObjects);
+      // }
+  }
+}
 
 
 // ==============================================
