@@ -37,7 +37,8 @@ function FileUpload({ onSuccess }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [manualIsbn, setManualIsbn] = useState('');
-
+  const [apiStatus, setApiStatus] = useState(null);
+  
   // Check API connectivity (remains the same)
   useEffect(() => {
     const checkApiStatus = async () => {
