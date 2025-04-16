@@ -1,125 +1,126 @@
 // ResultView.js
 import React from 'react';
+import styles from './ResultView.module.css'; // Import the CSS Module
+
+// Placeholder SVGs - Replace with your actual SVG components or icons
+const CheckCircleIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={styles.headerIcon}>
+    <path fillRule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12Zm13.36-1.814a.75.75 0 1 0-1.06-1.06l-3.72 3.72-1.72-1.72a.75.75 0 0 0-1.06 1.06l2.25 2.25a.75.75 0 0 0 1.06 0l4.25-4.25Z" clipRule="evenodd" />
+  </svg>
+);
+const PlusCircleIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-11.25a.75.75 0 00-1.5 0v2.5h-2.5a.75.75 0 000 1.5h2.5v2.5a.75.75 0 001.5 0v-2.5h2.5a.75.75 0 000-1.5h-2.5v-2.5z" clipRule="evenodd" />
+  </svg>
+);
+const ExternalLinkIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+    <path d="M12.232 4.232a2.5 2.5 0 013.536 3.536l-1.225 1.224a.75.75 0 001.061 1.06l1.224-1.224a4 4 0 00-5.656-5.656l-3 3a4 4 0 00.225 5.865.75.75 0 00.977-1.138 2.5 2.5 0 01-.142-3.667l3-3z" />
+    <path d="M11.603 7.963a.75.75 0 00-.977 1.138 2.5 2.5 0 01.142 3.667l-1.224 1.224a2.5 2.5 0 01-3.536-3.536l1.225-1.224a.75.75 0 00-1.061-1.06l-1.224 1.224a4 4 0 105.656 5.656l3-3a4 4 0 00-.225-5.865z" />
+  </svg>
+);
 
 function ResultView({ result, onReset }) {
-  // Extract information from the result prop
-  // Assumes the parent component assembled 'result' correctly
   const {
     isbn,
-    metadata, // Original metadata object
-    listingResponse, // Response from /api/createListing
-    ebayTitle, // Final title used in listing
-    condition, // Final condition used
-  } = result;
+    metadata,
+    listingResponse,
+    ebayTitle,
+    condition,
+  } = result || {}; // Add default empty object for safety
 
-  // Get details from the listingResponse
   const listingId = listingResponse?.listingId || 'N/A';
-  const ebayUrl = listingResponse?.ebayUrl || '#'; // Provide a fallback link
-  const topics = listingResponse?.metadata?.topics || [];
-  const genres = listingResponse?.metadata?.genres || [];
+  const ebayUrl = listingResponse?.ebayUrl || '#';
+  // Use metadata from listingResponse first if available, otherwise fallback to original
+  const finalMetadata = listingResponse?.metadata || metadata || {};
+  const topics = finalMetadata.topics || [];
+  const genres = finalMetadata.genres || [];
 
-  // Determine image URL - PRIORITIZE metadata.coverUrl
-  const imageUrl = metadata?.coverUrl; // Only use the metadata URL
+  // PRIORITIZE metadata.coverUrl for the image
+  const imageUrl = metadata?.coverUrl; // Only use the initial metadata URL
 
   return (
-    <div className="result-container" style={{ /* existing styles */ }}>
+    <div className={styles.container}>
       {/* Success Header */}
-      <div style={{ /* existing styles */ }}>
-        {/* SVG and Title */}
-        <svg /* ... */ ></svg>
-        <h2 style={{ margin: '10px 0' }}>Listing Successfully Created</h2>
+      <div className={styles.header}>
+        <CheckCircleIcon /> {/* Use actual icon component */}
+        <h2 className={styles.headerTitle}>Listing Successfully Created</h2>
       </div>
 
-      <div style={{ /* existing styles */ }}>
+      <div className={styles.content}>
         {/* Book Image */}
-        <div style={{ flex: '0 0 200px', marginRight: '20px' }}>
-          {imageUrl ? ( // Use the determined imageUrl
+        <div className={styles.imageColumn}>
+          {imageUrl ? (
             <img
               src={imageUrl}
-              alt={metadata?.title || 'Book Cover'} // Use original title for alt
-              style={{
-                width: '100%',
-                height: 'auto',
-                borderRadius: '4px',
-                boxShadow: '0 2px 6px rgba(0,0,0,0.1)'
-              }}
+              alt={metadata?.title || 'Book Cover'}
+              className={styles.bookImage}
             />
           ) : (
-            // Fallback placeholder - DO NOT use mainImage filename
-            <div style={{
-              width: '100%',
-              paddingTop: '150%', // Maintain aspect ratio (adjust as needed)
-              position: 'relative',
-              backgroundColor: '#f5f5f5',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              borderRadius: '4px',
-              color: '#999',
-              fontSize: '14px',
-              textAlign: 'center',
-            }}>
-              <span style={{position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
-                No Cover Image Available
-              </span>
+            <div className={styles.imagePlaceholder}>
+              <span>No Cover Image Available</span>
             </div>
           )}
         </div>
 
         {/* Book Details */}
-        <div style={{ flex: '1' }}>
-          <h3 style={{ margin: '0 0 15px 0', fontSize: '24px', color: '#333' }}>
-            {/* Display the FINAL eBay title */}
+        <div className={styles.detailsColumn}>
+          <h3 className={styles.bookTitle}>
             {ebayTitle || metadata?.title || 'Book Listing'}
           </h3>
 
-          <div style={{ marginBottom: '15px' }}>
-            <p style={{ margin: '5px 0', fontSize: '16px' }}>
-              <strong>by</strong> {metadata?.author || 'Unknown Author'}
+          <div className={styles.detailsList}>
+            <p className={styles.detailItem}>
+              <span className={styles.detailLabel}>by</span>
+              {metadata?.author || 'Unknown Author'}
             </p>
-            <p style={{ margin: '5px 0', fontSize: '16px' }}>
-              <strong>ISBN:</strong> {isbn || 'N/A'}
+            <p className={styles.detailItem}>
+              <span className={styles.detailLabel}>ISBN:</span>
+              {isbn || 'N/A'}
             </p>
-            <p style={{ margin: '5px 0', fontSize: '16px' }}>
-              <strong>Publisher:</strong> {metadata?.publisher || 'Unknown'}
+            <p className={styles.detailItem}>
+              <span className={styles.detailLabel}>Publisher:</span>
+              {metadata?.publisher || 'Unknown'}
             </p>
-            <p style={{ margin: '5px 0', fontSize: '16px' }}>
-              {/* Display the FINAL condition */}
-              <strong>Condition:</strong> {condition || 'N/A'}
+            <p className={styles.detailItem}>
+              <span className={styles.detailLabel}>Condition:</span>
+              {condition || 'N/A'}
             </p>
-            <p style={{ margin: '5px 0', fontSize: '16px' }}>
-              <strong>Listing ID:</strong> {listingId}
+            <p className={styles.detailItem}>
+              <span className={styles.detailLabel}>Listing ID:</span>
+              {listingId}
             </p>
-            {/* You could add SKU here if needed: */}
-            {/* <p style={{ margin: '5px 0', fontSize: '16px' }}>
-              <strong>SKU:</strong> {listingResponse?.sku || 'N/A'}
+            {/* Optional SKU */}
+            {/* <p className={styles.detailItem}>
+              <span className={styles.detailLabel}>SKU:</span>
+              {listingResponse?.sku || 'N/A'}
             </p> */}
           </div>
 
           {/* Genres & Topics */}
-          <div style={{ display: 'flex', marginBottom: '15px', gap: '20px' /* Add gap */ }}>
-            <div style={{ flex: '1' }}>
-              <h4 style={{ marginBottom: '8px', color: '#555' }}>Genres</h4>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
+          <div className={styles.categories}>
+            <div className={styles.categorySection}>
+              <h4 className={styles.categoryTitle}>Genres</h4>
+              <div className={styles.tagList}>
                 {genres.length > 0 ? genres.map((genre, index) => (
-                  <span key={index} style={{ /* existing styles */ }}>
+                  <span key={index} className={styles.tag}>
                     {genre}
                   </span>
                 )) : (
-                  <span style={{ color: '#999', fontStyle: 'italic' }}>None generated</span>
+                  <span className={styles.noTags}>None generated</span>
                 )}
               </div>
             </div>
 
-            <div style={{ flex: '1' }}>
-              <h4 style={{ marginBottom: '8px', color: '#555' }}>Topics</h4>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
+            <div className={styles.categorySection}>
+              <h4 className={styles.categoryTitle}>Topics</h4>
+              <div className={styles.tagList}>
                 {topics.length > 0 ? topics.map((topic, index) => (
-                  <span key={index} style={{ /* existing styles */ }}>
+                  <span key={index} className={styles.tag}>
                     {topic}
                   </span>
                 )) : (
-                  <span style={{ color: '#999', fontStyle: 'italic' }}>None generated</span>
+                  <span className={styles.noTags}>None generated</span>
                 )}
               </div>
             </div>
@@ -128,14 +129,22 @@ function ResultView({ result, onReset }) {
       </div>
 
       {/* Action Buttons */}
-      <div style={{ /* existing styles */ }}>
-        <button onClick={onReset} style={{ /* existing styles */ }}>
-          {/* SVG */} <svg /* ... */ ></svg>
+      <div className={styles.actions}>
+        <button
+          onClick={onReset}
+          className={`${styles.button} ${styles.buttonPrimary}`} // Combine base and specific styles
+        >
+          <PlusCircleIcon /> {/* Use actual icon component */}
           List Another Book
         </button>
 
-        <a href={ebayUrl} target="_blank" rel="noopener noreferrer" style={{ /* existing styles */ }}>
-          {/* SVG */} <svg /* ... */ ></svg>
+        <a
+          href={ebayUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={`${styles.button} ${styles.buttonSecondary}`} // Style link as a button
+        >
+          <ExternalLinkIcon /> {/* Use actual icon component */}
           View on eBay
         </a>
       </div>
