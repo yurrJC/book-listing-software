@@ -1,49 +1,89 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
+import './FileUpload.css'; // Import the CSS file
 
-// Define the backend API URL
-const API_BASE_URL = 'https://book-listing-software.onrender.com';
+// Define the backend API URL (ensure this is correct)
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://book-listing-software.onrender.com';
+
+// --- NEW: Define Conditions and Flaws on the Frontend ---
+const EBAY_CONDITIONS = [
+  'Brand New',
+  'Like New',
+  'Very Good',
+  'Good',
+  'Acceptable'
+];
+
+const FLAW_DEFINITIONS = {
+  'COVER_CREASING': { key: 'COVER_CREASING', label: 'Cover Creasing', description: '...' }, // Descriptions are mainly for backend/review step
+  'WAVY_PAGES': { key: 'WAVY_PAGES', label: 'Wavy Pages', description: '...' },
+  'DIRT_RESIDUE': { key: 'DIRT_RESIDUE', label: 'Dirt Residue', description: '...' },
+  'INSCRIBED': { key: 'INSCRIBED', label: 'Inscribed (Owner Markings)', description: '...' },
+  'NOTES': { key: 'NOTES', label: 'Notes/Highlighting', description: '...' },
+  'WATER_DAMAGE': { key: 'WATER_DAMAGE', label: 'Water Damage', description: '...' },
+  'FOXING': { key: 'FOXING', label: 'Foxing', description: '...' },
+  'YELLOWING': { key: 'YELLOWING', label: 'Yellowing/Age Tanning', description: '...' },
+  'BIND_ISSUE': { key: 'BIND_ISSUE', label: 'Binding Issue', description: '...' }
+};
+// Convert to an array for easier mapping in JSX
+const FLAW_OPTIONS = Object.values(FLAW_DEFINITIONS);
+// --- END NEW DEFINITIONS ---
 
 function FileUpload({ onSuccess }) {
-  const [files, setFiles] = useState({
-    mainImages: [],
-    flawImages: []
-  });
+  // --- State Updates ---
+  const [files, setFiles] = useState({ mainImages: [] }); // Only mainImages now
+  const [selectedCondition, setSelectedCondition] = useState('Good'); // Default condition
+  const [selectedFlaws, setSelectedFlaws] = useState([]); // Array of flaw keys
+  // --- End State Updates ---
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [apiStatus, setApiStatus] = useState(null);
   const [manualIsbn, setManualIsbn] = useState('');
 
-  // Check API connectivity on component mount
+  // Check API connectivity (remains the same)
   useEffect(() => {
     const checkApiStatus = async () => {
       try {
         const response = await fetch(`${API_BASE_URL}/api/status`);
-        console.log('API status check response:', response.status);
         if (response.ok) {
           const data = await response.json();
-          setApiStatus({ connected: true, message: data.message || 'Connected to API' });
-          console.log('API status:', data);
+          setApiStatus({ connected: true, message: data.message || 'Connected' });
         } else {
-          setApiStatus({ connected: false, message: 'API is not responding correctly' });
-          console.error('API status check failed with status:', response.status);
+          setApiStatus({ connected: false, message: 'API Error' });
         }
       } catch (err) {
-        setApiStatus({ connected: false, message: 'Cannot connect to API' });
-        console.error('API connectivity error:', err);
+        setApiStatus({ connected: false, message: 'Cannot connect' });
       }
     };
-
     checkApiStatus();
   }, []);
 
-  // Handle ISBN input change
-  const handleIsbnChange = (e) => {
-    setManualIsbn(e.target.value);
+  // Handle ISBN input change (remains the same)
+  const handleIsbnChange = (e) => setManualIsbn(e.target.value);
+
+  // --- Condition Change Handler ---
+  const handleConditionChange = (e) => {
+    setSelectedCondition(e.target.value);
+    console.log('Condition selected:', e.target.value);
   };
 
-  // Drop handler for main images
+  // --- Flaw Toggle Handler ---
+  const toggleFlaw = (flawKey) => {
+    setSelectedFlaws(prevFlaws => {
+      if (prevFlaws.includes(flawKey)) {
+        console.log('Flaw deselected:', flawKey);
+        return prevFlaws.filter(key => key !== flawKey); // Remove flaw
+      } else {
+        console.log('Flaw selected:', flawKey);
+        return [...prevFlaws, flawKey]; // Add flaw
+      }
+    });
+  };
+  // --- End New Handlers ---
+
+  // Drop handler for main images (remains the same)
   const onDropMain = useCallback((acceptedFiles) => {
     console.log('Main images dropped:', acceptedFiles.length);
     setFiles(prev => ({
@@ -52,57 +92,32 @@ function FileUpload({ onSuccess }) {
     }));
   }, []);
 
-  // Drop handler for flaw images
-  const onDropFlaw = useCallback((acceptedFiles) => {
-    console.log('Flaw images dropped:', acceptedFiles.length);
-    setFiles(prev => ({
-      ...prev,
-      flawImages: [...prev.flawImages, ...acceptedFiles]
-    }));
-  }, []);
+  // --- REMOVE onDropFlaw ---
 
-  // react-dropzone config for main images
+  // react-dropzone config for main images (remains the same)
   const {
     getRootProps: getMainRootProps,
     getInputProps: getMainInputProps,
     isDragActive: isMainDragActive
   } = useDropzone({
     onDrop: onDropMain,
-    accept: {
-      'image/*': []
-    },
+    accept: { 'image/*': [] },
     multiple: true
   });
 
-  // react-dropzone config for flaw images
-  const {
-    getRootProps: getFlawRootProps,
-    getInputProps: getFlawInputProps,
-    isDragActive: isFlawDragActive
-  } = useDropzone({
-    onDrop: onDropFlaw,
-    accept: {
-      'image/*': []
-    },
-    multiple: true
-  });
+  // --- REMOVE react-dropzone config for flaw images ---
 
-  // Reordering logic for main images (react-beautiful-dnd)
+  // Reordering logic for main images (remains the same)
   const onDragEnd = (result) => {
     if (!result.destination) return;
-
     const reordered = Array.from(files.mainImages);
     const [removed] = reordered.splice(result.source.index, 1);
     reordered.splice(result.destination.index, 0, removed);
-
-    setFiles(prev => ({
-      ...prev,
-      mainImages: reordered
-    }));
+    setFiles(prev => ({ ...prev, mainImages: reordered }));
     console.log('Images reordered');
   };
 
-  // Delete a main image by index
+  // Delete a main image by index (remains the same)
   const handleDeleteMain = (index) => {
     setFiles(prev => {
       const updated = [...prev.mainImages];
@@ -112,15 +127,7 @@ function FileUpload({ onSuccess }) {
     });
   };
 
-  // Delete a flaw image by index
-  const handleDeleteFlaw = (index) => {
-    setFiles(prev => {
-      const updated = [...prev.flawImages];
-      updated.splice(index, 1);
-      console.log(`Deleted flaw image at index ${index}`);
-      return { ...prev, flawImages: updated };
-    });
-  };
+  // --- REMOVE handleDeleteFlaw ---
 
   // Submit form
   const handleSubmit = async (e) => {
@@ -128,89 +135,67 @@ function FileUpload({ onSuccess }) {
     console.log('=== FORM SUBMISSION STARTED ===');
 
     if (files.mainImages.length === 0) {
-      const errorMsg = 'Please select at least one main image';
-      setError(errorMsg);
-      console.error(errorMsg);
+      setError('Please select at least one main image');
       return;
     }
 
     setLoading(true);
     setError(null);
 
-    // Log file information for debugging
-    console.log(`Uploading ${files.mainImages.length} main images and ${files.flawImages.length} flaw images`);
-    files.mainImages.forEach((file, i) => {
-      console.log(`Main image ${i+1}: ${file.name}, ${file.size} bytes, type: ${file.type}`);
-    });
+    console.log(`Condition: ${selectedCondition}`);
+    console.log(`Flaws: ${selectedFlaws.join(', ')}`);
+    console.log(`Uploading ${files.mainImages.length} main images`);
 
-    // Create form data
     const formData = new FormData();
-    
-    // Append main images in their reordered order
-    files.mainImages.forEach(file => {
-      formData.append('mainImages', file);
-    });
-    
-    // Append flaw images
-    files.flawImages.forEach(file => {
-      formData.append('flawImages', file);
-    });
-    
-    // Add manual ISBN if provided - make sure it's clearly distinguished for the server
+    files.mainImages.forEach(file => formData.append('mainImages', file));
+
+    // --- Append NEW data ---
+    formData.append('selectedCondition', selectedCondition);
+    formData.append('selectedFlaws', JSON.stringify(selectedFlaws)); // Send as JSON string
+    // --- End Append NEW data ---
+
     if (manualIsbn.trim()) {
       formData.append('manualIsbn', manualIsbn.trim());
-      console.log('Adding manual ISBN to request:', manualIsbn.trim());
     }
 
     try {
       console.log(`Sending POST request to ${API_BASE_URL}/api/processBook`);
-      
       const response = await fetch(`${API_BASE_URL}/api/processBook`, {
         method: 'POST',
         body: formData,
-        credentials: 'include', // Changed for cross-origin requests
-        redirect: 'follow',
-        // Add CORS headers
-        mode: 'cors',
+        // If authentication/cookies are needed:
+        // credentials: 'include',
+        // mode: 'cors', // Keep if backend CORS is set up correctly
       });
 
       console.log(`Response received - Status: ${response.status} ${response.statusText}`);
-      
-      // Get the raw response text first
       const responseText = await response.text();
-      console.log('Raw response:', responseText.substring(0, 200) + (responseText.length > 200 ? '...' : ''));
-      
+      console.log('Raw response:', responseText.substring(0, 300) + (responseText.length > 300 ? '...' : ''));
+
       if (!response.ok) {
-        let errorMessage = 'Failed to process images';
+        let errorMessage = 'Failed to process book';
         try {
-          // Try to parse the error response as JSON
           const errorData = JSON.parse(responseText);
           errorMessage = errorData.error || errorMessage;
-          console.error('Server returned error:', errorData);
         } catch (parseError) {
-          // If not JSON, use the raw text or status
-          console.error('Error parsing error response:', parseError);
           errorMessage = responseText || `Server error: ${response.status}`;
         }
         throw new Error(errorMessage);
       }
 
-      // Parse the successful response as JSON
       let data;
       try {
         data = JSON.parse(responseText);
-        console.log('Successfully parsed response data:', data);
       } catch (parseError) {
-        console.error('Error parsing successful response:', parseError);
         throw new Error('Received invalid response from server');
       }
-      
-      console.log('Processing successful, calling onSuccess callback');
-      onSuccess(data);
+
+      console.log('Processing successful, calling onSuccess callback with:', data);
+      onSuccess(data); // Pass processed data to the next step/component
+
     } catch (err) {
-      const errorMsg = `Error: ${err.message}`;
       console.error('Submission error:', err);
-      setError(errorMsg);
+      setError(`Error: ${err.message}`);
     } finally {
       setLoading(false);
       console.log('=== FORM SUBMISSION COMPLETED ===');
@@ -218,299 +203,146 @@ function FileUpload({ onSuccess }) {
   };
 
   return (
-    <div className="upload-container">
-      <h2>Upload Book Images</h2>
-      
-      {/* API Status indicator */}
-      {apiStatus && (
-        <div style={{
-          padding: '8px 12px',
-          marginBottom: '15px',
-          borderRadius: '4px',
-          background: apiStatus.connected ? '#e8f5e9' : '#ffebee',
-          color: apiStatus.connected ? '#2e7d32' : '#c62828',
-          border: `1px solid ${apiStatus.connected ? '#a5d6a7' : '#ef9a9a'}`
-        }}>
-          <span style={{ fontWeight: 'bold' }}>API Status:</span> {apiStatus.message}
-        </div>
-      )}
-      
-      {/* Error message display */}
-      {error && (
-        <div style={{
-          padding: '12px 15px',
-          marginBottom: '20px',
-          borderRadius: '4px',
-          background: '#ffebee',
-          color: '#c62828',
-          border: '1px solid #ef9a9a',
-          fontSize: '14px'
-        }}>
-          <strong>Error:</strong> {error}
-        </div>
-      )}
+    <div className="file-upload-container">
+      <div className="card"> {/* Wrap content in a card */}
+        <h2 className="card-title">Upload Book Details</h2>
 
-      <form onSubmit={handleSubmit}>
-        {/* 1) MAIN IMAGES */}
-        <div className="upload-section">
-          <h3>Main Book Images</h3>
-          <p>Drag & drop clear images here (or click), then reorder or delete below.</p>
-          
-          {/* Drag & drop zone for main images */}
-          <div 
-            {...getMainRootProps()} 
-            style={dropZoneStyle(isMainDragActive)}
-          >
-            <input {...getMainInputProps()} />
-            {isMainDragActive ? (
-              <p>Drop the main images here...</p>
-            ) : (
-              <p>Drag & drop files here, or click to select files</p>
-            )}
+        {/* API Status indicator */}
+        {apiStatus && (
+          <div className={`api-status ${apiStatus.connected ? 'connected' : 'disconnected'}`}>
+            API: {apiStatus.message}
           </div>
+        )}
 
-          {/* Reorderable thumbnails for main images */}
-          <DragDropContext onDragEnd={onDragEnd}>
-            <Droppable droppableId="mainImages" direction="horizontal">
-              {(provided) => (
-                <div
-                  ref={provided.innerRef}
-                  {...provided.droppableProps}
-                  style={thumbsContainer}
-                >
-                  {files.mainImages.map((file, index) => {
-                    const previewUrl = URL.createObjectURL(file);
-                    return (
-                      <Draggable
-                        key={file.name + index}
-                        draggableId={file.name + index}
-                        index={index}
-                      >
-                        {(provided, snapshot) => (
-                          <div
-                            ref={provided.innerRef}
-                            {...provided.draggableProps}
-                            {...provided.dragHandleProps}
-                            style={{
-                              ...thumbnailWrapperStyle,
-                              cursor: snapshot.isDragging ? 'grabbing' : 'grab',
-                              ...provided.draggableProps.style
-                            }}
-                          >
-                            <img
-                              src={previewUrl}
-                              alt={file.name}
-                              style={thumbnailStyle(snapshot.isDragging)}
-                            />
-                            {/* Delete button */}
-                            <button
-                              onClick={() => handleDeleteMain(index)}
-                              style={deleteButtonStyle}
-                              type="button"
+        {/* Error message display */}
+        {error && <div className="error-message">{error}</div>}
+
+        <form onSubmit={handleSubmit} className="upload-form">
+
+          {/* 1) MAIN IMAGES */}
+          <div className="form-section">
+            <h3 className="section-title">Main Book Images</h3>
+            <p className="section-subtitle">Upload clear images (drag & drop or click). First image is the main listing photo.</p>
+
+            {/* Drag & drop zone */}
+            <div {...getMainRootProps()} className={`dropzone ${isMainDragActive ? 'active' : ''}`}>
+              <input {...getMainInputProps()} />
+              <p>Drop images here, or click to browse</p>
+            </div>
+
+            {/* Reorderable thumbnails */}
+            <DragDropContext onDragEnd={onDragEnd}>
+              <Droppable droppableId="mainImages" direction="horizontal">
+                {(provided) => (
+                  <div ref={provided.innerRef} {...provided.droppableProps} className="thumbnail-gallery">
+                    {files.mainImages.map((file, index) => {
+                      const previewUrl = URL.createObjectURL(file); // Create URL on demand
+                      return (
+                        <Draggable key={file.name + index} draggableId={file.name + index} index={index}>
+                          {(providedDraggable, snapshot) => (
+                            <div
+                              ref={providedDraggable.innerRef}
+                              {...providedDraggable.draggableProps}
+                              {...providedDraggable.dragHandleProps}
+                              className={`thumbnail-item ${snapshot.isDragging ? 'dragging' : ''}`}
+                              style={providedDraggable.draggableProps.style} // react-beautiful-dnd needs this
+                              onLoad={() => URL.revokeObjectURL(previewUrl)} // Clean up URL after load
                             >
-                              &times;
-                            </button>
-                          </div>
-                        )}
-                      </Draggable>
-                    );
-                  })}
-                  {provided.placeholder}
-                </div>
-              )}
-            </Droppable>
-          </DragDropContext>
-          
-          {/* Manual ISBN entry field */}
-          <div style={{ marginTop: '15px' }}>
-            <label 
-              htmlFor="manualIsbn" 
-              style={{ 
-                display: 'block', 
-                marginBottom: '5px', 
-                fontWeight: 'bold',
-                fontSize: '14px'
-              }}
-            >
-              Manual ISBN Entry (optional):
-            </label>
-            <input
-              id="manualIsbn"
-              type="text"
-              value={manualIsbn}
-              onChange={handleIsbnChange}
-              placeholder="Enter ISBN manually if detection fails"
-              style={{
-                width: '100%',
-                padding: '10px',
-                border: '1px solid #ccc',
-                borderRadius: '4px',
-                fontSize: '14px',
-                boxSizing: 'border-box'
-              }}
-            />
-            <p style={{ 
-              margin: '5px 0 0', 
-              fontSize: '12px', 
-              color: '#666' 
-            }}>
-              Use this field to manually enter an ISBN if automatic detection is unsuccessful.
-            </p>
-          </div>
-        </div>
+                              <img src={previewUrl} alt={file.name} className="thumbnail-image" />
+                              <button onClick={() => handleDeleteMain(index)} className="delete-button" type="button">×</button>
+                              {index === 0 && <span className="main-image-tag">Main</span>}
+                            </div>
+                          )}
+                        </Draggable>
+                      );
+                    })}
+                    {provided.placeholder}
+                  </div>
+                )}
+              </Droppable>
+            </DragDropContext>
 
-        {/* 2) FLAW IMAGES */}
-        <div className="upload-section" style={{ marginTop: '20px' }}>
-          <h3>Condition/Flaw Images (Optional)</h3>
-          <p>Drag & drop flaw images here (or click), then delete if needed below.</p>
-          
-          {/* Drag & drop zone for flaw images */}
-          <div 
-            {...getFlawRootProps()} 
-            style={dropZoneStyle(isFlawDragActive)}
-          >
-            <input {...getFlawInputProps()} />
-            {isFlawDragActive ? (
-              <p>Drop the flaw images here...</p>
-            ) : (
-              <p>Drag & drop files here, or click to select files</p>
-            )}
+            {/* Manual ISBN entry field */}
+            <div className="form-group isbn-group">
+              <label htmlFor="manualIsbn" className="form-label">Manual ISBN (Optional):</label>
+              <input
+                id="manualIsbn"
+                type="text"
+                value={manualIsbn}
+                onChange={handleIsbnChange}
+                placeholder="Enter ISBN if detection fails"
+                className="form-input"
+              />
+              <p className="input-hint">Use this only if the ISBN isn't automatically detected from images.</p>
+            </div>
           </div>
 
-          {/* Thumbnails for flaw images (not reorderable) */}
-          <div style={thumbsContainer}>
-            {files.flawImages.map((file, index) => {
-              const previewUrl = URL.createObjectURL(file);
-              return (
-                <div key={file.name + index} style={thumbnailWrapperStyle}>
-                  <img
-                    src={previewUrl}
-                    alt={file.name}
-                    style={thumbnailStyle(false)}
-                  />
-                  <button
-                    onClick={() => handleDeleteFlaw(index)}
-                    style={deleteButtonStyle}
-                    type="button"
-                  >
-                    &times;
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-        </div>
+          {/* --- REMOVED FLAW IMAGES SECTION --- */}
 
-        {/* Submit button with clear loading state */}
-        <button
-          type="submit"
-          className="submit-button"
-          disabled={loading || files.mainImages.length === 0}
-          style={{
-            marginTop: '20px',
-            position: 'relative',
-            backgroundColor: loading ? '#cccccc' : '#0053a0',
-            color: 'white',
-            padding: '10px 20px',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: loading ? 'not-allowed' : 'pointer',
-            fontWeight: 'bold',
-            minWidth: '150px',
-            minHeight: '44px'
-          }}
-        >
-          {loading ? (
-            <>
-              <span style={{ visibility: 'hidden' }}>Process Book</span>
-              <div style={{
-                position: 'absolute',
-                left: '50%',
-                top: '50%',
-                transform: 'translate(-50%, -50%)',
-                display: 'flex',
-                alignItems: 'center'
-              }}>
-                <LoadingSpinner /> Processing...
-              </div>
-            </>
-          ) : 'Process Book'}
-        </button>
-      </form>
+          {/* --- 2) CONDITION SELECTION --- */}
+          <div className="form-section">
+             <h3 className="section-title">Select Condition</h3>
+             <div className="condition-selector">
+                {EBAY_CONDITIONS.map(condition => (
+                    <label key={condition} className="condition-radio-label">
+                        <input
+                            type="radio"
+                            name="condition"
+                            value={condition}
+                            checked={selectedCondition === condition}
+                            onChange={handleConditionChange}
+                            className="condition-radio-input"
+                        />
+                        <span className="condition-radio-text">{condition}</span>
+                    </label>
+                ))}
+             </div>
+          </div>
+          {/* --- END CONDITION SELECTION --- */}
+
+
+          {/* --- 3) FLAW SELECTION --- */}
+          <div className="form-section">
+            <h3 className="section-title">Select Flaws (if any)</h3>
+            <div className="flaws-grid">
+              {FLAW_OPTIONS.map(flaw => (
+                <button
+                  key={flaw.key}
+                  type="button" // Important: Prevent form submission
+                  className={`flaw-button ${selectedFlaws.includes(flaw.key) ? 'selected' : ''}`}
+                  onClick={() => toggleFlaw(flaw.key)}
+                >
+                  {flaw.label}
+                </button>
+              ))}
+            </div>
+             <p className="input-hint">Select all applicable flaws. Some flaws may automatically set condition to 'Acceptable'.</p>
+          </div>
+          {/* --- END FLAW SELECTION --- */}
+
+
+          {/* Submit button */}
+          <div className="form-actions">
+             <button
+                type="submit"
+                className="submit-button primary"
+                disabled={loading || files.mainImages.length === 0}
+              >
+                {loading ? (
+                  <>
+                    <LoadingSpinner /> Processing...
+                  </>
+                ) : 'Process Book Details'}
+             </button>
+          </div>
+
+        </form>
+      </div> {/* End Card */}
     </div>
   );
 }
 
-// Simple loading spinner component
-const LoadingSpinner = () => (
-  <div style={{ 
-    display: 'inline-block',
-    width: '16px',
-    height: '16px',
-    border: '3px solid rgba(255,255,255,0.3)',
-    borderRadius: '50%',
-    borderTopColor: 'white',
-    animation: 'spin 1s ease-in-out infinite',
-    marginRight: '8px'
-  }}>
-    <style>
-      {`
-        @keyframes spin {
-          to { transform: rotate(360deg); }
-        }
-      `}
-    </style>
-  </div>
-);
-
-/* ========== Styles ========== */
-const dropZoneStyle = (isActive) => ({
-  border: '2px dashed #cccccc',
-  borderRadius: '8px',
-  padding: '20px',
-  textAlign: 'center',
-  marginBottom: '10px',
-  cursor: 'pointer',
-  backgroundColor: isActive ? '#f0f8ff' : 'transparent',
-  transition: 'background-color 0.2s ease'
-});
-
-const thumbsContainer = {
-  display: 'flex',
-  gap: '8px',
-  flexWrap: 'wrap',
-  marginTop: '8px'
-};
-
-const thumbnailWrapperStyle = {
-  position: 'relative',
-  border: '1px solid #eee',
-  borderRadius: '4px',
-  overflow: 'hidden'
-};
-
-const thumbnailStyle = (isDragging) => ({
-  width: '100px',
-  height: 'auto',
-  borderRadius: '4px',
-  boxShadow: isDragging ? '0 2px 8px rgba(0,0,0,0.2)' : 'none'
-});
-
-const deleteButtonStyle = {
-  position: 'absolute',
-  top: '5px',
-  right: '5px',
-  border: 'none',
-  background: 'rgba(0,0,0,0.6)',
-  color: '#fff',
-  width: '22px',
-  height: '22px',
-  borderRadius: '50%',
-  cursor: 'pointer',
-  fontSize: '16px',
-  lineHeight: '1',
-  textAlign: 'center',
-  padding: 0,
-};
+// Simple loading spinner component (can be kept or improved)
+const LoadingSpinner = () => <div className="spinner"></div>;
 
 export default FileUpload;
