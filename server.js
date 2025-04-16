@@ -1662,7 +1662,7 @@ app.get('/', (req, res) => {
   res.send('Hello from the Express server!');
 });
 
-aapp.post('/api/processBook', upload.fields([
+app.post('/api/processBook', upload.fields([
   { name: 'mainImages', maxCount: 24 }
   // Removed flawImages field
 ]), async (req, res) => {
