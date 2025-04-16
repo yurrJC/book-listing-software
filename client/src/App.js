@@ -4,80 +4,70 @@ import PriceSettingStep from './PriceSettingStep';
 import ResultView from './ResultView';
 
 function App() {
-  const [currentStep, setCurrentStep] = useState('upload'); // 'upload', 'price', 'result'
-  const [uploadData, setUploadData] = useState(null);
-  const [result, setResult] = useState(null);
+  const [step, setStep] = useState(1); // 1: Upload, 2: Price/Review, 3: Result
+  const [processedData, setProcessedData] = useState(null); // Holds data from /processBook
+  const [originalFiles, setOriginalFiles] = useState([]); // Holds the actual File objects
 
-  // Handle successful upload
-  const handleUploadSuccess = (data) => {
-    console.log("App.js: Upload success data received:", data); // Enhanced logging
-    setUploadData(data);
-    setCurrentStep('price');
+  // Callback from FileUpload
+  const handleProcessSuccess = ({ apiResponseData, originalFileObjects }) => {
+    console.log('App: Received data from FileUpload:', apiResponseData);
+    console.log('App: Received File objects:', originalFileObjects.length);
+    setProcessedData(apiResponseData); // Store response from /api/processBook
+    setOriginalFiles(originalFileObjects); // Store the File objects
+    setStep(2); // Move to the next step
   };
 
-  // Handle price submission result
-  const handleListingCreated = (resultData) => {
-    console.log("App.js: Listing created successfully:", resultData);
-    setResult(resultData);
-    setCurrentStep('result');
+  // Callback from PriceSettingStep
+  const handleListingSuccess = (listingResponse) => {
+    console.log('App: Received data from PriceSettingStep (listing success):', listingResponse);
+    // Combine the listing response with the initial processed data for ResultView
+    setProcessedData(prevData => ({
+      ...prevData, // Keep initial metadata, isbn, etc.
+      listingResponse: listingResponse // Add the response from /api/createListing
+    }));
+    setStep(3); // Move to result view
   };
 
-  // Handle going back to upload
-  const handleBack = () => {
-    setCurrentStep('upload');
-    // Optionally clear uploadData if you want a clean slate on going back
-    // setUploadData(null);
+  // Go back from PriceSettingStep to FileUpload
+  const handleGoBack = () => {
+    setProcessedData(null);
+    setOriginalFiles([]);
+    setStep(1);
   };
 
-  // Handle reset to start over
+  // Reset after viewing result
   const handleReset = () => {
-    setCurrentStep('upload');
-    setUploadData(null);
-    setResult(null);
+    setProcessedData(null);
+    setOriginalFiles([]);
+    setStep(1);
   };
 
   return (
     <div className="App">
-      {/* ... Header ... */}
-      <main style={{ padding: '20px', maxWidth: '1200px', margin: '0 auto' }}>
-        {currentStep === 'upload' && (
-          <FileUpload onSuccess={handleUploadSuccess} />
-        )}
-
-        {/* === CORRECTED PROP PASSING FOR PriceSettingStep === */}
-        {currentStep === 'price' && uploadData && (
-          <PriceSettingStep
-            // Data needed for display/identification
-            isbn={uploadData.isbn}
-            metadata={uploadData.metadata} // Contains original title, author, etc.
-            ebayTitle={uploadData.ebayTitle} // The generated title
-            mainImage={uploadData.mainImage} // Filename for display
-            allImages={uploadData.allImages} // Array of {filename, path, mimetype}
-
-            // *** CORRECTED PROPS FOR CONDITION/FLAWS ***
-            selectedCondition={uploadData.condition} // Pass backend's 'condition' as 'selectedCondition' prop
-            selectedFlawKeys={uploadData.selectedFlawKeys} // Pass backend's 'selectedFlawKeys' as 'selectedFlawKeys' prop
-
-            // Other necessary data
-            ocrText={uploadData.ocrText}
-
-            // Callbacks
-            onSubmit={handleListingCreated}
-            onBack={handleBack}
-
-            // *** REMOVED/REPLACED PROPS ***
-            // title={uploadData.metadata?.title || ''} // Redundant if metadata is passed
-            // detectedFlaws={uploadData.detectedFlaws} // Replaced by selectedFlawKeys
-            // condition={uploadData.condition} // Replaced by selectedCondition prop name
-          />
-        )}
-        {/* ==================================================== */}
-
-        {currentStep === 'result' && result && (
-          <ResultView result={result} onReset={handleReset} />
-        )}
-      </main>
-      {/* ... Footer ... */}
+      {step === 1 && <FileUpload onSuccess={handleProcessSuccess} />}
+      {step === 2 && processedData && (
+        <PriceSettingStep
+          onSubmit={handleListingSuccess}
+          onBack={handleGoBack}
+          // Pass data from the /processBook response
+          isbn={processedData.isbn}
+          metadata={processedData.metadata}
+          ebayTitle={processedData.ebayTitle}
+          selectedCondition={processedData.condition} // Use the FINAL condition
+          selectedFlawKeys={processedData.selectedFlawKeys}
+          ocrText={processedData.ocrText}
+          conditionDowngraded={processedData.conditionDowngraded} // Pass this too if needed for display
+          // *** Pass the ACTUAL File objects ***
+          imageFileObjects={originalFiles}
+        />
+      )}
+      {step === 3 && processedData && processedData.listingResponse && (
+        <ResultView
+           // Pass combined data: initial process data + listing response
+           result={processedData}
+           onReset={handleReset}
+        />
+      )}
     </div>
   );
 }

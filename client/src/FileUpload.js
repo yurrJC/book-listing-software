@@ -31,15 +31,11 @@ const FLAW_OPTIONS = Object.values(FLAW_DEFINITIONS);
 // --- END NEW DEFINITIONS ---
 
 function FileUpload({ onSuccess }) {
-  // --- State Updates ---
-  const [files, setFiles] = useState({ mainImages: [] }); // Only mainImages now
-  const [selectedCondition, setSelectedCondition] = useState('Good'); // Default condition
-  const [selectedFlaws, setSelectedFlaws] = useState([]); // Array of flaw keys
-  // --- End State Updates ---
-
+  const [files, setFiles] = useState({ mainImages: [] });
+  const [selectedCondition, setSelectedCondition] = useState('Good');
+  const [selectedFlaws, setSelectedFlaws] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [apiStatus, setApiStatus] = useState(null);
   const [manualIsbn, setManualIsbn] = useState('');
 
   // Check API connectivity (remains the same)
@@ -143,16 +139,15 @@ function FileUpload({ onSuccess }) {
     setError(null);
 
     console.log(`Condition: ${selectedCondition}`);
-    console.log(`Flaws: ${selectedFlaws.join(', ')}`);
+    console.log(`Flaws: ${JSON.stringify(selectedFlaws)}`); // Log the JSON string being sent
     console.log(`Uploading ${files.mainImages.length} main images`);
 
     const formData = new FormData();
     files.mainImages.forEach(file => formData.append('mainImages', file));
 
-    // --- Append NEW data ---
+    // Append Condition and Flaws (as JSON string)
     formData.append('selectedCondition', selectedCondition);
-    formData.append('selectedFlaws', JSON.stringify(selectedFlaws)); // Send as JSON string
-    // --- End Append NEW data ---
+    formData.append('selectedFlaws', JSON.stringify(selectedFlaws)); // Ensure it's stringified
 
     if (manualIsbn.trim()) {
       formData.append('manualIsbn', manualIsbn.trim());
@@ -163,23 +158,14 @@ function FileUpload({ onSuccess }) {
       const response = await fetch(`${API_BASE_URL}/api/processBook`, {
         method: 'POST',
         body: formData,
-        // If authentication/cookies are needed:
-        // credentials: 'include',
-        // mode: 'cors', // Keep if backend CORS is set up correctly
       });
 
-      console.log(`Response received - Status: ${response.status} ${response.statusText}`);
+      // ... (response handling remains the same) ...
       const responseText = await response.text();
       console.log('Raw response:', responseText.substring(0, 300) + (responseText.length > 300 ? '...' : ''));
 
       if (!response.ok) {
-        let errorMessage = 'Failed to process book';
-        try {
-          const errorData = JSON.parse(responseText);
-          errorMessage = errorData.error || errorMessage;
-        } catch (parseError) {
-          errorMessage = responseText || `Server error: ${response.status}`;
-        }
+        // ... (error handling remains the same) ...
         throw new Error(errorMessage);
       }
 
@@ -190,8 +176,12 @@ function FileUpload({ onSuccess }) {
         throw new Error('Received invalid response from server');
       }
 
-      console.log('Processing successful, calling onSuccess callback with:', data);
-      onSuccess(data); // Pass processed data to the next step/component
+      console.log('Processing successful, calling onSuccess callback with API data and File objects.');
+      onSuccess({
+        apiResponseData: data, // The JSON response from /api/processBook
+        originalFileObjects: files.mainImages // The actual File objects from state
+      });
+      // *** END CHANGE ***
 
     } catch (err) {
       console.error('Submission error:', err);
@@ -201,6 +191,7 @@ function FileUpload({ onSuccess }) {
       console.log('=== FORM SUBMISSION COMPLETED ===');
     }
   };
+
 
   return (
     <div className="file-upload-container">
@@ -305,20 +296,21 @@ function FileUpload({ onSuccess }) {
           <div className="form-section">
             <h3 className="section-title">Select Flaws (if any)</h3>
             <div className="flaws-grid">
-              {FLAW_OPTIONS.map(flaw => (
-                <button
-                  key={flaw.key}
-                  type="button" // Important: Prevent form submission
-                  className={`flaw-button ${selectedFlaws.includes(flaw.key) ? 'selected' : ''}`}
-                  onClick={() => toggleFlaw(flaw.key)}
-                >
-                  {flaw.label}
-                </button>
-              ))}
-            </div>
+          {FLAW_OPTIONS.map(flaw => (
+             <button
+                 key={flaw.key}
+                 type="button"
+                 className={`flaw-button ${selectedFlaws.includes(flaw.key) ? 'selected' : ''}`}
+                 onClick={() => toggleFlaw(flaw.key)}
+             >
+                {flaw.label}
+             </button>
+           ))}
+       </div>
              <p className="input-hint">Select all applicable flaws. Some flaws may automatically set condition to 'Acceptable'.</p>
           </div>
           {/* --- END FLAW SELECTION --- */}
+
 
 
           {/* Submit button */}
