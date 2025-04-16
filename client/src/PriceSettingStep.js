@@ -16,9 +16,35 @@ const FLAW_DEFINITIONS = {
   'YELLOWING': { key: 'YELLOWING', label: 'Yellowing/Age Tanning', description: '...' },
   'BIND_ISSUE': { key: 'BIND_ISSUE', label: 'Binding Issue', description: '...' }
 };
-const FLAW_OPTIONS = Object.values(FLAW_DEFINITIONS);
+// Note: FLAW_OPTIONS is defined but not used in this component. Keep or remove as needed.
+// const FLAW_OPTIONS = Object.values(FLAW_DEFINITIONS);
 
-// --- Prop List Including File Objects ---
+// Define LoadingSpinner component *outside* PriceSettingStep
+const LoadingSpinner = () => (
+    <div className="spinner" style={{
+        border: '4px solid rgba(0, 0, 0, 0.1)',
+        width: '18px',
+        height: '18px',
+        borderRadius: '50%',
+        borderLeftColor: '#09f',
+        display: 'inline-block',
+        marginRight: '8px',
+        verticalAlign: 'middle',
+        animation: 'spin 1s linear infinite'
+    }}></div>
+);
+
+// Keyframes for spinner animation (usually in CSS, but can be added via style tag or CSS-in-JS if needed)
+// This is better placed in your PriceSettingStep.css file:
+/*
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+.spinner { ... existing styles ... animation: spin 1s linear infinite; }
+*/
+
+
+// --- PriceSettingStep Component ---
 function PriceSettingStep({
   onSubmit,
   onBack,
@@ -26,13 +52,13 @@ function PriceSettingStep({
   isbn,
   metadata,
   ebayTitle,
-  imageFileObjects, // *** Now receives the actual File objects ***
+  imageFileObjects, // Receives the actual File objects
   selectedCondition, // Final condition from /processBook
   selectedFlawKeys, // Parsed array from /processBook
   ocrText,
   conditionDowngraded, // Boolean flag
 }) {
-  // State remains the same
+  // State declarations
   const [price, setPrice] = useState('19.99');
   const [sku, setSku] = useState('');
   const [listingTitle, setListingTitle] = useState(ebayTitle || metadata?.title || '');
@@ -40,11 +66,12 @@ function PriceSettingStep({
   const [error, setError] = useState(null);
   const [copySuccess, setCopySuccess] = useState(false);
 
+  // Effect to update listing title when props change
   useEffect(() => {
     setListingTitle(ebayTitle || metadata?.title || '');
   }, [ebayTitle, metadata?.title]);
 
-  // Debugging useEffect (checks imageFileObjects correctly now)
+  // Effect for debugging and validation of received props
   useEffect(() => {
     console.log('PriceSettingStep received props:', {
       isbn,
@@ -56,21 +83,48 @@ function PriceSettingStep({
       ocrTextLength: ocrText ? ocrText.length : 0,
       conditionDowngraded: conditionDowngraded,
     });
+    let currentError = null;
     if (!imageFileObjects || imageFileObjects.length === 0) {
       console.error("PriceSettingStep Critical Error: imageFileObjects prop is missing or empty!");
-      setError("Configuration error: Image data missing. Please go back.");
+      currentError = "Configuration error: Image data missing. Please go back.";
     }
     if (!selectedCondition) {
       console.error("PriceSettingStep Critical Error: selectedCondition prop is missing!");
-      setError("Configuration error: Condition data missing. Please go back.");
+       // Append to error message if image error already exists
+      currentError = (currentError ? currentError + ' ' : '') + "Configuration error: Condition data missing. Please go back.";
     }
+     if (currentError) {
+        setError(currentError);
+     } else {
+         // Clear error if props are now valid (optional, prevents sticky errors)
+         // setError(null);
+     }
   }, [isbn, metadata, ebayTitle, imageFileObjects, selectedCondition, selectedFlawKeys, ocrText, conditionDowngraded]);
 
-  // Copy Success Timer (no change)
-  useEffect(() => { /* ... */ }, [copySuccess]);
-  const handleCopyISBN = () => { /* ... */ };
+  // Effect for copy success message timeout
+  useEffect(() => {
+     let timer;
+     if (copySuccess) {
+        timer = setTimeout(() => setCopySuccess(false), 1500); // Hide after 1.5s
+     }
+     return () => clearTimeout(timer); // Cleanup timer on unmount or if copySuccess changes
+  }, [copySuccess]);
 
-  // --- handleSubmit uses FormData and imageFileObjects ---
+  // Handler for copying ISBN
+  const handleCopyISBN = () => {
+    if (isbn) {
+      navigator.clipboard.writeText(isbn)
+        .then(() => {
+          setCopySuccess(true);
+        })
+        .catch(err => {
+          console.error('Failed to copy ISBN:', err);
+          // Optionally show a user-facing error message here
+        });
+    }
+  };
+
+  // Handler for form submission to create listing
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -82,7 +136,6 @@ function PriceSettingStep({
     if (!selectedCondition) { setError("Condition is missing."); setLoading(false); return; }
     if (!price || isNaN(parseFloat(price)) || parseFloat(price) <= 0) { setError("Valid price is required."); setLoading(false); return; }
     if (!listingTitle || listingTitle.trim().length === 0) { setError("Listing title is required."); setLoading(false); return; }
-    // *** Use imageFileObjects for validation ***
     if (!imageFileObjects || imageFileObjects.length === 0) {
       setError('No image files available for listing. Please go back.');
       setLoading(false);
@@ -93,79 +146,110 @@ function PriceSettingStep({
     try {
       const formData = new FormData();
 
-      // *** Append Image Files from props ***
+      // Append Image Files from props
       imageFileObjects.forEach((file, index) => {
-        // Use the original file name if available, otherwise generate one
-        const fileName = file.name || `image_${index}`;
+        const fileName = file.name || `image_${index}.jpg`; // Ensure a fallback filename with extension
+        // Ensure file type is provided, default if necessary (though browser usually handles this)
+        const fileType = file.type || 'image/jpeg';
         formData.append('imageFiles', file, fileName);
-        console.log(`Appending file: ${fileName} (Type: ${file.type}, Size: ${file.size})`);
+        console.log(`Appending file: ${fileName} (Type: ${fileType}, Size: ${file.size})`);
       });
 
-      // *** Append Other Data as Fields ***
+      // Append Other Data as Fields
       formData.append('isbn', isbn || '');
       formData.append('price', price);
-      formData.append('sku', sku || ''); // Backend handles empty string okay
-      formData.append('selectedCondition', selectedCondition); // Send the final condition
-      formData.append('selectedFlawKeys', JSON.stringify(selectedFlawKeys || [])); // Stringify flaws
+      formData.append('sku', sku || '');
+      formData.append('selectedCondition', selectedCondition);
+      formData.append('selectedFlawKeys', JSON.stringify(selectedFlawKeys || []));
       formData.append('ocrText', ocrText || '');
 
-      // Add custom title ONLY if it differs from the auto-generated one
-      if (listingTitle !== ebayTitle) {
-        formData.append('customTitle', listingTitle);
+      // Handle custom vs generated title
+      if (listingTitle.trim() !== (ebayTitle || '').trim()) {
+        formData.append('customTitle', listingTitle.trim());
+         console.log("Using custom title:", listingTitle.trim());
+      } else {
+         console.log("Using generated title:", ebayTitle);
       }
-      // Always send the originally generated title too, backend might prefer it
+      // Always send the (potentially) originally generated title too, helps backend debugging
       formData.append('ebayTitle', ebayTitle || '');
 
-      // Add necessary metadata fields required by backend
+      // Append necessary metadata fields
       formData.append('title', metadata?.title || '');
       formData.append('author', metadata?.author || '');
       formData.append('publisher', metadata?.publisher || '');
-      // Ensure publicationYear is sent if available, even if just a year string
-      formData.append('publicationYear', metadata?.publishedDate || metadata?.publicationYear || '');
+      formData.append('publicationYear', String(metadata?.publishedDate || metadata?.publicationYear || '')); // Ensure string
       formData.append('synopsis', metadata?.synopsis || '');
       formData.append('language', metadata?.language || '');
-      // Send format/binding from metadata
       formData.append('format', metadata?.binding || metadata?.format || 'Paperback');
       formData.append('subjects', JSON.stringify(metadata?.subjects || []));
 
       console.log('FormData prepared. Sending to /api/createListing...');
-      for (let key of formData.keys()) {
-        // Don't log file content, just keys and maybe non-file values
-        if (key !== 'imageFiles') {
-           console.log(`FormData field: ${key} = ${formData.get(key)}`);
+      // Log FormData fields (excluding file content)
+      for (let [key, value] of formData.entries()) {
+        if (!(value instanceof File)) {
+           console.log(`FormData field: ${key} = ${value}`);
         } else {
-           console.log(`FormData key: ${key} (contains file data)`);
+           console.log(`FormData field: ${key} = [File: ${value.name}, Type: ${value.type}, Size: ${value.size}]`);
         }
       }
 
-      // Send FormData using Fetch (no changes needed here)
+      // Send FormData using Fetch
       const response = await fetch(`${API_BASE_URL}/api/createListing`, {
         method: 'POST',
         body: formData,
+        // Note: Content-Type is automatically set by the browser for FormData
       });
 
-      // Process Response (no changes needed here)
+      // Process Response
       const responseText = await response.text();
-      // ... (rest of response processing) ...
+      console.log(`Response Status: ${response.status}`);
+      console.log('Raw Response Text:', responseText.substring(0, 500) + (responseText.length > 500 ? '...' : ''));
+
 
       if (!response.ok) {
-         // ... error handling ...
+        let errorMessage = `Listing creation failed (Status: ${response.status})`;
+        try {
+             const errorData = JSON.parse(responseText);
+             // Use more specific error from backend if available
+             errorMessage = errorData.error || errorData.message || errorMessage;
+             if(errorData.details) {
+                // Log more details if backend provides them
+                console.error("Backend error details:", errorData.details);
+                // Potentially add details to the user message if appropriate
+                // errorMessage += ` Details: ${JSON.stringify(errorData.details)}`;
+             }
+        } catch (parseErr) {
+            // Could not parse JSON error response, stick with status code message
+            console.warn("Could not parse error response JSON:", parseErr);
+            // Include raw text snippet in error if short enough
+            if (responseText.length < 200) {
+                errorMessage += `: ${responseText}`;
+            }
+        }
         throw new Error(errorMessage);
       }
 
+      // Attempt to parse successful JSON response
       let data;
       try {
         data = JSON.parse(responseText);
+        if (!data.success) {
+            // Handle cases where backend returns 200 OK but indicates failure in JSON
+            console.error("Backend indicated failure despite 200 OK:", data);
+            throw new Error(data.error || 'Listing creation reported as unsuccessful by server.');
+        }
         console.log('Listing creation successful:', data);
       } catch (parseErr) {
-         // ... parse error handling ...
-        throw new Error('Received invalid success response from server');
+        console.error("Failed to parse successful response JSON:", parseErr);
+        console.error("Raw success response text was:", responseText);
+        throw new Error('Received invalid success response format from server');
       }
 
-      onSubmit(data); // Pass success data back up (contains listingResponse details)
+      onSubmit(data); // Pass success data back up
 
     } catch (err) {
-      console.error('Error during listing creation fetch:', err);
+      console.error('Error during listing creation fetch/processing:', err);
+      // Display the error message from the thrown Error
       setError(err.message || 'An unknown error occurred during listing creation.');
     } finally {
       setLoading(false);
@@ -174,78 +258,174 @@ function PriceSettingStep({
 
   // --- JSX Image Preview uses imageFileObjects ---
   const getImageUrl = () => {
-    if (metadata?.coverUrl) { // Prioritize metadata URL
+    // 1. Prioritize metadata URL (usually higher quality)
+    if (metadata?.coverUrl) {
       return metadata.coverUrl;
     }
-    // *** Use imageFileObjects for preview ***
-    if (imageFileObjects && imageFileObjects.length > 0) {
+    // 2. Fallback to the first uploaded image File object
+    if (imageFileObjects && imageFileObjects.length > 0 && imageFileObjects[0] instanceof File) {
+      // Create an object URL only if needed
       return URL.createObjectURL(imageFileObjects[0]);
     }
+    // 3. No image available
     return null;
   }
 
+  // Create the URL for the preview image
   const previewImageUrl = getImageUrl();
 
-  // Clean up object URL (no change needed here)
+  // Effect to clean up object URL when component unmounts or URL changes
   useEffect(() => {
-    // ... (URL cleanup logic remains the same) ...
-  }, [previewImageUrl]);
+    // Check if the previewImageUrl is an object URL (starts with 'blob:')
+    const isObjectURL = previewImageUrl && previewImageUrl.startsWith('blob:');
 
+    // Return a cleanup function
+    return () => {
+      if (isObjectURL) {
+        URL.revokeObjectURL(previewImageUrl);
+        console.log("Revoked Object URL:", previewImageUrl);
+      }
+    };
+  }, [previewImageUrl]); // Rerun effect if the previewImageUrl changes
+
+
+  // --- Component Render ---
   return (
     <div className="listing-container">
-       {/* ... header ... */}
+       {/* Header could go here if needed */}
+       {/* Display Error Message */}
        {error && <div className="error-message"><strong>Error:</strong> {error}</div>}
+
        <div className="listing-content">
+         {/* Left Side: Book Details & Cover */}
          <div className="book-details">
            <div className="book-cover">
               {previewImageUrl ? (
-                 <img src={previewImageUrl} alt={metadata?.title || 'Book Cover Preview'} className="preview-image"/>
+                 <img
+                    src={previewImageUrl}
+                    alt={metadata?.title || 'Book Cover Preview'}
+                    className="preview-image"
+                    // Add error handling for image loading itself
+                    onError={(e) => { e.target.style.display = 'none'; /* Hide broken image */ }}
+                 />
               ) : (
-                 <div className="no-image">No Image</div>
+                 <div className="no-image">No Image Available</div>
               )}
            </div>
            <div className="book-info">
-             {/* ... title, author ... */}
+             {/* Display Title and Author */}
+             <h3 className="book-title-display">{metadata?.title || 'Book Title Not Available'}</h3>
+             <p className="book-author-display">by {metadata?.author || 'Unknown Author'}</p>
+
+             {/* Info Table */}
              <table className="info-table">
                <tbody>
-                 <tr><td><strong>ISBN:</strong></td><td>{isbn || 'N/A'} <button onClick={handleCopyISBN} disabled={!isbn}>Copy</button>{copySuccess && ' Copied!'}</td></tr>
-                 <tr><td><strong>Condition:</strong></td><td>{selectedCondition || <span style={{color: 'red'}}>Missing!</span>} {conditionDowngraded && <span style={{color: 'orange', fontWeight:'bold'}}>(Downgraded)</span>}</td></tr>
+                 <tr>
+                    <td><strong>ISBN:</strong></td>
+                    <td>
+                        {isbn || 'N/A'}
+                        {isbn && <button onClick={handleCopyISBN} className="copy-button" title="Copy ISBN" disabled={!isbn}>Copy</button>}
+                        {copySuccess && <span className="copy-success-msg"> Copied!</span>}
+                    </td>
+                 </tr>
+                 <tr>
+                    <td><strong>Condition:</strong></td>
+                    <td>
+                        {selectedCondition || <span style={{color: 'red'}}>Missing!</span>}
+                        {conditionDowngraded && <span className="condition-downgraded" title="Condition was automatically set to Acceptable due to selected flaws."> (Downgraded)</span>}
+                    </td>
+                 </tr>
+                 {/* Display Flaws only if they exist */}
                  {selectedFlawKeys && selectedFlawKeys.length > 0 && (
-                   <tr><td><strong>Flaws:</strong></td><td>{selectedFlawKeys.map(key => FLAW_DEFINITIONS[key]?.label || key).join(', ')}</td></tr>
+                   <tr>
+                    <td><strong>Flaws:</strong></td>
+                    <td>{selectedFlawKeys.map(key => FLAW_DEFINITIONS[key]?.label || key).join(', ')}</td>
+                   </tr>
                  )}
-                 {/* Display image count from the actual File objects */}
-                 <tr><td><strong>Images:</strong></td><td>{imageFileObjects ? imageFileObjects.length : 0}</td></tr>
+                 {/* Display image count */}
+                 <tr>
+                    <td><strong>Images:</strong></td>
+                    <td>{imageFileObjects ? imageFileObjects.length : 0}</td>
+                 </tr>
                </tbody>
              </table>
            </div>
          </div>
 
+         {/* Right Side: Listing Form */}
          <div className="listing-form">
-             {/* Form inputs remain largely the same */}
              <form onSubmit={handleSubmit}>
-                {/* Title */}
+                {/* Editable Listing Title */}
                 <div className="form-group">
                     <label htmlFor="listingTitle" className="form-label">eBay Listing Title (Edit if needed):</label>
-                    <input id="listingTitle" type="text" value={listingTitle} onChange={(e) => setListingTitle(e.target.value)} maxLength={80} className="form-input title-input" required/>
+                    <input
+                        id="listingTitle"
+                        type="text"
+                        value={listingTitle}
+                        onChange={(e) => setListingTitle(e.target.value)}
+                        maxLength={80}
+                        className="form-input title-input"
+                        required
+                    />
                     <div className="character-count">{listingTitle.length}/80</div>
                 </div>
-                {/* SKU / Price */}
-                 {/* ... sku/price inputs ... */}
-                 {/* Actions */}
-                 <div className="action-buttons">
-                    <button type="button" onClick={onBack} className="btn back-button" disabled={loading}>Back</button>
-                    {/* Disable button if critical data is missing */}
-                    <button type="submit" className="btn submit-button" disabled={loading || !selectedCondition || !imageFileObjects || imageFileObjects.length === 0}>
+
+                {/* SKU and Price Inputs (Side-by-side) */}
+                <div className="form-row"> {/* Use CSS class for flex layout */}
+                  {/* SKU Input */}
+                  <div className="form-group form-group-half">
+                      <label htmlFor="sku" className="form-label">SKU (Optional):</label>
+                      <input
+                          id="sku"
+                          type="text"
+                          value={sku}
+                          onChange={(e) => setSku(e.target.value)}
+                          placeholder="Optional identifier"
+                          className="form-input"
+                      />
+                  </div>
+
+                  {/* Price Input */}
+                  <div className="form-group form-group-half">
+                      <label htmlFor="price" className="form-label">Price (AUD):</label>
+                      <input
+                          id="price"
+                          type="number"
+                          value={price}
+                          onChange={(e) => setPrice(e.target.value)}
+                          min="0.01" // Minimum price allowed
+                          step="0.01" // Allow cents
+                          placeholder="e.g., 19.99"
+                          className="form-input"
+                          required // Price is mandatory
+                      />
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="action-buttons">
+                    <button
+                        type="button"
+                        onClick={onBack}
+                        className="btn back-button"
+                        disabled={loading}
+                    >
+                        Back
+                    </button>
+                    <button
+                        type="submit"
+                        className="btn submit-button"
+                        // More robust disabling condition
+                        disabled={loading || !selectedCondition || !imageFileObjects || imageFileObjects.length === 0 || !listingTitle.trim() || !price || parseFloat(price) <= 0}
+                    >
                        {loading ? <><LoadingSpinner /> Creating...</> : 'Create eBay Listing'}
                     </button>
                  </div>
              </form>
-         </div>
-       </div>
-    </div>
-  );
-}
-
-const LoadingSpinner = () => <div className="spinner" style={{ /* ... */ }}></div>;
+         </div> {/* End listing-form */}
+       </div> {/* End listing-content */}
+    </div> // End listing-container
+  ); // End return
+} // End PriceSettingStep component
 
 export default PriceSettingStep;
