@@ -231,3 +231,45 @@
     color: #d9534f;
     font-weight: bold;
   }
+
+  /* Add this if not defined globally */
+.spinner {
+  display: inline-block;
+  width: 1em;  /* Use em for sizing relative to font */
+  height: 1em;
+  border: 3px solid rgba(0, 0, 0, 0.1); /* Lighter border */
+  border-radius: 50%;
+  border-top-color: currentColor; /* Use button's text color */
+  animation: spin 1s ease-in-out infinite;
+  margin-right: 8px;
+  vertical-align: middle; /* Align better with text */
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Optional: Style the Condition/Flaws rows */
+.info-table td:nth-child(2) { /* Target the value column */
+  font-weight: 500; /* Slightly bolder values */
+  color: #111; /* Darker text for values */
+}
+
+/* Style specifically for the condition value */
+.info-table tr:has(td:contains('Condition:')) td:nth-child(2) { /* Modern browser selector */
+ font-weight: 600;
+ /* Example: color based on condition? Complex, maybe not needed */
+}
+
+/* Style specifically for the flaws list */
+.info-table tr:has(td:contains('Flaws:')) td:nth-child(2) {
+ font-style: italic;
+ color: #555;
+ font-size: 14px;
+}
+
+.info-table td {
+  padding: 8px 0;
+  border-bottom: 1px solid #eee;
+  vertical-align: top; /* Align text to the top */
+}
