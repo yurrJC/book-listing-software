@@ -1698,6 +1698,7 @@ app.post('/api/processBook', upload.fields([
       if (validatedIsbn) {
         isbn = validatedIsbn;
         console.log(`Using manually entered ISBN: ${isbn}`);
+        // Skip OCR processing entirely when valid manual ISBN is provided
       } else {
         console.warn(`Invalid manual ISBN format: ${manualIsbn}`);
       }
@@ -1725,16 +1726,20 @@ app.post('/api/processBook', upload.fields([
           }
         }
       }
-    }
-     
-    // Still collect OCR text from images even if manual ISBN was used
-    if (!allOcrText && mainImages.length > 0) {
-      console.log('Collecting OCR text for edition detection...');
-      for (let i = 0; i < Math.min(mainImages.length, 3); i++) {
-        const file = mainImages[i];
-        const result = await processImageAndExtractISBN(file.path);
-        if (result && result.ocrText) {
-          allOcrText += result.ocrText + ' ';
+      
+      // Only collect additional OCR text if we still don't have enough and no manual ISBN was provided
+      if (allOcrText === '' && !manualIsbn && mainImages.length > 0) {
+        console.log('Collecting additional OCR text for edition detection...');
+        for (let i = 0; i < Math.min(mainImages.length, 3); i++) {
+          const file = mainImages[i];
+          try {
+            const result = await processImageAndExtractISBN(file.path);
+            if (result && result.ocrText) {
+              allOcrText += result.ocrText + ' ';
+            }
+          } catch (err) {
+            console.warn(`Error extracting OCR text from image ${file.filename}:`, err);
+          }
         }
       }
     }
