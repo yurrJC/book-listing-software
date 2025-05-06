@@ -17,13 +17,14 @@ console.log('Using production eBay environment:', isProduction);
 const FLAW_DEFINITIONS = {
   'COVER_CREASING': { key: 'COVER_CREASING', label: 'Cover Creasing', description: 'Creasing to Cover - Book covers contain noticeable creasing from previous use' },
   'WAVY_PAGES': { key: 'WAVY_PAGES', label: 'Wavy Pages', description: 'Wavy Pages - Pages throughout the book contain a wavy effect due to the manufacturers printing process' },
-  'DIRT_RESIDUE': { key: 'DIRT_RESIDUE', label: 'Dirt Residue', description: 'Dirt Residue - The book has noticeable dirt residue as pictured' },
+  'DIRT_RESIDUE': { key: 'DIRT_RESIDUE', label: 'Dirt Residue', description: 'Dirt Residue – Some marks, darkened edges, or discoloration (especially on lighter covers) may remain despite cleaning.' },
   'INSCRIBED': { key: 'INSCRIBED', label: 'Inscribed (Owner Markings)', description: 'Inscribed - The book is inscribed with previous owners markings' },
   'NOTES': { key: 'NOTES', label: 'Notes/Highlighting', description: 'Inscriptions within - The book has either highlighter/pen/pencil inscriptions throughout the book' },
   'WATER_DAMAGE': { key: 'WATER_DAMAGE', label: 'Water Damage', description: 'Water Damage - Water damage to the pages of the book with readability still intact - as pictured' },
   'FOXING': { key: 'FOXING', label: 'Foxing', description: 'Foxing - Foxing effect noticeable to the book - as pictured' },
   'YELLOWING': { key: 'YELLOWING', label: 'Yellowing/Age Tanning', description: 'Yellowing Age - Book contains noticeable yellowing page to pages' },
-  'BIND_ISSUE': { key: 'BIND_ISSUE', label: 'Binding Issue', description: 'Bind issue - Noticeable wear to the books binding with no loose or missing pages - as pictured' }
+  'BIND_ISSUE': { key: 'BIND_ISSUE', label: 'Binding Issue', description: 'Bind issue - Noticeable wear to the books binding with no loose or missing pages - as pictured' },
+  'CRACKED_SPINE': { key: 'CRACKED_SPINE', label: 'Cracked Spine', description: 'Cracked Spine - This book(s) has a cracked spine from previous heavy usage with readability intact' }
 };
 
 const EBAY_CONDITION_MAP = {
@@ -31,7 +32,7 @@ const EBAY_CONDITION_MAP = {
 };
 
 const DOWNGRADE_FLAW_KEYS = [
-  'WATER_DAMAGE', 'BIND_ISSUE', 'DIRT_RESIDUE', 'FOXING', 'NOTES'
+  'WATER_DAMAGE', 'BIND_ISSUE', 'DIRT_RESIDUE', 'FOXING', 'NOTES', 'CRACKED_SPINE'
 ];
 
 // Initialize the OpenAI client
@@ -1255,6 +1256,7 @@ function generateBookDescription(bookData, selectedFlawKeys = []) { // Now accep
       <p>Please be aware that this book is in pre-owned, and used condition</p>
       <p>Inscriptions on the inside cover of the book are always pictured</p>
       <p>If a book has further pen or pencil underlines, highlights, tears, or flaws a sample page will be shown with a picture reference, however it is not possible to show every page of the book where these may be apparent</p>
+      <p>Page creasing (e.g. dog-eared corners) may be present due to prior use</p>
       <p>All pre-owned books have been cleaned to the best of our ability before listing</p>
       <p>Please refer to the attached product photos as the product listed is what you will receive</p>
       
