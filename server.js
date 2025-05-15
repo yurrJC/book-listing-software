@@ -1256,7 +1256,8 @@ function generateBookDescription(bookData, selectedFlawKeys = []) { // Now accep
       <p>Please be aware that this book is in pre-owned, and used condition</p>
       <p>Inscriptions on the inside cover of the book are always pictured</p>
       <p>If a book has further pen or pencil underlines, highlights, tears, or flaws a sample page will be shown with a picture reference, however it is not possible to show every page of the book where these may be apparent</p>
-      <p>Page creasing (e.g. dog-eared corners) may be present due to prior use</p>
+      <p>Page creasing (e.g. dog-eared corners, page indentations) may be present due to prior use</p>
+      <p>Remainder Copies – Some books may have a small marker line or dot on the page edges, occasionally touching the cover or some page edges. This is a standard mark used to indicate discounted remainder stock.</p>
       <p>All pre-owned books have been cleaned to the best of our ability before listing</p>
       <p>Please refer to the attached product photos as the product listed is what you will receive</p>
       
