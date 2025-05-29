@@ -23,7 +23,7 @@ const FLAW_DEFINITIONS = {
   'WATER_DAMAGE': { key: 'WATER_DAMAGE', label: 'Water Damage', description: 'Water Damage – Pages show signs of water exposure, such as rippling or staining, but the text remains readable' },
   'FOXING': { key: 'FOXING', label: 'Foxing', description: 'Foxing – Brownish spotting (commonly due to age or humidity) is visible on some pages or edges' },
   'YELLOWING': { key: 'YELLOWING', label: 'Yellowing/Age Tanning', description: 'Yellowing/Tanning – Pronounced yellowing or tanning is visible on the pages and/or inside cover' },
-  'BIND_ISSUE': { key: 'BIND_ISSUE', label: 'Binding Issue', description: 'Binding Wear – The spine and/or binding shows noticeable wear' },
+  'BIND_ISSUE': { key: 'BIND_ISSUE', label: 'Binding Issue', description: 'Binding Wear – The spine or binding shows noticeable wear' },
   'CRACKED_SPINE': { key: 'CRACKED_SPINE', label: 'Cracked Spine', description: 'Cracked Spine – The spine has a deep crack from heavy use that goes beyond normal creasing. The inner binding may be visible when laid flat, but all pages remain intact and the book is still readable.' }
 };
 
