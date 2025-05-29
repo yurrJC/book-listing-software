@@ -15,16 +15,16 @@ const isProduction = true; // Force production mode
 console.log('Using production eBay environment:', isProduction);
 
 const FLAW_DEFINITIONS = {
-  'COVER_CREASING': { key: 'COVER_CREASING', label: 'Cover Creasing', description: 'Creasing to Cover - Book covers contain noticeable creasing from previous use' },
-  'WAVY_PAGES': { key: 'WAVY_PAGES', label: 'Wavy Pages', description: 'Wavy Pages - Pages throughout the book contain a wavy effect due to the manufacturers printing process' },
-  'DIRT_RESIDUE': { key: 'DIRT_RESIDUE', label: 'Dirt Residue', description: 'Dirt Residue – Some marks, darkened edges, or discoloration (especially on lighter covers) may remain despite cleaning.' },
-  'INSCRIBED': { key: 'INSCRIBED', label: 'Inscribed (Owner Markings)', description: 'Inscribed - The book is inscribed with previous owners markings' },
-  'NOTES': { key: 'NOTES', label: 'Notes/Highlighting', description: 'Inscriptions within - The book has either highlighter/pen/pencil inscriptions throughout the book' },
-  'WATER_DAMAGE': { key: 'WATER_DAMAGE', label: 'Water Damage', description: 'Water Damage - Water damage to the pages of the book with readability still intact - as pictured' },
-  'FOXING': { key: 'FOXING', label: 'Foxing', description: 'Foxing - Foxing effect noticeable to the book - as pictured' },
-  'YELLOWING': { key: 'YELLOWING', label: 'Yellowing/Age Tanning', description: 'Yellowing Age - Book contains noticeable yellowing page to pages' },
-  'BIND_ISSUE': { key: 'BIND_ISSUE', label: 'Binding Issue', description: 'Bind issue - Noticeable wear to the books binding with no loose or missing pages - as pictured' },
-  'CRACKED_SPINE': { key: 'CRACKED_SPINE', label: 'Cracked Spine', description: 'Cracked Spine - This book(s) has a cracked spine from previous heavy usage with readability intact' }
+  'COVER_CREASING': { key: 'COVER_CREASING', label: 'Cover Creasing', description: 'Cover Creasing – The cover(s) show visible creases from previous handling' },
+  'WAVY_PAGES': { key: 'WAVY_PAGES', label: 'Wavy Pages', description: 'Wavy Pages – A wavy texture is present throughout the pages, likely due to the original printing or storage conditions' },
+  'DIRT_RESIDUE': { key: 'DIRT_RESIDUE', label: 'Dirt Residue', description: 'Residual Marks – Some surface marks, darkened page edges, or mild discoloration may remain, especially on lighter covers, despite cleaning' },
+  'INSCRIBED': { key: 'INSCRIBED', label: 'Inscribed (Owner Markings)', description: 'Inscription – The book includes a handwritten note or name from a previous owner on the inside cover' },
+  'NOTES': { key: 'NOTES', label: 'Notes/Highlighting', description: 'Writing/Highlighting – The pages contain underlining, highlighting, or handwritten notes in pen, pencil or highlighter' },
+  'WATER_DAMAGE': { key: 'WATER_DAMAGE', label: 'Water Damage', description: 'Water Damage – Pages show signs of water exposure, such as rippling or staining, but the text remains readable' },
+  'FOXING': { key: 'FOXING', label: 'Foxing', description: 'Foxing – Brownish spotting (commonly due to age or humidity) is visible on some pages or edges' },
+  'YELLOWING': { key: 'YELLOWING', label: 'Yellowing/Age Tanning', description: 'Yellowing/Tanning – Pronounced yellowing or tanning is visible on the pages and/or inside cover' },
+  'BIND_ISSUE': { key: 'BIND_ISSUE', label: 'Binding Issue', description: 'Binding Wear – The spine or binding shows noticeable wear' },
+  'CRACKED_SPINE': { key: 'CRACKED_SPINE', label: 'Cracked Spine', description: 'Cracked Spine – The spine has a deep crack from heavy use that goes beyond normal creasing. The inner binding may be visible when laid flat, but all pages remain intact and the book is still readable.' }
 };
 
 const EBAY_CONDITION_MAP = {
@@ -1253,13 +1253,13 @@ function generateBookDescription(bookData, selectedFlawKeys = []) { // Now accep
       
       <h2>Product Condition:</h2>
       ${flawsDescriptionHtml}
-      <p>Please be aware that this book is in pre-owned, and used condition</p>
+      <p>Please be aware that this book is in pre-owned condition</p>
       <p>Inscriptions on the inside cover of the book are always pictured</p>
-      <p>If a book has further pen or pencil underlines, highlights, tears, or flaws a sample page will be shown with a picture reference, however it is not possible to show every page of the book where these may be apparent</p>
-      <p>Page creasing (e.g. dog-eared corners, page indentations) may be present due to prior use</p>
+      <p>If a book has further pen or pencil underlines, highlights, tears, or flaws a sample page will be shown with a picture reference. However it is not possible to show every page of the book where these may be apparent</p>
+      <p>General pre-owned wear (e.g. dog-eared corners, page indentations, yellowing/tanning, spine creasing, shelf wear) may be present due to prior use</p>
       <p>Remainder Copies – Some books may have a small marker line or dot on the page edges, occasionally touching the cover or some page edges. This is a standard mark used to indicate discounted remainder stock.</p>
       <p>All pre-owned books have been cleaned to the best of our ability before listing</p>
-      <p>Please refer to the attached product photos as the product listed is what you will receive</p>
+      <p>All photos show the exact item for sale — you will receive the item pictured</p>
       
       <h2>Postage Policy:</h2>
       <p>This item will be sent under the specified postage option stated within the allocated handling time</p>
