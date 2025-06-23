@@ -366,6 +366,12 @@ function detectBookFlaws(ocrText) {
     },
     'BIND ISSUE': {
       description: 'Bind issue - Noticeable wear to the books binding with no loose or missing pages - as pictured'
+    },
+    'WARPED': {
+      description: 'Warped Book - The book shows visible warping to the cover and/or pages. This does not affect readability, but the book does not sit completely flat and may provide discomfort to some readers.'
+    },
+    'DIGITAL': {
+      description: 'Digital Download Code - Digital access codes are not included with this purchase, in line with eBay\'s policy on electronically delivered items. Any references to digital content on the cover, in the item specifics or metadata are part of the original product packaging or eBay\'s Product ID Database and do not guarantee inclusion. This listing is for the physical book only.'
     }
   };
   
@@ -435,7 +441,13 @@ function detectBookFlaws(ocrText) {
     { phrase: 'INSCRIPTION', flawType: 'INSCRIBED' },
     { phrase: 'SIGNED', flawType: 'INSCRIBED' },
     { phrase: 'NAME', flawType: 'INSCRIBED' },
-    { phrase: 'WAVY', flawType: 'WAVY PAGES' }
+    { phrase: 'WAVY', flawType: 'WAVY PAGES' },
+    { phrase: 'WARPED', flawType: 'WARPED' },
+    { phrase: 'WARP', flawType: 'WARPED' },
+    { phrase: 'DIGITAL', flawType: 'DIGITAL' },
+    { phrase: 'DOWNLOAD', flawType: 'DIGITAL' },
+    { phrase: 'ACCESS CODE', flawType: 'DIGITAL' },
+    { phrase: 'ONLINE', flawType: 'DIGITAL' }
   ];
   
   // Check for partial matches

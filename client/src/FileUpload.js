@@ -25,7 +25,9 @@ const FLAW_DEFINITIONS = {
   'FOXING': { key: 'FOXING', label: 'Foxing', description: '...' },
   'YELLOWING': { key: 'YELLOWING', label: 'Yellowing/Age Tanning', description: '...' },
   'BIND_ISSUE': { key: 'BIND_ISSUE', label: 'Binding Issue', description: '...' },
-  'CRACKED_SPINE': { key: 'CRACKED_SPINE', label: 'Cracked Spine', description: '...' } // Add new flaw
+  'CRACKED_SPINE': { key: 'CRACKED_SPINE', label: 'Cracked Spine', description: '...' },
+  'WARPED': { key: 'WARPED', label: 'Warped', description: '...' },
+  'DIGITAL': { key: 'DIGITAL', label: 'Digital', description: '...' }
 };
 // Convert to an array for easier mapping in JSX
 const FLAW_OPTIONS = Object.values(FLAW_DEFINITIONS);
