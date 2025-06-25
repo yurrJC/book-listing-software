@@ -379,3 +379,43 @@ body {
     gap: 10px;
   }
 }
+
+/* Flaw Search Bar Styles */
+.flaw-search-bar-container {
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.flaw-search-toggle {
+  background: #f3f4f6;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 7px 16px;
+  font-size: 14px;
+  color: #374151;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.flaw-search-toggle:hover {
+  background: #e5e7eb;
+  border-color: #9ca3af;
+}
+.flaw-search-input {
+  width: 100%;
+  max-width: 320px;
+  padding: 9px 14px;
+  border: 1.5px solid #3b82f6;
+  border-radius: 6px;
+  font-size: 15px;
+  outline: none;
+  box-shadow: 0 2px 8px rgba(59,130,246,0.07);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.flaw-search-input:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37,99,235,0.13);
+}

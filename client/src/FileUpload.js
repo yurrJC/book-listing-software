@@ -41,6 +41,23 @@ function FileUpload({ onSuccess }) {
   const [error, setError] = useState(null);
   const [manualIsbn, setManualIsbn] = useState('');
   const [apiStatus, setApiStatus] = useState(null);
+  const [flawSearchActive, setFlawSearchActive] = useState(false);
+  const [flawSearchInput, setFlawSearchInput] = useState('');
+  const flawSearchInputRef = React.useRef(null);
+  const filteredFlaws = React.useMemo(() => {
+    if (!flawSearchInput) return FLAW_OPTIONS;
+    const input = flawSearchInput.toLowerCase();
+    return FLAW_OPTIONS.filter(flaw =>
+      flaw.label.toLowerCase().includes(input)
+    ).sort((a, b) => {
+      // Prioritize startsWith, then includes, then alphabetically
+      const aStarts = a.label.toLowerCase().startsWith(input);
+      const bStarts = b.label.toLowerCase().startsWith(input);
+      if (aStarts && !bStarts) return -1;
+      if (!aStarts && bStarts) return 1;
+      return a.label.localeCompare(b.label);
+    });
+  }, [flawSearchInput]);
   
   // Check API connectivity (remains the same)
   useEffect(() => {
@@ -299,19 +316,61 @@ function FileUpload({ onSuccess }) {
           {/* --- 3) FLAW SELECTION --- */}
           <div className="form-section">
             <h3 className="section-title">Select Flaws (if any)</h3>
+            {/* Flaw Search Bar Feature */}
+            <div className="flaw-search-bar-container">
+              {!flawSearchActive && (
+                <button
+                  type="button"
+                  className="flaw-search-toggle"
+                  onClick={() => {
+                    setFlawSearchActive(true);
+                    setTimeout(() => flawSearchInputRef.current?.focus(), 0);
+                  }}
+                >
+                  🔍 Search Flaws
+                </button>
+              )}
+              {flawSearchActive && (
+                <input
+                  ref={flawSearchInputRef}
+                  type="text"
+                  className="flaw-search-input"
+                  placeholder="Type to search flaws..."
+                  value={flawSearchInput}
+                  onChange={e => setFlawSearchInput(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') {
+                      const match = filteredFlaws[0];
+                      if (match) toggleFlaw(match.key);
+                      e.preventDefault();
+                    } else if (e.key === 'Escape') {
+                      setFlawSearchActive(false);
+                      setFlawSearchInput('');
+                    }
+                  }}
+                  onBlur={e => {
+                    // Only close if focus moves outside the search bar and flaw buttons
+                    setTimeout(() => setFlawSearchActive(false), 100);
+                  }}
+                />
+              )}
+            </div>
             <div className="flaws-grid">
-          {FLAW_OPTIONS.map(flaw => (
-             <button
-                 key={flaw.key}
-                 type="button"
-                 className={`flaw-button ${selectedFlaws.includes(flaw.key) ? 'selected' : ''}`}
-                 onClick={() => toggleFlaw(flaw.key)}
-             >
-                {flaw.label}
-             </button>
-           ))}
-       </div>
-             <p className="input-hint">Select all applicable flaws. Some flaws may automatically set condition to 'Acceptable'.</p>
+              {(flawSearchActive && flawSearchInput
+                ? filteredFlaws
+                : FLAW_OPTIONS
+              ).map(flaw => (
+                <button
+                  key={flaw.key}
+                  type="button"
+                  className={`flaw-button ${selectedFlaws.includes(flaw.key) ? 'selected' : ''}`}
+                  onClick={() => toggleFlaw(flaw.key)}
+                >
+                  {flaw.label}
+                </button>
+              ))}
+            </div>
+            <p className="input-hint">Select all applicable flaws. Some flaws may automatically set condition to 'Acceptable'.</p>
           </div>
           {/* --- END FLAW SELECTION --- */}
 
