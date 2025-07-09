@@ -515,9 +515,14 @@ async function generateAllBookDataUsingGPT(listingData) {
     // Determine format from the listing data
     let format = 'Paperback';
     if (listingData.format || listingData.binding) {
-      const formatLower = (listingData.format || listingData.binding).toLowerCase();
-      if (formatLower.includes('hardcover') || formatLower.includes('hard cover') || formatLower.includes('hardback')) {
+      const formatValue = (listingData.format || listingData.binding);
+      const formatLower = formatValue.toLowerCase();
+      console.log(`Raw format/binding value: "${formatValue}"`);
+      
+      if (formatLower.includes('hardcover') || formatLower.includes('hard cover') || formatLower.includes('hardback') || formatLower === 'hardcover') {
         format = 'Hardcover';
+      } else if (formatLower === 'book' || formatLower === 'paperback') {
+        format = 'Paperback';
       }
     }
     console.log(`Determined format: "${format}"`);
@@ -648,9 +653,14 @@ async function fallbackToIndividualCalls(listingData) {
     // For the title, we need to construct it manually since we have the parts
     let format = 'Paperback';
     if (listingData.format || listingData.binding) {
-      const formatLower = (listingData.format || listingData.binding).toLowerCase();
-      if (formatLower.includes('hardcover') || formatLower.includes('hard cover') || formatLower.includes('hardback')) {
+      const formatValue = (listingData.format || listingData.binding);
+      const formatLower = formatValue.toLowerCase();
+      console.log(`Fallback - Raw format/binding value: "${formatValue}"`);
+      
+      if (formatLower.includes('hardcover') || formatLower.includes('hard cover') || formatLower.includes('hardback') || formatLower === 'hardcover') {
         format = 'Hardcover';
+      } else if (formatLower === 'book' || formatLower === 'paperback') {
+        format = 'Paperback';
       }
     }
     
@@ -812,9 +822,14 @@ if (listingData.ocrText) {
     
     let format = 'Paperback';
     if (listingData.format || listingData.binding) {
-      const formatLower = (listingData.format || listingData.binding).toLowerCase();
-      if (formatLower.includes('hardcover') || formatLower.includes('hard cover') || formatLower.includes('hardback')) {
+      const formatValue = (listingData.format || listingData.binding);
+      const formatLower = formatValue.toLowerCase();
+      console.log(`generateCompleteEbayTitle - Raw format/binding value: "${formatValue}"`);
+      
+      if (formatLower.includes('hardcover') || formatLower.includes('hard cover') || formatLower.includes('hardback') || formatLower === 'hardcover') {
         format = 'Hardcover';
+      } else if (formatLower === 'book' || formatLower === 'paperback') {
+        format = 'Paperback';
       }
     }
     
