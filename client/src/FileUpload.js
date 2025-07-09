@@ -133,6 +133,37 @@ function FileUpload({ onSuccess }) {
     }
   };
 
+  // Add global keyboard event listener when modal is open
+  useEffect(() => {
+    if (imageModalOpen) {
+      const handleGlobalKeyDown = (e) => {
+        switch (e.key) {
+          case 'ArrowLeft':
+            e.preventDefault();
+            handlePreviousImage();
+            break;
+          case 'ArrowRight':
+            e.preventDefault();
+            handleNextImage();
+            break;
+          case 'Escape':
+            e.preventDefault();
+            handleCloseModal();
+            break;
+          default:
+            break;
+        }
+      };
+
+      document.addEventListener('keydown', handleGlobalKeyDown);
+      
+      // Cleanup function to remove event listener
+      return () => {
+        document.removeEventListener('keydown', handleGlobalKeyDown);
+      };
+    }
+  }, [imageModalOpen, selectedImageIndex, files.mainImages.length]);
+
   // --- Condition Change Handler ---
   const handleConditionChange = (e) => {
     setSelectedCondition(e.target.value);
@@ -480,7 +511,7 @@ function FileUpload({ onSuccess }) {
 
       {/* Image Modal */}
       {imageModalOpen && selectedImageIndex !== null && files.mainImages[selectedImageIndex] && (
-        <div className="image-modal-overlay" onClick={handleModalBackdropClick} onKeyDown={handleKeyDown}>
+        <div className="image-modal-overlay" onClick={handleModalBackdropClick}>
           <div className="image-modal-content">
             <button 
               className="image-modal-close" 
