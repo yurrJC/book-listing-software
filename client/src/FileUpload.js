@@ -43,6 +43,7 @@ function FileUpload({ onSuccess }) {
   const [apiStatus, setApiStatus] = useState(null);
   const [flawSearchActive, setFlawSearchActive] = useState(false);
   const [flawSearchInput, setFlawSearchInput] = useState('');
+  const [customDescriptionNote, setCustomDescriptionNote] = useState('');
   const flawSearchInputRef = React.useRef(null);
   const filteredFlaws = React.useMemo(() => {
     if (!flawSearchInput) return FLAW_OPTIONS;
@@ -79,6 +80,9 @@ function FileUpload({ onSuccess }) {
 
   // Handle ISBN input change (remains the same)
   const handleIsbnChange = (e) => setManualIsbn(e.target.value);
+
+  // Handle custom description note change
+  const handleCustomDescriptionNoteChange = (e) => setCustomDescriptionNote(e.target.value);
 
   // --- Condition Change Handler ---
   const handleConditionChange = (e) => {
@@ -172,6 +176,10 @@ function FileUpload({ onSuccess }) {
 
     if (manualIsbn.trim()) {
       formData.append('manualIsbn', manualIsbn.trim());
+    }
+
+    if (customDescriptionNote.trim()) {
+      formData.append('customDescriptionNote', customDescriptionNote.trim());
     }
 
     try {
@@ -374,6 +382,27 @@ function FileUpload({ onSuccess }) {
           </div>
           {/* --- END FLAW SELECTION --- */}
 
+          {/* --- 4) CUSTOM DESCRIPTION NOTE --- */}
+          <div className="form-section">
+            <h3 className="section-title">Custom Description Note (Optional)</h3>
+            <div className="form-group">
+              <label htmlFor="customDescriptionNote" className="form-label">Additional Note for Description:</label>
+              <textarea
+                id="customDescriptionNote"
+                value={customDescriptionNote}
+                onChange={handleCustomDescriptionNoteChange}
+                placeholder="Enter any additional notes to include in the listing description..."
+                className="form-textarea"
+                rows="3"
+                maxLength="500"
+              />
+              <div className="character-count">
+                {customDescriptionNote.length}/500 characters
+              </div>
+              <p className="input-hint">This note will be added to the description above any selected flaws.</p>
+            </div>
+          </div>
+          {/* --- END CUSTOM DESCRIPTION NOTE --- */}
 
 
           {/* Submit button */}
