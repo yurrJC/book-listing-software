@@ -1901,8 +1901,10 @@ app.post('/api/processBook', upload.fields([
       const validatedIsbn = isValidISBN(manualIsbn);
       if (validatedIsbn) {
         isbn = validatedIsbn;
-        console.log(`Using manually entered ISBN: ${isbn}`);
+        console.log(`Using manually entered ISBN: ${isbn} - skipping all OCR processing for speed optimization`);
         // Skip OCR processing entirely when valid manual ISBN is provided
+        allOcrText = ''; // Ensure OCR text is empty for manual ISBN scenarios
+        console.log(`Manual ISBN optimization: Skipped OCR processing, estimated time savings: 7-17 seconds`);
       } else {
         console.warn(`Invalid manual ISBN format: ${manualIsbn}`);
       }
@@ -2004,7 +2006,7 @@ app.post('/api/processBook', upload.fields([
     console.log('Using combined GPT call for speed optimization...');
     const { bookType, keyword: optimizedKeyword, title: ebayTitle } = await generateAllBookDataUsingGPT({
       ...metadata,
-      ocrText: allOcrText,
+      ocrText: manualIsbn ? '' : allOcrText, // Skip OCR text for manual ISBN scenarios
       format: metadata.binding || 'Paperback'
     });
     
