@@ -44,6 +44,8 @@ function FileUpload({ onSuccess }) {
   const [flawSearchActive, setFlawSearchActive] = useState(false);
   const [flawSearchInput, setFlawSearchInput] = useState('');
   const [customDescriptionNote, setCustomDescriptionNote] = useState('');
+  const [selectedImageIndex, setSelectedImageIndex] = useState(null);
+  const [imageModalOpen, setImageModalOpen] = useState(false);
   const flawSearchInputRef = React.useRef(null);
   const filteredFlaws = React.useMemo(() => {
     if (!flawSearchInput) return FLAW_OPTIONS;
@@ -83,6 +85,23 @@ function FileUpload({ onSuccess }) {
 
   // Handle custom description note change
   const handleCustomDescriptionNoteChange = (e) => setCustomDescriptionNote(e.target.value);
+
+  // Handle image modal
+  const handleImageClick = (index) => {
+    setSelectedImageIndex(index);
+    setImageModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setImageModalOpen(false);
+    setSelectedImageIndex(null);
+  };
+
+  const handleModalBackdropClick = (e) => {
+    if (e.target === e.currentTarget) {
+      handleCloseModal();
+    }
+  };
 
   // --- Condition Change Handler ---
   const handleConditionChange = (e) => {
@@ -268,7 +287,13 @@ function FileUpload({ onSuccess }) {
                               style={providedDraggable.draggableProps.style} // react-beautiful-dnd needs this
                               onLoad={() => URL.revokeObjectURL(previewUrl)} // Clean up URL after load
                             >
-                              <img src={previewUrl} alt={file.name} className="thumbnail-image" />
+                              <img 
+                                src={previewUrl} 
+                                alt={file.name} 
+                                className="thumbnail-image" 
+                                onClick={() => handleImageClick(index)}
+                                style={{ cursor: 'pointer' }}
+                              />
                               <button onClick={() => handleDeleteMain(index)} className="delete-button" type="button">×</button>
                               {index === 0 && <span className="main-image-tag">Main</span>}
                             </div>
@@ -422,6 +447,30 @@ function FileUpload({ onSuccess }) {
 
         </form>
       </div> {/* End Card */}
+
+      {/* Image Modal */}
+      {imageModalOpen && selectedImageIndex !== null && files.mainImages[selectedImageIndex] && (
+        <div className="image-modal-overlay" onClick={handleModalBackdropClick}>
+          <div className="image-modal-content">
+            <button 
+              className="image-modal-close" 
+              onClick={handleCloseModal}
+              aria-label="Close image"
+            >
+              ×
+            </button>
+            <img 
+              src={URL.createObjectURL(files.mainImages[selectedImageIndex])} 
+              alt={`Book image ${selectedImageIndex + 1}`} 
+              className="image-modal-image"
+            />
+            <div className="image-modal-info">
+              <p>Image {selectedImageIndex + 1} of {files.mainImages.length}</p>
+              {selectedImageIndex === 0 && <span className="main-image-indicator">Main Image</span>}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
