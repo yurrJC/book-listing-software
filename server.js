@@ -512,13 +512,24 @@ async function generateAllBookDataUsingGPT(listingData) {
       publicationYear: listingData.publicationYear || ''
     };
 
+    // Determine format from the listing data
+    let format = 'Paperback';
+    if (listingData.format || listingData.binding) {
+      const formatLower = (listingData.format || listingData.binding).toLowerCase();
+      if (formatLower.includes('hardcover') || formatLower.includes('hard cover') || formatLower.includes('hardback')) {
+        format = 'Hardcover';
+      }
+    }
+    console.log(`Determined format: "${format}"`);
+
     const systemMessage = `You are an expert book analyst for eBay listings. Return exactly 3 values separated by '|':
 1) Book type: "Book", "Cookbook", or "Textbook"
 2) Compound keyword: 2-3 words, max 25 chars, specific to the book's content
 3) Complete eBay title: max 80 chars, format: "Title by Author Format BookType Keyword"
 
 For cookbooks, avoid using "Cookbook" in keyword - use "Italian Cuisine" instead.
-For biographies, combine subject with "Biography" - use "Physics Biography" not just "Biography".`;
+For biographies, combine subject with "Biography" - use "Physics Biography" not just "Biography".
+ALWAYS include the format (Paperback/Hardcover) in the title.`;
 
     const prompt = `
 Analyze this book and return exactly 3 values separated by '|':
@@ -528,16 +539,19 @@ Title: "${bookData.title}"
 Author: "${bookData.author}"
 Publisher: "${bookData.publisher}"
 Publication Year: "${bookData.publicationYear}"
+Format: "${format}"
 Synopsis: "${bookData.synopsis.substring(0, 1500)}${bookData.synopsis.length > 1500 ? '...' : ''}"
 Subjects/Categories: ${bookData.subjects.join(', ')}
 
 INSTRUCTIONS:
 1. Book Type: Determine if Cookbook, Textbook, or Book
 2. Keyword: Create specific compound keyword (2-3 words, max 25 chars)
-3. Title: Build complete eBay title (max 80 chars)
+3. Title: Build complete eBay title (max 80 chars) - MUST include the format "${format}"
 
 Return format: BookType|Keyword|Title
-Example: Book|Australian Photography|Max Dupain by Helen Ennis Hardcover Book Australian Photography`;
+Example: Book|Australian Photography|Max Dupain by Helen Ennis ${format} Book Australian Photography
+
+IMPORTANT: The title MUST include "${format}" in the correct position.`;
 
     console.log('Making combined OpenAI API call...');
     
@@ -580,6 +594,23 @@ Example: Book|Australian Photography|Max Dupain by Helen Ennis Hardcover Book Au
       }
       keyword = truncated;
       console.log(`Keyword truncated to: "${keyword}"`);
+    }
+    
+    // Ensure format is in the title, and if not, add it
+    if (!title.toLowerCase().includes(format.toLowerCase())) {
+      console.log(`Format "${format}" not found in title, adding it...`);
+      // Try to insert format in the right position
+      const titleParts = title.split(' ');
+      const byIndex = titleParts.findIndex(word => word.toLowerCase() === 'by');
+      
+      if (byIndex !== -1 && byIndex + 2 < titleParts.length) {
+        // Insert format after "by Author"
+        titleParts.splice(byIndex + 2, 0, format);
+        title = titleParts.join(' ');
+      } else {
+        // Add format at the end if we can't find the right position
+        title = `${title} ${format}`;
+      }
     }
     
     // Validate title length
