@@ -485,12 +485,165 @@ The keyword should be 2-3 words and not exceed 25 characters. Return ONLY the co
     }
     
   } catch (error) {
-    console.error('ERROR in generateOptimizedKeywordUsingGPT:', error);
-    console.log('API error details:', error.response?.data || 'No detailed error data');
-    console.log('Falling back to basic keyword');
-    return "General Interest";
-  } finally {
-    console.log('========== FINISHED generateOptimizedKeywordUsingGPT ==========');
+    console.error('Error generating optimized keyword:', error);
+    return "General Interest"; // Default fallback
+  }
+}
+
+/**
+ * NEW: Combined GPT function that generates book type, keyword, and title in a single API call
+ * This significantly speeds up the listing process while maintaining the same quality
+ * 
+ * @param {Object} listingData - Book metadata including title, author, subjects, and synopsis
+ * @returns {Promise<Object>} - Object containing bookType, keyword, and title
+ */
+async function generateAllBookDataUsingGPT(listingData) {
+  console.log('========== STARTING generateAllBookDataUsingGPT (COMBINED) ==========');
+  console.log(`Book title: "${listingData.title}", Author: "${listingData.author}"`);
+  
+  try {
+    const bookData = {
+      title: listingData.title || '',
+      author: listingData.author || '',
+      publisher: listingData.publisher || 'Unknown',
+      synopsis: listingData.synopsis || '',
+      subjects: listingData.subjects || [],
+      language: listingData.language || 'English',
+      publicationYear: listingData.publicationYear || ''
+    };
+
+    const systemMessage = `You are an expert book analyst for eBay listings. Return exactly 3 values separated by '|':
+1) Book type: "Book", "Cookbook", or "Textbook"
+2) Compound keyword: 2-3 words, max 25 chars, specific to the book's content
+3) Complete eBay title: max 80 chars, format: "Title by Author Format BookType Keyword"
+
+For cookbooks, avoid using "Cookbook" in keyword - use "Italian Cuisine" instead.
+For biographies, combine subject with "Biography" - use "Physics Biography" not just "Biography".`;
+
+    const prompt = `
+Analyze this book and return exactly 3 values separated by '|':
+
+BOOK METADATA:
+Title: "${bookData.title}"
+Author: "${bookData.author}"
+Publisher: "${bookData.publisher}"
+Publication Year: "${bookData.publicationYear}"
+Synopsis: "${bookData.synopsis.substring(0, 1500)}${bookData.synopsis.length > 1500 ? '...' : ''}"
+Subjects/Categories: ${bookData.subjects.join(', ')}
+
+INSTRUCTIONS:
+1. Book Type: Determine if Cookbook, Textbook, or Book
+2. Keyword: Create specific compound keyword (2-3 words, max 25 chars)
+3. Title: Build complete eBay title (max 80 chars)
+
+Return format: BookType|Keyword|Title
+Example: Book|Australian Photography|Max Dupain by Helen Ennis Hardcover Book Australian Photography`;
+
+    console.log('Making combined OpenAI API call...');
+    
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: systemMessage },
+        { role: "user", content: prompt }
+      ],
+      max_tokens: 100,
+      temperature: 0.2,
+    });
+
+    console.log('Combined OpenAI API call completed successfully');
+    console.log(`Raw API response: "${response.choices[0].message.content}"`);
+
+    const result = response.choices[0].message.content.trim();
+    const parts = result.split('|');
+    
+    if (parts.length !== 3) {
+      throw new Error(`Invalid response format. Expected 3 parts, got ${parts.length}`);
+    }
+    
+    let [bookType, keyword, title] = parts.map(s => s.trim());
+    
+    // Validate book type
+    if (!['Book', 'Cookbook', 'Textbook'].includes(bookType)) {
+      console.warn(`Invalid book type: "${bookType}", defaulting to "Book"`);
+      bookType = 'Book';
+    }
+    
+    // Validate keyword length
+    if (keyword.length > 25) {
+      const words = keyword.split(' ');
+      let truncated = '';
+      for (const word of words) {
+        if ((truncated + ' ' + word).trim().length <= 25) {
+          truncated = (truncated + ' ' + word).trim();
+        } else break;
+      }
+      keyword = truncated;
+      console.log(`Keyword truncated to: "${keyword}"`);
+    }
+    
+    // Validate title length
+    if (title.length > 80) {
+      title = title.substring(0, 80).trim();
+      console.log(`Title truncated to: "${title}"`);
+    }
+    
+    console.log(`Combined GPT results: BookType="${bookType}", Keyword="${keyword}", Title="${title}"`);
+    console.log('========== FINISHED generateAllBookDataUsingGPT (COMBINED) ==========');
+    
+    return { bookType, keyword, title };
+    
+  } catch (error) {
+    console.error('Error in combined GPT call:', error);
+    console.log('Falling back to individual GPT calls...');
+    return await fallbackToIndividualCalls(listingData);
+  }
+}
+
+/**
+ * Fallback function that uses the original three separate GPT calls
+ * This ensures the system continues to work even if the combined call fails
+ * 
+ * @param {Object} listingData - Book metadata
+ * @returns {Promise<Object>} - Object containing bookType, keyword, and title
+ */
+async function fallbackToIndividualCalls(listingData) {
+  console.log('========== STARTING FALLBACK TO INDIVIDUAL CALLS ==========');
+  
+  try {
+    const bookType = await determineBookTypeUsingGPT(listingData);
+    const keyword = await generateOptimizedKeywordUsingGPT(listingData, bookType);
+    
+    // For the title, we need to construct it manually since we have the parts
+    let format = 'Paperback';
+    if (listingData.format || listingData.binding) {
+      const formatLower = (listingData.format || listingData.binding).toLowerCase();
+      if (formatLower.includes('hardcover') || formatLower.includes('hard cover') || formatLower.includes('hardback')) {
+        format = 'Hardcover';
+      }
+    }
+    
+    // Build title manually
+    let title = `${listingData.title} by ${listingData.author} ${format} ${bookType} ${keyword}`;
+    
+    // Check if title exceeds 80 characters and shorten if necessary
+    if (title.length > 80) {
+      title = shortenTitle(title, listingData.title, listingData.author, format, bookType, keyword);
+    }
+    
+    console.log(`Fallback results: BookType="${bookType}", Keyword="${keyword}", Title="${title}"`);
+    console.log('========== FINISHED FALLBACK TO INDIVIDUAL CALLS ==========');
+    
+    return { bookType, keyword, title };
+    
+  } catch (error) {
+    console.error('Error in fallback calls:', error);
+    // Ultimate fallback
+    return {
+      bookType: 'Book',
+      keyword: 'General Interest',
+      title: `${listingData.title} by ${listingData.author}`.substring(0, 80)
+    };
   }
 }
 
@@ -1801,10 +1954,9 @@ app.post('/api/processBook', upload.fields([
       return res.status(404).json({ error: 'Could not retrieve book information for the ISBN' });
     }
     
-    // Generate the eBay title but don't create the listing
-    const bookType = await determineBookTypeUsingGPT(metadata);
-    const optimizedKeyword = await generateOptimizedKeywordUsingGPT(metadata, bookType);
-    const ebayTitle = await generateCompleteEbayTitle({
+    // NEW: Use combined GPT call instead of three separate calls for speed optimization
+    console.log('Using combined GPT call for speed optimization...');
+    const { bookType, keyword: optimizedKeyword, title: ebayTitle } = await generateAllBookDataUsingGPT({
       ...metadata,
       ocrText: allOcrText,
       format: metadata.binding || 'Paperback'
