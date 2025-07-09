@@ -103,6 +103,36 @@ function FileUpload({ onSuccess }) {
     }
   };
 
+  const handlePreviousImage = () => {
+    if (selectedImageIndex > 0) {
+      setSelectedImageIndex(selectedImageIndex - 1);
+    }
+  };
+
+  const handleNextImage = () => {
+    if (selectedImageIndex < files.mainImages.length - 1) {
+      setSelectedImageIndex(selectedImageIndex + 1);
+    }
+  };
+
+  const handleKeyDown = (e) => {
+    if (!imageModalOpen) return;
+    
+    switch (e.key) {
+      case 'ArrowLeft':
+        handlePreviousImage();
+        break;
+      case 'ArrowRight':
+        handleNextImage();
+        break;
+      case 'Escape':
+        handleCloseModal();
+        break;
+      default:
+        break;
+    }
+  };
+
   // --- Condition Change Handler ---
   const handleConditionChange = (e) => {
     setSelectedCondition(e.target.value);
@@ -450,7 +480,7 @@ function FileUpload({ onSuccess }) {
 
       {/* Image Modal */}
       {imageModalOpen && selectedImageIndex !== null && files.mainImages[selectedImageIndex] && (
-        <div className="image-modal-overlay" onClick={handleModalBackdropClick}>
+        <div className="image-modal-overlay" onClick={handleModalBackdropClick} onKeyDown={handleKeyDown}>
           <div className="image-modal-content">
             <button 
               className="image-modal-close" 
@@ -459,6 +489,29 @@ function FileUpload({ onSuccess }) {
             >
               ×
             </button>
+            
+            {/* Left Arrow */}
+            {selectedImageIndex > 0 && (
+              <button 
+                className="image-modal-arrow image-modal-arrow-left" 
+                onClick={handlePreviousImage}
+                aria-label="Previous image"
+              >
+                ‹
+              </button>
+            )}
+            
+            {/* Right Arrow */}
+            {selectedImageIndex < files.mainImages.length - 1 && (
+              <button 
+                className="image-modal-arrow image-modal-arrow-right" 
+                onClick={handleNextImage}
+                aria-label="Next image"
+              >
+                ›
+              </button>
+            )}
+            
             <img 
               src={URL.createObjectURL(files.mainImages[selectedImageIndex])} 
               alt={`Book image ${selectedImageIndex + 1}`} 
