@@ -1461,6 +1461,12 @@ function generateBookDescription(bookData, selectedFlawKeys = []) { // Now accep
       .join(''); // Join paragraphs
   }
   
+  // Add custom description note if provided
+  let customNoteHtml = '';
+  if (bookData.customDescriptionNote && bookData.customDescriptionNote.trim()) {
+    customNoteHtml = `<p><strong>Additional Note:</strong> ${bookData.customDescriptionNote.trim()}</p>`;
+  }
+  
   return `
     <div style="font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto;">
             
@@ -1471,6 +1477,7 @@ function generateBookDescription(bookData, selectedFlawKeys = []) { // Now accep
       <p><strong>ISBN:</strong> ${bookData.isbn}</p>
       
       <h2>Product Condition:</h2>
+      ${customNoteHtml}
       ${flawsDescriptionHtml}
       <p>Please be aware that this book is in pre-owned condition</p>
       <p>Inscriptions on the inside cover of the book are always pictured</p>
@@ -1901,6 +1908,10 @@ app.post('/api/processBook', upload.fields([
     const manualIsbn = req.body.manualIsbn ? req.body.manualIsbn.trim() : null;
     console.log('Manual ISBN provided:', manualIsbn);
 
+    // Check for custom description note
+    const customDescriptionNote = req.body.customDescriptionNote ? req.body.customDescriptionNote.trim() : null;
+    console.log('Custom description note provided:', customDescriptionNote);
+
     // Always set the first uploaded image as the main image
     const mainImage = mainImages[0].filename;
     
@@ -2038,8 +2049,9 @@ app.post('/api/processBook', upload.fields([
       mainImage: mainImage,
       allImages: mainImages.map(f => f.filename),
       selectedFlawKeys: selectedFlawKeys, // The keys received/parsed
-  condition: finalBookCondition,      // The final calculated condition
-  conditionDowngraded: conditionDowngraded, // Add this flag
+      condition: finalBookCondition,      // The final calculated condition
+      conditionDowngraded: conditionDowngraded, // Add this flag
+      customDescriptionNote: customDescriptionNote, // Pass through custom description note
       uploadId: Date.now(), // Optional - can be used to reference this upload
       manualIsbnUsed: !!manualIsbn && isbn === isValidISBN(manualIsbn) // Flag to indicate manual ISBN was used
     });
@@ -2071,7 +2083,8 @@ app.post('/api/createListing', upload.fields([{ name: 'imageFiles', maxCount: 24
         title, author, publisher, publicationYear, synopsis, language,
         format, // Assuming format is sent back if needed for display/logic
         subjects, // Expecting this as a JSON string potentially
-        ebayTitle // Expecting the pre-generated title
+        ebayTitle, // Expecting the pre-generated title
+        customDescriptionNote // Custom description note from frontend
     } = req.body;
 
     // *** Parse selectedFlawKeys from body ***
@@ -2116,7 +2129,8 @@ app.post('/api/createListing', upload.fields([{ name: 'imageFiles', maxCount: 24
       title: title || '', author: author || '', publisher: publisher || '', publicationYear,
       synopsis: synopsis || '', language: language || '', format: format || 'Paperback', // Add default format
       subjects: parsedSubjects, // Use parsed subjects
-      ebayTitle // Generated title passed back from frontend
+      ebayTitle, // Generated title passed back from frontend
+      customDescriptionNote: customDescriptionNote || '' // Custom description note
     };
 
     // --- Create eBay Listing ---

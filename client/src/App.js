@@ -9,11 +9,17 @@ function App() {
   const [originalFiles, setOriginalFiles] = useState([]); // Holds the actual File objects
 
   // Callback from FileUpload
-  const handleProcessSuccess = ({ apiResponseData, originalFileObjects }) => {
+  const handleProcessSuccess = ({ apiResponseData, originalFileObjects, customDescriptionNote }) => {
     console.log('App: Received data from FileUpload:', apiResponseData);
     console.log('App: Received File objects:', originalFileObjects.length);
+    console.log('App: Received custom description note:', customDescriptionNote);
     setProcessedData(apiResponseData); // Store response from /api/processBook
     setOriginalFiles(originalFileObjects); // Store the File objects
+    // Store custom description note in processedData
+    setProcessedData(prevData => ({
+      ...apiResponseData,
+      customDescriptionNote: customDescriptionNote
+    }));
     setStep(2); // Move to the next step
   };
 
@@ -57,6 +63,7 @@ function App() {
           selectedFlawKeys={processedData.selectedFlawKeys}
           ocrText={processedData.ocrText}
           conditionDowngraded={processedData.conditionDowngraded} // Pass this too if needed for display
+          customDescriptionNote={processedData.customDescriptionNote} // Pass custom description note
           // *** Pass the ACTUAL File objects ***
           imageFileObjects={originalFiles}
         />

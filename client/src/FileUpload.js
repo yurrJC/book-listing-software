@@ -288,7 +288,8 @@ function FileUpload({ onSuccess }) {
       console.log('Processing successful, calling onSuccess callback with API data and File objects.');
       onSuccess({
         apiResponseData: data, // The JSON response from /api/processBook
-        originalFileObjects: files.mainImages // The actual File objects from state
+        originalFileObjects: files.mainImages, // The actual File objects from state
+        customDescriptionNote: customDescriptionNote // Pass the custom description note
       });
       // *** END CHANGE ***
 

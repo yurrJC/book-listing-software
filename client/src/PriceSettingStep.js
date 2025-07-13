@@ -59,6 +59,7 @@ function PriceSettingStep({
   selectedFlawKeys, // Parsed array from /processBook
   ocrText,
   conditionDowngraded, // Boolean flag
+  customDescriptionNote, // Custom description note from previous step
 }) {
   // State declarations
   const [price, setPrice] = useState('19.99');
@@ -84,6 +85,7 @@ function PriceSettingStep({
       selectedFlawKeys: selectedFlawKeys || 'Not provided!',
       ocrTextLength: ocrText ? ocrText.length : 0,
       conditionDowngraded: conditionDowngraded,
+      customDescriptionNote: customDescriptionNote || 'Not provided',
     });
     let currentError = null;
     if (!imageFileObjects || imageFileObjects.length === 0) {
@@ -101,7 +103,7 @@ function PriceSettingStep({
          // Clear error if props are now valid (optional, prevents sticky errors)
          // setError(null);
      }
-  }, [isbn, metadata, ebayTitle, imageFileObjects, selectedCondition, selectedFlawKeys, ocrText, conditionDowngraded]);
+  }, [isbn, metadata, ebayTitle, imageFileObjects, selectedCondition, selectedFlawKeys, ocrText, conditionDowngraded, customDescriptionNote]);
 
   // Effect for copy success message timeout
   useEffect(() => {
@@ -184,6 +186,12 @@ function PriceSettingStep({
       formData.append('language', metadata?.language || '');
       formData.append('format', metadata?.binding || metadata?.format || 'Paperback');
       formData.append('subjects', JSON.stringify(metadata?.subjects || []));
+
+      // Append custom description note if provided
+      if (customDescriptionNote && customDescriptionNote.trim()) {
+        formData.append('customDescriptionNote', customDescriptionNote.trim());
+        console.log("Appending custom description note:", customDescriptionNote.trim());
+      }
 
       console.log('FormData prepared. Sending to /api/createListing...');
       // Log FormData fields (excluding file content)
