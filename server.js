@@ -376,12 +376,10 @@ async function generateOptimizedKeywordUsingGPT(listingData, bookType) {
 
     console.log('Book data prepared, proceeding with OpenAI call');
 
-    const systemMessage = `You are an expert book metadata analyst specializing in creating the most specific, 
-compound keywords for eBay book listings. Your task is to analyze book details deeply and generate 
-the strongest possible compound keyword (2-3 words) that precisely targets the book's specialty.`;
+    const systemMessage = `You are an expert book metadata analyst specializing in creating searchable, practical keywords for eBay book listings. Your task is to analyze book details and generate keywords that buyers actually search for.`;
 
     const prompt = `
-Generate the most specific, accurate COMPOUND keyword for this book based on deep analysis of its metadata and synopsis:
+Generate a practical, searchable keyword for this book based on its metadata and synopsis:
 
 BOOK METADATA:
 Title: "${bookData.title}"
@@ -393,42 +391,50 @@ Subjects/Categories: ${bookData.subjects.join(', ')}
 
 ${cookbookSpecificInstructions}
 
-INSTRUCTIONS:
-1. Analyze ALL the provided information, focusing on finding the MOST SPECIFIC classification possible
-2. Create a COMPOUND keyword (2-3 words) that combines:
-   - The book's general type (biography, cookbook, textbook, novel, etc.)
-   - PLUS its specific subject matter (Australian photography, quantum physics, French cuisine, etc.)
-3. Look for these specific elements in the synopsis and subjects:
-   - Geographical context (Australian, European, American, etc.)
-   - Historical period (Medieval, Victorian, 20th Century, etc.)
-   - Specific discipline (Photography, Architecture, Economics, etc.)
-   - Cultural context (Indigenous, Classical, Modern, etc.)
-   - Technical specialty (Portrait Photography, Microeconomics, Italian Cooking, etc.)
+KEYWORD GENERATION PROCESS:
+1. START with the PRIMARY SUBJECT from the metadata (usually first in the list)
+   - Examples: Psychology, History, Art, Fiction, Science, Cooking
 
-4. Prioritize SPECIFICITY over generality. For example:
-   - Instead of just "Biography" → use "Photography Biography"
-   - Instead of just "History" → use "Australian History"
-   - Instead of just "Cooking" → use "Italian Cuisine" 
-   - Instead of just "Science" → use "Quantum Physics"
-   - Instead of just "Art" → use "Renaissance Painting"
+2. ENHANCE with key terms from the synopsis when relevant:
+   - Look for: Geographic terms (Australian, Aboriginal, WW2)
+   - Look for: Specific fields (Jungian, Holistic, Military)
+   - Look for: Cultural terms (Indigenous, Renaissance)
 
-5. For biographies, ALWAYS combine who/what the subject was with the fact it's a biography:
-   - For a book about photographer Max Dupain → use "Australian Photography" not just "Biography"
-   - For a book about Einstein → use "Physics Biography" not just "Biography"
-   - For a book about a chef → use "Culinary Biography" not just "Biography"
+3. CHECK for SECONDARY SUBJECTS that could be combined:
+   - If Psychology + Self-Help both apply → use "Psychology Self-Help"
+   - If History + Military both apply → use "Military History"
+
+4. BUILD the keyword using this priority:
+   - Single enhanced: "Jungian Psychology", "WW2 History", "Australian Art"
+   - Multiple subjects: "Psychology Self-Help", "Military History"
+   - Enhanced multiple: "Holistic Psychology Self-Help" (if space allows)
+   - Simple subject: "Psychology", "History", "Fiction" (as fallback)
+
+5. PRIORITIZE SEARCHABILITY:
+   - Use terms people actually search for on eBay
+   - Avoid overly academic or niche terms
+   - Keep it simple but specific enough to be useful
 
 EXAMPLE ANALYSES:
-Example 1: "Max Dupain" by Helen Ennis
-- Synopsis mentions "Australian photographer", "20th century", "iconic images"
-- GOOD COMPOUND KEYWORD: "Australian Photography"
-- BAD KEYWORD: just "Biography" (too general)
+Example 1: "How To Do The Work" by Nicole LePera
+- Subjects: Psychology, Self-Help
+- Synopsis mentions holistic psychology
+- GOOD KEYWORD: "Psychology Self-Help" or "Holistic Psychology"
+- BAD KEYWORD: "Management Leadership" (too business-specific)
 
-Example 2: "The Feynman Lectures on Physics"
-- A physics textbook by Nobel laureate Richard Feynman
-- GOOD COMPOUND KEYWORD: "Physics Textbook" 
-- BAD KEYWORD: just "Science" or "Textbook" (too general)
+Example 2: "Raki" by B. Wongar
+- Subjects: Fiction, Literature
+- Synopsis mentions Australian Aboriginal culture
+- GOOD KEYWORD: "Australian Aboriginal Literary Fiction"
+- BAD KEYWORD: "Cultural Struggles" (too academic, not searchable)
 
-The keyword should be 2-3 words and not exceed 25 characters. Return ONLY the compound keyword - no explanation, no quotation marks, no additional text.
+Example 3: "Low FODMAP Recipes" by Sue Shepherd
+- Subjects: Cooking, Health, Diet
+- Synopsis mentions IBS management
+- GOOD KEYWORD: "IBS Management", "Dieting", "Health Recipes"
+- BAD KEYWORD: "Digestive Health Cooking" (too specific)
+
+The keyword should be 1-3 words and not exceed 25 characters. Return ONLY the keyword - no explanation, no quotation marks, no additional text.
 `;
 
     console.log('Making OpenAI API call...');
@@ -529,11 +535,10 @@ async function generateAllBookDataUsingGPT(listingData) {
 
     const systemMessage = `You are an expert book analyst for eBay listings. Return exactly 3 values separated by '|':
 1) Book type: "Book", "Cookbook", or "Textbook"
-2) Compound keyword: 2-3 words, max 25 chars, specific to the book's content
+2) Searchable keyword: 1-3 words, max 25 chars, based on subjects + synopsis enhancement
 3) Complete eBay title: max 80 chars, format: "Title by Author Format BookType Keyword"
 
-For cookbooks, avoid using "Cookbook" in keyword - use "Italian Cuisine" instead.
-For biographies, combine subject with "Biography" - use "Physics Biography" not just "Biography".
+KEYWORD PROCESS: Start with primary subject from metadata, enhance with synopsis terms, combine multiple subjects when relevant.
 ALWAYS include the format (Paperback/Hardcover) in the title.`;
 
     const prompt = `
@@ -548,13 +553,20 @@ Format: "${format}"
 Synopsis: "${bookData.synopsis.substring(0, 1500)}${bookData.synopsis.length > 1500 ? '...' : ''}"
 Subjects/Categories: ${bookData.subjects.join(', ')}
 
-INSTRUCTIONS:
-1. Book Type: Determine if Cookbook, Textbook, or Book
-2. Keyword: Create specific compound keyword (2-3 words, max 25 chars)
-3. Title: Build complete eBay title (max 80 chars) - MUST include the format "${format}"
+KEYWORD GENERATION:
+1. START with PRIMARY SUBJECT from metadata (first in list)
+2. ENHANCE with synopsis terms: Geographic (Australian, Aboriginal), Fields (Jungian, Military), Cultural (Indigenous)
+3. COMBINE multiple subjects when relevant: "Psychology Self-Help", "Military History"
+4. PRIORITIZE searchable terms people actually search for on eBay
+
+EXAMPLES:
+- Psychology + Self-Help subjects → "Psychology Self-Help"
+- History + Military + WW2 synopsis → "WW2 Military History"
+- Fiction + Australian Aboriginal synopsis → "Australian Aboriginal Literary Fiction"
+- Cooking + Health subjects → "Health Recipes"
 
 Return format: BookType|Keyword|Title
-Example: Book|Australian Photography|Max Dupain by Helen Ennis ${format} Book Australian Photography
+Example: Book|Psychology Self-Help|How To Do The Work by Nicole LePera ${format} Book Psychology Self-Help
 
 IMPORTANT: The title MUST include "${format}" in the correct position.`;
 
