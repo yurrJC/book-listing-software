@@ -392,8 +392,10 @@ Subjects/Categories: ${bookData.subjects.join(', ')}
 ${cookbookSpecificInstructions}
 
 KEYWORD GENERATION PROCESS:
-1. START with the PRIMARY SUBJECT from the metadata (usually first in the list)
-   - Examples: Psychology, History, Art, Fiction, Science, Cooking
+1. START with BROADER, SEARCHABLE CATEGORIES from metadata:
+   - Prioritize: Psychology, New Age, History, Art, Fiction, Science, Cooking, Self-Help
+   - Avoid overly specific terms like "Intuition", "Meditation", "Quantum Physics" unless they're the main focus
+   - Choose categories people actually search for on eBay
 
 2. ENHANCE with key terms from the synopsis when relevant:
    - Look for: Geographic terms (Australian, Aboriginal, WW2)
@@ -402,18 +404,19 @@ KEYWORD GENERATION PROCESS:
 
 3. CHECK for SECONDARY SUBJECTS that could be combined:
    - If Psychology + Self-Help both apply → use "Psychology Self-Help"
+   - If New Age + Psychology both apply → use "New Age Psychology"
    - If History + Military both apply → use "Military History"
 
 4. BUILD the keyword using this priority:
+   - Multiple subjects: "New Age Psychology", "Psychology Self-Help", "Military History"
    - Single enhanced: "Jungian Psychology", "WW2 History", "Australian Art"
-   - Multiple subjects: "Psychology Self-Help", "Military History"
    - Enhanced multiple: "Holistic Psychology Self-Help" (if space allows)
-   - Simple subject: "Psychology", "History", "Fiction" (as fallback)
+   - Simple subject: "Psychology", "New Age", "History", "Fiction" (as fallback)
 
 5. PRIORITIZE SEARCHABILITY:
-   - Use terms people actually search for on eBay
-   - Avoid overly academic or niche terms
-   - Keep it simple but specific enough to be useful
+   - Use BROADER categories that maximize search visibility
+   - Avoid overly specific terms that limit search reach
+   - Choose terms people commonly search for on eBay
 
 EXAMPLE ANALYSES:
 Example 1: "How To Do The Work" by Nicole LePera
@@ -554,12 +557,15 @@ Synopsis: "${bookData.synopsis.substring(0, 1500)}${bookData.synopsis.length > 1
 Subjects/Categories: ${bookData.subjects.join(', ')}
 
 KEYWORD GENERATION:
-1. START with PRIMARY SUBJECT from metadata (first in list)
+1. START with BROADER, SEARCHABLE CATEGORIES from metadata:
+   - Prioritize: Psychology, New Age, History, Art, Fiction, Science, Cooking, Self-Help
+   - Avoid overly specific terms like "Intuition", "Meditation" unless they're the main focus
 2. ENHANCE with synopsis terms: Geographic (Australian, Aboriginal), Fields (Jungian, Military), Cultural (Indigenous)
-3. COMBINE multiple subjects when relevant: "Psychology Self-Help", "Military History"
-4. PRIORITIZE searchable terms people actually search for on eBay
+3. COMBINE multiple subjects when relevant: "New Age Psychology", "Psychology Self-Help", "Military History"
+4. PRIORITIZE broader categories that maximize search visibility
 
 EXAMPLES:
+- New Age + Psychology subjects → "New Age Psychology"
 - Psychology + Self-Help subjects → "Psychology Self-Help"
 - History + Military + WW2 synopsis → "WW2 Military History"
 - Fiction + Australian Aboriginal synopsis → "Australian Aboriginal Literary Fiction"
