@@ -542,7 +542,8 @@ async function generateAllBookDataUsingGPT(listingData) {
 3) Complete eBay title: max 80 chars, format: "Title by Author Format BookType Keyword"
 
 KEYWORD PROCESS: Start with primary subject from metadata, enhance with synopsis terms, combine multiple subjects when relevant.
-ALWAYS include the format (Paperback/Hardcover) in the title.`;
+ALWAYS include the format (Paperback/Hardcover) in the title.
+FOR FICTION BOOKS: Always end the title with "Fiction" (e.g., "Psychological Fiction", "Thriller Fiction").`;
 
     const prompt = `
 Analyze this book and return exactly 3 values separated by '|':
@@ -573,8 +574,10 @@ EXAMPLES:
 
 Return format: BookType|Keyword|Title
 Example: Book|Psychology Self-Help|How To Do The Work by Nicole LePera ${format} Book Psychology Self-Help
+Example Fiction: Book|Psychological Thriller|The Silent Patient by Alex Michaelides ${format} Book Psychological Fiction
 
-IMPORTANT: The title MUST include "${format}" in the correct position.`;
+IMPORTANT: The title MUST include "${format}" in the correct position.
+FOR FICTION BOOKS: Always end the title with "Fiction" (e.g., "Psychological Fiction", "Thriller Fiction").`;
 
     console.log('Making combined OpenAI API call...');
     
@@ -636,6 +639,52 @@ IMPORTANT: The title MUST include "${format}" in the correct position.`;
       }
     }
     
+    // NEW: For Fiction books, ensure the title ends with "Fiction"
+    const narrativeType = await determineNarrativeTypeUsingGPT(listingData);
+    const isFiction = narrativeType === 'Fiction';
+    
+    if (isFiction && !title.toLowerCase().includes(' fiction')) {
+      console.log(`Fiction book detected in combined GPT - ensuring title ends with "Fiction"`);
+      
+      // Check if we have space to add "Fiction" at the end
+      const titleWithFiction = `${title} Fiction`;
+      if (titleWithFiction.length <= 80) {
+        title = titleWithFiction;
+        console.log(`Added "Fiction" to title: "${title}"`);
+      } else {
+        // If adding "Fiction" would exceed 80 chars, try to preserve part of the keyword
+        const titleWithoutKeyword = title.replace(` ${keyword}`, '');
+        const titleWithFictionReplacement = `${titleWithoutKeyword} Fiction`;
+        
+        if (titleWithFictionReplacement.length <= 80) {
+          // Check if we can preserve part of a compound keyword
+          const keywordWords = keyword.split(' ');
+          if (keywordWords.length > 1) {
+            // Try to keep the first word of the compound keyword
+            const firstWord = keywordWords[0];
+            const titleWithFirstWord = `${titleWithoutKeyword} ${firstWord} Fiction`;
+            if (titleWithFirstWord.length <= 80) {
+              title = titleWithFirstWord;
+              console.log(`Preserved first word of keyword: "${title}"`);
+            } else {
+              // If even the first word doesn't fit, just use "Fiction"
+              title = titleWithFictionReplacement;
+              console.log(`Replaced keyword with "Fiction": "${title}"`);
+            }
+          } else {
+            // Single word keyword, just replace with "Fiction"
+            title = titleWithFictionReplacement;
+            console.log(`Replaced keyword with "Fiction": "${title}"`);
+          }
+        } else {
+          // If still too long, just truncate and add "Fiction"
+          const truncatedTitle = title.substring(0, 75).trim();
+          title = `${truncatedTitle} Fiction`;
+          console.log(`Truncated and added "Fiction": "${title}"`);
+        }
+      }
+    }
+    
     // Validate title length
     if (title.length > 80) {
       title = title.substring(0, 80).trim();
@@ -684,6 +733,52 @@ async function fallbackToIndividualCalls(listingData) {
     
     // Build title manually
     let title = `${listingData.title} by ${listingData.author} ${format} ${bookType} ${keyword}`;
+    
+    // NEW: For Fiction books, ensure the title ends with "Fiction"
+    const narrativeType = await determineNarrativeTypeUsingGPT(listingData);
+    const isFiction = narrativeType === 'Fiction';
+    
+    if (isFiction && !title.toLowerCase().includes(' fiction')) {
+      console.log(`Fiction book detected in fallback - ensuring title ends with "Fiction"`);
+      
+      // Check if we have space to add "Fiction" at the end
+      const titleWithFiction = `${title} Fiction`;
+      if (titleWithFiction.length <= 80) {
+        title = titleWithFiction;
+        console.log(`Added "Fiction" to title: "${title}"`);
+      } else {
+        // If adding "Fiction" would exceed 80 chars, try to preserve part of the keyword
+        const titleWithoutKeyword = title.replace(` ${keyword}`, '');
+        const titleWithFictionReplacement = `${titleWithoutKeyword} Fiction`;
+        
+        if (titleWithFictionReplacement.length <= 80) {
+          // Check if we can preserve part of a compound keyword
+          const keywordWords = keyword.split(' ');
+          if (keywordWords.length > 1) {
+            // Try to keep the first word of the compound keyword
+            const firstWord = keywordWords[0];
+            const titleWithFirstWord = `${titleWithoutKeyword} ${firstWord} Fiction`;
+            if (titleWithFirstWord.length <= 80) {
+              title = titleWithFirstWord;
+              console.log(`Preserved first word of keyword: "${title}"`);
+            } else {
+              // If even the first word doesn't fit, just use "Fiction"
+              title = titleWithFictionReplacement;
+              console.log(`Replaced keyword with "Fiction": "${title}"`);
+            }
+          } else {
+            // Single word keyword, just replace with "Fiction"
+            title = titleWithFictionReplacement;
+            console.log(`Replaced keyword with "Fiction": "${title}"`);
+          }
+        } else {
+          // If still too long, just truncate and add "Fiction"
+          const truncatedTitle = title.substring(0, 75).trim();
+          title = `${truncatedTitle} Fiction`;
+          console.log(`Truncated and added "Fiction": "${title}"`);
+        }
+      }
+    }
     
     // Check if title exceeds 80 characters and shorten if necessary
     if (title.length > 80) {
@@ -777,7 +872,12 @@ async function generateCompleteEbayTitle(listingData) {
   console.log(`Generating complete eBay title for book: "${listingData.title}"`);
   
   try {
-    // Step 1: Extract and prepare title parts
+    // Step 1: Determine if this is a Fiction book
+    const narrativeType = await determineNarrativeTypeUsingGPT(listingData);
+    console.log(`Narrative type determined: "${narrativeType}"`);
+    const isFiction = narrativeType === 'Fiction';
+    
+    // Step 2: Extract and prepare title parts
     let mainTitle = listingData.title;
     let subtitle = '';
     if (listingData.title.includes(':')) {
@@ -861,6 +961,49 @@ if (listingData.ocrText) {
       title = `${mainTitle} by ${authorSection} ${format} ${bookType} ${keyword}`;
     }
     
+    // NEW: For Fiction books, ensure the title ends with "Fiction"
+    if (isFiction && !title.toLowerCase().includes(' fiction')) {
+      console.log(`Fiction book detected - ensuring title ends with "Fiction"`);
+      
+      // Check if we have space to add "Fiction" at the end
+      const titleWithFiction = `${title} Fiction`;
+      if (titleWithFiction.length <= 80) {
+        title = titleWithFiction;
+        console.log(`Added "Fiction" to title: "${title}"`);
+      } else {
+        // If adding "Fiction" would exceed 80 chars, try to preserve part of the keyword
+        const titleWithoutKeyword = title.replace(` ${keyword}`, '');
+        const titleWithFictionReplacement = `${titleWithoutKeyword} Fiction`;
+        
+        if (titleWithFictionReplacement.length <= 80) {
+          // Check if we can preserve part of a compound keyword
+          const keywordWords = keyword.split(' ');
+          if (keywordWords.length > 1) {
+            // Try to keep the first word of the compound keyword
+            const firstWord = keywordWords[0];
+            const titleWithFirstWord = `${titleWithoutKeyword} ${firstWord} Fiction`;
+            if (titleWithFirstWord.length <= 80) {
+              title = titleWithFirstWord;
+              console.log(`Preserved first word of keyword: "${title}"`);
+            } else {
+              // If even the first word doesn't fit, just use "Fiction"
+              title = titleWithFictionReplacement;
+              console.log(`Replaced keyword with "Fiction": "${title}"`);
+            }
+          } else {
+            // Single word keyword, just replace with "Fiction"
+            title = titleWithFictionReplacement;
+            console.log(`Replaced keyword with "Fiction": "${title}"`);
+          }
+        } else {
+          // If still too long, just truncate and add "Fiction"
+          const truncatedTitle = title.substring(0, 75).trim();
+          title = `${truncatedTitle} Fiction`;
+          console.log(`Truncated and added "Fiction": "${title}"`);
+        }
+      }
+    }
+    
     console.log(`Directly constructed title: "${title}" (${title.length} chars)`);
     
     // Check if the title exceeds eBay's 80 character limit and shorten if necessary
@@ -895,6 +1038,10 @@ function shortenTitle(fullTitle, mainTitle, author, format, bookType, keyword) {
   
   let shortenedTitle = fullTitle;
   
+  // NEW: Check if this is a Fiction book and preserve "Fiction" at the end
+  const isFiction = shortenedTitle.toLowerCase().includes(' fiction');
+  console.log(`Fiction book detected in shortenTitle: ${isFiction}`);
+  
   // STEP 1: Replace full format with abbreviation
   const abbreviatedFormat = format === 'Hardcover' ? 'HC' : 'PB';
   shortenedTitle = shortenedTitle
@@ -903,13 +1050,23 @@ function shortenTitle(fullTitle, mainTitle, author, format, bookType, keyword) {
   
   console.log(`After format abbreviation: "${shortenedTitle}" (${shortenedTitle.length} chars)`);
   
-  // STEP 2: If still too long, remove keyword
+  // STEP 2: If still too long, remove keyword (but preserve "Fiction" if present)
   if (shortenedTitle.length > 80) {
     // Save the keyword for potential re-adding later
     const savedKeyword = keyword;
     
-    // Remove keyword
-    shortenedTitle = shortenedTitle.replace(` ${keyword}`, '');
+    // Remove keyword, but be careful not to remove "Fiction" if it's part of the keyword
+    if (isFiction && savedKeyword.toLowerCase().includes('fiction')) {
+      // If the keyword contains "Fiction", just remove the non-fiction part
+      const keywordWithoutFiction = savedKeyword.replace(/\s*fiction\s*/i, '').trim();
+      if (keywordWithoutFiction) {
+        shortenedTitle = shortenedTitle.replace(` ${keywordWithoutFiction}`, '');
+      }
+    } else {
+      // Remove the entire keyword
+      shortenedTitle = shortenedTitle.replace(` ${savedKeyword}`, '');
+    }
+    
     console.log(`After removing keyword: "${shortenedTitle}" (${shortenedTitle.length} chars)`);
     
     // Check if we can re-add the keyword now that we've removed it
@@ -935,6 +1092,15 @@ function shortenTitle(fullTitle, mainTitle, author, format, bookType, keyword) {
     if (shortenedTitle.length + abbreviatedFormat.length + 1 <= 80) {
       shortenedTitle = `${shortenedTitle} ${abbreviatedFormat}`;
       console.log(`Added format abbreviation: "${shortenedTitle}" (${shortenedTitle.length} chars)`);
+    }
+    
+    // NEW: For Fiction books, ensure "Fiction" is added back if we have space
+    if (isFiction && !shortenedTitle.toLowerCase().includes(' fiction')) {
+      const titleWithFiction = `${shortenedTitle} Fiction`;
+      if (titleWithFiction.length <= 80) {
+        shortenedTitle = titleWithFiction;
+        console.log(`Added "Fiction" back to shortened title: "${shortenedTitle}"`);
+      }
     }
   }
   
@@ -981,8 +1147,15 @@ function shortenTitle(fullTitle, mainTitle, author, format, bookType, keyword) {
   
   // FINAL SAFETY CHECK
   if (shortenedTitle.length > 80) {
-    shortenedTitle = shortenedTitle.substring(0, 80).trim();
-    console.log(`EMERGENCY FINAL CUT: "${shortenedTitle}" (${shortenedTitle.length} chars)`);
+    // For Fiction books, ensure we preserve "Fiction" at the end
+    if (isFiction) {
+      const maxLength = 75; // Leave space for "Fiction"
+      shortenedTitle = shortenedTitle.substring(0, maxLength).trim() + ' Fiction';
+      console.log(`EMERGENCY FINAL CUT (preserving Fiction): "${shortenedTitle}" (${shortenedTitle.length} chars)`);
+    } else {
+      shortenedTitle = shortenedTitle.substring(0, 80).trim();
+      console.log(`EMERGENCY FINAL CUT: "${shortenedTitle}" (${shortenedTitle.length} chars)`);
+    }
   }
   
   return shortenedTitle;
