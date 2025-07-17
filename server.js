@@ -2206,9 +2206,9 @@ app.post('/api/processBook', upload.fields([
     
     // NEW: Use combined GPT call instead of three separate calls for speed optimization
     console.log('Using combined GPT call for speed optimization...');
-    const { bookType, keyword: optimizedKeyword, title: ebayTitle } = await generateAllBookDataUsingGPT({
+    const ebayTitle = await generateStepwiseEbayTitle({
       ...metadata,
-      ocrText: manualIsbn ? '' : allOcrText, // Skip OCR text for manual ISBN scenarios
+      ocrText: manualIsbn ? '' : allOcrText,
       format: metadata.binding || 'Paperback'
     });
     
@@ -2362,3 +2362,127 @@ const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
+
+// Replace the simple enforceEbayTitleLimit function with smart keyword truncation
+function smartKeywordTruncation(baseTitle, fullKeyword) {
+  const baseLength = baseTitle.length;
+  const availableSpace = 80 - baseLength;
+  
+  if (availableSpace <= 0) {
+    return baseTitle; // No space for keyword
+  }
+  
+  const keywordWords = fullKeyword.split(' ');
+  let bestFit = '';
+  
+  // Try to fit as many complete words as possible
+  for (let i = 1; i <= keywordWords.length; i++) {
+    const testKeyword = keywordWords.slice(0, i).join(' ');
+    if (testKeyword.length <= availableSpace) {
+      bestFit = testKeyword;
+    } else {
+      break; // Stop when we can't fit more words
+    }
+  }
+  
+  return bestFit ? `${baseTitle} ${bestFit}` : baseTitle;
+}
+
+function enforceEbayTitleLimit(title) {
+  let cleanTitle = (title || '').replace(/\s+/g, ' ').trim();
+  
+  // If already under 80 chars, return as is
+  if (Buffer.byteLength(cleanTitle, 'utf8') <= 80) {
+    return cleanTitle;
+  }
+  
+  // Extract the base title (everything before the keyword)
+  const parts = cleanTitle.split(' ');
+  const byIndex = parts.findIndex(word => word.toLowerCase() === 'by');
+  
+  if (byIndex !== -1 && byIndex + 2 < parts.length) {
+    // Find where the keyword starts (after "by Author Format BookType")
+    const keywordStartIndex = byIndex + 3; // by + author + format + booktype
+    const baseTitle = parts.slice(0, keywordStartIndex).join(' ');
+    const keyword = parts.slice(keywordStartIndex).join(' ');
+    
+    // Use smart truncation for the keyword
+    return smartKeywordTruncation(baseTitle, keyword);
+  } else {
+    // Fallback: simple truncation if we can't parse the structure
+    while (Buffer.byteLength(cleanTitle, 'utf8') > 80) {
+      cleanTitle = cleanTitle.slice(0, -1).trim();
+    }
+    return cleanTitle;
+  }
+}
+
+// Fix the AI truncation to only use code logic as true fallback
+async function aiIntelligentTruncation(title) {
+  const prompt = `\nThe following eBay title is ${title.length} characters long, which exceeds eBay's 80-character limit.\n\nTitle: "${title}"\n\nPlease truncate this title intelligently to fit within 80 characters while following these rules:\n- Keep the most important keywords (first words)\n- Avoid awkward endings (no partial words)\n- Preserve the core meaning\n- Always end with complete words\n- If the title is "Title by Author Format BookType Keyword", prioritize keeping the first part of the keyword\n- The result MUST be 80 characters or less\n\nReturn ONLY the truncated title, with no explanation or extra text.`;
+  
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: "You are an expert at creating concise, effective eBay titles that fit within character limits while preserving the most important information." },
+        { role: "user", content: prompt }
+      ],
+      max_tokens: 50,
+      temperature: 0.1,
+    });
+    
+    const truncatedTitle = response.choices[0].message.content.trim();
+    
+    // Trust the AI's output - only validate it's not empty
+    if (truncatedTitle && truncatedTitle.length > 0) {
+      return truncatedTitle;
+    } else {
+      // Only fallback if AI returns empty/null
+      console.log('AI truncation returned empty result, using fallback logic');
+      return enforceEbayTitleLimit(title);
+    }
+  } catch (error) {
+    console.error('Error in AI truncation:', error);
+    // Only fallback on API errors
+    return enforceEbayTitleLimit(title);
+  }
+}
+
+// Update the stepwise title generation to include AI truncation
+async function generateStepwiseEbayTitle(listingData) {
+  // Step 1: Classify narrative type
+  const narrativeType = await classifyNarrativeType(listingData);
+  // Step 2: Classify book type
+  const bookType = await determineBookTypeUsingGPT(listingData);
+  // Step 3: Generate keyword
+  const keyword = await generateKeyword(listingData, bookType);
+  // Step 4: Determine format
+  let format = 'Paperback';
+  if (listingData.format || listingData.binding) {
+    const formatValue = (listingData.format || listingData.binding);
+    const formatLower = formatValue.toLowerCase();
+    if (formatLower.includes('hardcover') || formatLower.includes('hard cover') || formatLower.includes('hardback') || formatLower === 'hardcover') {
+      format = 'Hardcover';
+    } else if (formatLower === 'book' || formatLower === 'paperback') {
+      format = 'Paperback';
+    }
+  }
+  // Step 5: Build title
+  let ebayTitle = buildEbayTitle({
+    title: listingData.title,
+    author: listingData.author,
+    format,
+    bookType,
+    keyword,
+    narrativeType
+  });
+  
+  // Step 6: AI-powered intelligent truncation if needed
+  if (Buffer.byteLength(ebayTitle, 'utf8') > 80) {
+    console.log(`Title exceeds 80 characters (${ebayTitle.length}), using AI truncation`);
+    ebayTitle = await aiIntelligentTruncation(ebayTitle);
+  }
+  
+  return ebayTitle;
+}
