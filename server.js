@@ -506,202 +506,7 @@ The keyword should be 1-3 words and not exceed 25 characters. Return ONLY the ke
  * @param {Object} listingData - Book metadata including title, author, subjects, and synopsis
  * @returns {Promise<Object>} - Object containing bookType, keyword, and title
  */
-async function generateAllBookDataUsingGPT(listingData) {
-  console.log('========== STARTING generateAllBookDataUsingGPT (COMBINED) ==========');
-  console.log(`Book title: "${listingData.title}", Author: "${listingData.author}"`);
-  
-  try {
-    const bookData = {
-      title: listingData.title || '',
-      author: listingData.author || '',
-      publisher: listingData.publisher || 'Unknown',
-      synopsis: listingData.synopsis || '',
-      subjects: listingData.subjects || [],
-      language: listingData.language || 'English',
-      publicationYear: listingData.publicationYear || ''
-    };
-
-    // Determine format from the listing data
-    let format = 'Paperback';
-    if (listingData.format || listingData.binding) {
-      const formatValue = (listingData.format || listingData.binding);
-      const formatLower = formatValue.toLowerCase();
-      console.log(`Raw format/binding value: "${formatValue}"`);
-      
-      if (formatLower.includes('hardcover') || formatLower.includes('hard cover') || formatLower.includes('hardback') || formatLower === 'hardcover') {
-        format = 'Hardcover';
-      } else if (formatLower === 'book' || formatLower === 'paperback') {
-        format = 'Paperback';
-      }
-    }
-    console.log(`Determined format: "${format}"`);
-
-    const systemMessage = `You are an expert book analyst for eBay listings. Return exactly 3 values separated by '|':
-1) Book type: "Book", "Cookbook", or "Textbook"
-2) Searchable keyword: 1-3 words, max 25 chars, based on subjects + synopsis enhancement
-3) Complete eBay title: max 80 chars, format: "Title by Author Format BookType Keyword"
-
-KEYWORD PROCESS: Start with primary subject from metadata, enhance with synopsis terms, combine multiple subjects when relevant.
-ALWAYS include the format (Paperback/Hardcover) in the title.
-FOR FICTION BOOKS: Always end the title with "Fiction" (e.g., "Psychological Fiction", "Thriller Fiction").`;
-
-    const prompt = `
-Analyze this book and return exactly 3 values separated by '|':
-
-BOOK METADATA:
-Title: "${bookData.title}"
-Author: "${bookData.author}"
-Publisher: "${bookData.publisher}"
-Publication Year: "${bookData.publicationYear}"
-Format: "${format}"
-Synopsis: "${bookData.synopsis.substring(0, 1500)}${bookData.synopsis.length > 1500 ? '...' : ''}"
-Subjects/Categories: ${bookData.subjects.join(', ')}
-
-KEYWORD GENERATION:
-1. START with BROADER, SEARCHABLE CATEGORIES from metadata:
-   - Prioritize: Psychology, New Age, History, Art, Fiction, Science, Cooking, Self-Help
-   - Avoid overly specific terms like "Intuition", "Meditation" unless they're the main focus
-2. ENHANCE with synopsis terms: Geographic (Australian, Aboriginal), Fields (Jungian, Military), Cultural (Indigenous)
-3. COMBINE multiple subjects when relevant: "New Age Psychology", "Psychology Self-Help", "Military History"
-4. PRIORITIZE broader categories that maximize search visibility
-
-EXAMPLES:
-- New Age + Psychology subjects → "New Age Psychology"
-- Psychology + Self-Help subjects → "Psychology Self-Help"
-- History + Military + WW2 synopsis → "WW2 Military History"
-- Fiction + Australian Aboriginal synopsis → "Australian Aboriginal Literary Fiction"
-- Cooking + Health subjects → "Health Recipes"
-
-Return format: BookType|Keyword|Title
-Example: Book|Psychology Self-Help|How To Do The Work by Nicole LePera ${format} Book Psychology Self-Help
-Example Fiction: Book|Psychological Thriller|The Silent Patient by Alex Michaelides ${format} Book Psychological Fiction
-
-IMPORTANT: The title MUST include "${format}" in the correct position.
-FOR FICTION BOOKS: Always end the title with "Fiction" (e.g., "Psychological Fiction", "Thriller Fiction").`;
-
-    console.log('Making combined OpenAI API call...');
-    
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        { role: "system", content: systemMessage },
-        { role: "user", content: prompt }
-      ],
-      max_tokens: 100,
-      temperature: 0.2,
-    });
-
-    console.log('Combined OpenAI API call completed successfully');
-    console.log(`Raw API response: "${response.choices[0].message.content}"`);
-
-    const result = response.choices[0].message.content.trim();
-    const parts = result.split('|');
-    
-    if (parts.length !== 3) {
-      throw new Error(`Invalid response format. Expected 3 parts, got ${parts.length}`);
-    }
-    
-    let [bookType, keyword, title] = parts.map(s => s.trim());
-    
-    // Validate book type
-    if (!['Book', 'Cookbook', 'Textbook'].includes(bookType)) {
-      console.warn(`Invalid book type: "${bookType}", defaulting to "Book"`);
-      bookType = 'Book';
-    }
-    
-    // Validate keyword length
-    if (keyword.length > 25) {
-      const words = keyword.split(' ');
-      let truncated = '';
-      for (const word of words) {
-        if ((truncated + ' ' + word).trim().length <= 25) {
-          truncated = (truncated + ' ' + word).trim();
-        } else break;
-      }
-      keyword = truncated;
-      console.log(`Keyword truncated to: "${keyword}"`);
-    }
-    
-    // Ensure format is in the title, and if not, add it
-    if (!title.toLowerCase().includes(format.toLowerCase())) {
-      console.log(`Format "${format}" not found in title, adding it...`);
-      // Try to insert format in the right position
-      const titleParts = title.split(' ');
-      const byIndex = titleParts.findIndex(word => word.toLowerCase() === 'by');
-      
-      if (byIndex !== -1 && byIndex + 2 < titleParts.length) {
-        // Insert format after "by Author"
-        titleParts.splice(byIndex + 2, 0, format);
-        title = titleParts.join(' ');
-      } else {
-        // Add format at the end if we can't find the right position
-        title = `${title} ${format}`;
-      }
-    }
-    
-    // NEW: For Fiction books, ensure the title ends with "Fiction"
-    const narrativeType = await determineNarrativeTypeUsingGPT(listingData);
-    const isFiction = narrativeType === 'Fiction';
-    
-    if (isFiction && !title.toLowerCase().includes(' fiction')) {
-      console.log(`Fiction book detected in combined GPT - ensuring title ends with "Fiction"`);
-      
-      // Check if we have space to add "Fiction" at the end
-      const titleWithFiction = `${title} Fiction`;
-      if (titleWithFiction.length <= 80) {
-        title = titleWithFiction;
-        console.log(`Added "Fiction" to title: "${title}"`);
-      } else {
-        // If adding "Fiction" would exceed 80 chars, try to preserve part of the keyword
-        const titleWithoutKeyword = title.replace(` ${keyword}`, '');
-        const titleWithFictionReplacement = `${titleWithoutKeyword} Fiction`;
-        
-        if (titleWithFictionReplacement.length <= 80) {
-          // Check if we can preserve part of a compound keyword
-          const keywordWords = keyword.split(' ');
-          if (keywordWords.length > 1) {
-            // Try to keep the first word of the compound keyword
-            const firstWord = keywordWords[0];
-            const titleWithFirstWord = `${titleWithoutKeyword} ${firstWord} Fiction`;
-            if (titleWithFirstWord.length <= 80) {
-              title = titleWithFirstWord;
-              console.log(`Preserved first word of keyword: "${title}"`);
-            } else {
-              // If even the first word doesn't fit, just use "Fiction"
-              title = titleWithFictionReplacement;
-              console.log(`Replaced keyword with "Fiction": "${title}"`);
-            }
-          } else {
-            // Single word keyword, just replace with "Fiction"
-            title = titleWithFictionReplacement;
-            console.log(`Replaced keyword with "Fiction": "${title}"`);
-          }
-        } else {
-          // If still too long, just truncate and add "Fiction"
-          const truncatedTitle = title.substring(0, 75).trim();
-          title = `${truncatedTitle} Fiction`;
-          console.log(`Truncated and added "Fiction": "${title}"`);
-        }
-      }
-    }
-    
-    // Validate title length
-    if (title.length > 80) {
-      title = title.substring(0, 80).trim();
-      console.log(`Title truncated to: "${title}"`);
-    }
-    
-    console.log(`Combined GPT results: BookType="${bookType}", Keyword="${keyword}", Title="${title}"`);
-    console.log('========== FINISHED generateAllBookDataUsingGPT (COMBINED) ==========');
-    
-    return { bookType, keyword, title };
-    
-  } catch (error) {
-    console.error('Error in combined GPT call:', error);
-    console.log('Falling back to individual GPT calls...');
-    return await fallbackToIndividualCalls(listingData);
-  }
-}
+// REMOVED: generateAllBookDataUsingGPT function - replaced with stepwise approach
 
 /**
  * Fallback function that uses the original three separate GPT calls
@@ -2195,8 +2000,8 @@ app.post('/api/processBook', upload.fields([
       return res.status(404).json({ error: 'Could not retrieve book information for the ISBN' });
     }
     
-    // NEW: Use combined GPT call instead of three separate calls for speed optimization
-    console.log('Using combined GPT call for speed optimization...');
+    // Use stepwise AI-powered title generation
+    console.log('Using stepwise AI-powered title generation...');
     const ebayTitle = await generateStepwiseEbayTitle({
       ...metadata,
       ocrText: manualIsbn ? '' : allOcrText,
@@ -2427,7 +2232,14 @@ async function aiIntelligentTruncation(title) {
     
     // Trust the AI's output - only validate it's not empty
     if (truncatedTitle && truncatedTitle.length > 0) {
-      return truncatedTitle;
+      // FINAL VALIDATION: Ensure the AI's output is actually under 80 characters
+      if (Buffer.byteLength(truncatedTitle, 'utf8') <= 80) {
+        console.log(`AI truncation successful: "${truncatedTitle}" (${truncatedTitle.length} chars)`);
+        return truncatedTitle;
+      } else {
+        console.log(`AI truncation returned title still too long (${truncatedTitle.length} chars), using fallback logic`);
+        return enforceEbayTitleLimit(title);
+      }
     } else {
       // Only fallback if AI returns empty/null
       console.log('AI truncation returned empty result, using fallback logic');
