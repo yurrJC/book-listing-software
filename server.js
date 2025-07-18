@@ -1790,9 +1790,9 @@ async function createEbayDraftListing(listingData) {
       ebayTitle = listingData.customTitle;
       console.log(`Using custom title: "${ebayTitle}"`);
     } else {
-      // Generate the complete eBay title using the new unified approach
-      ebayTitle = await generateCompleteEbayTitle(listingData);
-      console.log(`Generated eBay title: "${ebayTitle}"`);
+      // Use the same stepwise title generation as in /processBook endpoint
+      ebayTitle = await generateStepwiseEbayTitle(listingData);
+      console.log(`Generated eBay title using stepwise approach: "${ebayTitle}"`);
     }
     
     // Add it to the listingData object so the description function can access it
