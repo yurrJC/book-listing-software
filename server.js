@@ -1167,14 +1167,7 @@ function shortenTitle(fullTitle, mainTitle, author, format, bookType, keyword) {
  * @returns {Promise<string>} - "Fiction" or "Non-Fiction"
  */
 async function determineNarrativeTypeUsingGPT(listingData) {
-  const prompt = `
-Based on the following book metadata, determine if the book is Fiction or Non-Fiction.
-Return only one word: either "Fiction" or "Non-Fiction".
-
-Book Title: "${listingData.title}"
-Synopsis: "${listingData.synopsis || ''}"
-Subjects: "${listingData.subjects ? listingData.subjects.join(', ') : ''}"
-  `;
+  const prompt = `\nBased on the following book metadata, determine if the book is Fiction or Non-Fiction.\nReturn only one word: either "Fiction" or "Non-Fiction".\nIf you are not certain, or if there is not enough information to confidently decide, leave the response completely blank. Do NOT guess.\n\nBook Title: "${listingData.title}"\nSynopsis: "${listingData.synopsis || ''}"\nSubjects: "${listingData.subjects ? listingData.subjects.join(', ') : ''}"\n  `;
 
   try {
     const response = await openai.chat.completions.create({
@@ -1187,16 +1180,14 @@ Subjects: "${listingData.subjects ? listingData.subjects.join(', ') : ''}"
       temperature: 0.2,
     });
     const narrativeType = response.choices[0].message.content.trim();
-    // Ensure the result is either "Fiction" or "Non-Fiction"
     if (narrativeType === "Fiction" || narrativeType === "Non-Fiction") {
       return narrativeType;
     } else {
-      // Fallback if the response is unexpected
-      return "Non-Fiction";
+      return ""; // Leave blank if not confident
     }
   } catch (error) {
     console.error("Error determining narrative type:", error);
-    return "Non-Fiction"; // default fallback
+    return "";
   }
 }
 
@@ -2449,10 +2440,78 @@ async function aiIntelligentTruncation(title) {
   }
 }
 
-// Update the stepwise title generation to include AI truncation
+// Generate keyword with no repetition and no guessing
+async function generateKeyword(listingData, bookType) {
+  const systemMessage = `You are an expert book metadata analyst specializing in creating searchable, practical keywords for eBay book listings. Your task is to analyze book details and generate keywords that buyers actually search for.`;
+  const prompt = `\nBased on the following book metadata, generate a practical, searchable keyword for this book.\n- The keyword should be 1-3 words, max 25 characters.\n- Do NOT repeat any words from the book title in the keyword.\n- If you do not have enough information to confidently generate a keyword, leave the response completely blank. Do NOT guess.\n\nBook Title: "${listingData.title}"\nAuthor: "${listingData.author}"\nPublisher: "${listingData.publisher || 'Unknown'}"\nPublication Year: "${listingData.publicationYear || ''}"\nSynopsis: "${listingData.synopsis || ''}"\nSubjects/Categories: ${listingData.subjects ? listingData.subjects.join(', ') : ''}\n\nReturn ONLY the keyword, with no explanation or extra text.`;
+  
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: systemMessage },
+        { role: "user", content: prompt }
+      ],
+      max_tokens: 15,
+      temperature: 0.2,
+    });
+    
+    let keyword = response.choices[0].message.content.trim().replace(/^["']|["']$/g, '').replace(/\.$/, '');
+    keyword = removeDuplicateKeywordWords(listingData.title, keyword);
+    
+    if (!keyword || keyword.toLowerCase() === 'unknown' || keyword.trim() === '') {
+      return '';
+    }
+    
+    if (bookType === "Cookbook" && keyword.toLowerCase().includes('cookbook')) {
+      keyword = keyword.replace(/cookbook/i, 'Recipes');
+    }
+    
+    if (keyword.length > 25) {
+      const words = keyword.split(' ');
+      let smartTruncated = '';
+      for (const word of words) {
+        if ((smartTruncated + ' ' + word).trim().length <= 25) {
+          smartTruncated = (smartTruncated + ' ' + word).trim();
+        } else {
+          break;
+        }
+      }
+      return smartTruncated;
+    }
+    
+    return keyword;
+  } catch (error) {
+    console.error('Error generating optimized keyword:', error);
+    return '';
+  }
+}
+
+// Remove duplicate words between title and keyword
+function removeDuplicateKeywordWords(title, keyword) {
+  const titleWords = new Set((title || '').toLowerCase().split(/\s+/));
+  const filtered = (keyword || '').split(/\s+/).filter(word => !titleWords.has(word.toLowerCase()));
+  return filtered.join(' ');
+}
+
+// Build the eBay title from components
+function buildEbayTitle({ title, author, format, bookType, keyword, narrativeType }) {
+  let titleParts = [
+    title,
+    author ? `by ${author}` : '',
+    format,
+    bookType,
+    keyword,
+    narrativeType === 'Fiction' ? 'Fiction' : ''
+  ];
+  let ebayTitle = titleParts.filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
+  return ebayTitle;
+}
+
+// Update the stepwise title generation to use the correct function name
 async function generateStepwiseEbayTitle(listingData) {
-  // Step 1: Classify narrative type
-  const narrativeType = await classifyNarrativeType(listingData);
+  // Step 1: Classify narrative type (use existing function with updated prompt)
+  const narrativeType = await determineNarrativeTypeUsingGPT(listingData);
   // Step 2: Classify book type
   const bookType = await determineBookTypeUsingGPT(listingData);
   // Step 3: Generate keyword
