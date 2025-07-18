@@ -2322,13 +2322,30 @@ function buildEbayTitle({ title, author, format, bookType, keyword, narrativeTyp
 
 // Update the stepwise title generation to use the correct function name
 async function generateStepwiseEbayTitle(listingData) {
+  console.log('=== STARTING STEPWISE TITLE GENERATION ===');
+  console.log('Input data:', {
+    title: listingData.title,
+    author: listingData.author,
+    format: listingData.format || listingData.binding
+  });
+  
   // Step 1: Classify narrative type (use existing function with updated prompt)
+  console.log('Step 1: Classifying narrative type...');
   const narrativeType = await determineNarrativeTypeUsingGPT(listingData);
+  console.log('Narrative type result:', narrativeType);
+  
   // Step 2: Classify book type
+  console.log('Step 2: Classifying book type...');
   const bookType = await determineBookTypeUsingGPT(listingData);
+  console.log('Book type result:', bookType);
+  
   // Step 3: Generate keyword
+  console.log('Step 3: Generating keyword...');
   const keyword = await generateKeyword(listingData, bookType);
+  console.log('Keyword result:', keyword);
+  
   // Step 4: Determine format
+  console.log('Step 4: Determining format...');
   let format = 'Paperback';
   if (listingData.format || listingData.binding) {
     const formatValue = (listingData.format || listingData.binding);
@@ -2339,7 +2356,10 @@ async function generateStepwiseEbayTitle(listingData) {
       format = 'Paperback';
     }
   }
+  console.log('Format result:', format);
+  
   // Step 5: Build title
+  console.log('Step 5: Building title...');
   let ebayTitle = buildEbayTitle({
     title: listingData.title,
     author: listingData.author,
@@ -2348,12 +2368,21 @@ async function generateStepwiseEbayTitle(listingData) {
     keyword,
     narrativeType
   });
+  console.log('Built title:', ebayTitle);
+  console.log('Title length:', ebayTitle.length);
   
   // Step 6: AI-powered intelligent truncation if needed
   if (Buffer.byteLength(ebayTitle, 'utf8') > 80) {
     console.log(`Title exceeds 80 characters (${ebayTitle.length}), using AI truncation`);
     ebayTitle = await aiIntelligentTruncation(ebayTitle);
+    console.log('After AI truncation:', ebayTitle);
+    console.log('Final title length:', ebayTitle.length);
   }
+  
+  console.log('=== FINAL STEPWISE TITLE RESULT ===');
+  console.log('Final ebayTitle:', ebayTitle);
+  console.log('Final length:', ebayTitle.length);
+  console.log('=== END STEPWISE TITLE GENERATION ===');
   
   return ebayTitle;
 }
