@@ -2203,9 +2203,23 @@ function enforceEbayTitleLimit(title) {
     const keyword = parts.slice(keywordStartIndex).join(' ');
     
     // Use smart truncation for the keyword
-    return smartKeywordTruncation(baseTitle, keyword);
+    const smartTruncated = smartKeywordTruncation(baseTitle, keyword);
+    
+    // FINAL CHECK: If smart truncation still doesn't work, hard truncate
+    if (Buffer.byteLength(smartTruncated, 'utf8') <= 80) {
+      return smartTruncated;
+    } else {
+      console.log(`Smart truncation failed, hard truncating from ${smartTruncated.length} to 80 chars`);
+      // Hard truncate to 80 characters, ensuring we don't cut words in half
+      let hardTruncated = smartTruncated;
+      while (Buffer.byteLength(hardTruncated, 'utf8') > 80) {
+        hardTruncated = hardTruncated.slice(0, -1).trim();
+      }
+      return hardTruncated;
+    }
   } else {
     // Fallback: simple truncation if we can't parse the structure
+    console.log(`Cannot parse title structure, hard truncating from ${cleanTitle.length} to 80 chars`);
     while (Buffer.byteLength(cleanTitle, 'utf8') > 80) {
       cleanTitle = cleanTitle.slice(0, -1).trim();
     }
@@ -2308,15 +2322,83 @@ function removeDuplicateKeywordWords(title, keyword) {
 
 // Build the eBay title from components
 function buildEbayTitle({ title, author, format, bookType, keyword, narrativeType }) {
+  console.log('Building title with components:', { title, author, format, bookType, keyword, narrativeType });
+  
+  // 1. Handle main title vs subtitle
+  let mainTitle = title;
+  if (title.includes(':')) {
+    const parts = title.split(':');
+    const beforeColon = parts[0].trim();
+    const afterColon = parts.slice(1).join(':').trim();
+    
+    // Use main title only unless it's 10 characters or less
+    if (beforeColon.length > 10) {
+      mainTitle = beforeColon;
+      console.log(`Using main title only: "${mainTitle}" (${mainTitle.length} chars)`);
+    } else {
+      mainTitle = title; // Use full title if main title is short
+      console.log(`Using full title (main title too short): "${mainTitle}" (${mainTitle.length} chars)`);
+    }
+  }
+  
+  // 2. Handle multiple authors - use only the first one
+  let authorName = author;
+  if (author && author.includes(',')) {
+    authorName = author.split(',')[0].trim();
+    console.log(`Using first author only: "${authorName}" (was: "${author}")`);
+  }
+  
+  // 3. Build the title components
   let titleParts = [
-    title,
-    author ? `by ${author}` : '',
+    mainTitle,
+    authorName ? `by ${authorName}` : '',
     format,
     bookType,
     keyword,
     narrativeType === 'Fiction' ? 'Fiction' : ''
   ];
+  
   let ebayTitle = titleParts.filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
+  console.log(`Built title: "${ebayTitle}" (${ebayTitle.length} chars)`);
+  
+  // 4. If over 80 characters, prioritize keeping the keyword by removing other parts
+  if (Buffer.byteLength(ebayTitle, 'utf8') > 80) {
+    console.log(`Title too long (${ebayTitle.length} chars), optimizing for keyword...`);
+    
+    // Try removing "Book" type first (least important)
+    let optimizedTitle = ebayTitle.replace(` ${bookType}`, '');
+    if (Buffer.byteLength(optimizedTitle, 'utf8') <= 80) {
+      console.log(`Removed book type, new length: ${optimizedTitle.length}`);
+      return optimizedTitle;
+    }
+    
+    // Try removing format if still too long
+    optimizedTitle = optimizedTitle.replace(` ${format}`, '');
+    if (Buffer.byteLength(optimizedTitle, 'utf8') <= 80) {
+      console.log(`Removed format, new length: ${optimizedTitle.length}`);
+      return optimizedTitle;
+    }
+    
+    // If still too long, truncate the main title to fit the keyword
+    const baseStructure = `by ${authorName} ${keyword}`;
+    const availableSpace = 80 - baseStructure.length - 1; // -1 for space
+    
+    if (availableSpace > 0) {
+      const truncatedMainTitle = mainTitle.substring(0, availableSpace).trim();
+      optimizedTitle = `${truncatedMainTitle} ${baseStructure}`;
+      console.log(`Truncated main title to fit keyword, new length: ${optimizedTitle.length}`);
+      return optimizedTitle;
+    } else {
+      // Last resort: just title and author
+      optimizedTitle = `${mainTitle} by ${authorName}`;
+      if (Buffer.byteLength(optimizedTitle, 'utf8') > 80) {
+        optimizedTitle = optimizedTitle.substring(0, 80).trim();
+      }
+      console.log(`Last resort: title and author only, length: ${optimizedTitle.length}`);
+      return optimizedTitle;
+    }
+  }
+  
   return ebayTitle;
 }
 
