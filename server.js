@@ -1589,15 +1589,19 @@ async function createEbayDraftListing(listingData) {
      - Topics (${bookTopics.length}): ${bookTopics.join(', ')}
      - Genres (${bookGenres.length}): ${bookGenres.join(', ')}`);
     
-    // Check if customTitle was provided and use it, otherwise generate one
+    // Check if customTitle was provided and use it, otherwise use the pre-generated title
     let ebayTitle;
     if (listingData.customTitle) {
       ebayTitle = listingData.customTitle;
       console.log(`Using custom title: "${ebayTitle}"`);
+    } else if (listingData.ebayTitle) {
+      // Use the pre-generated title from the first call
+      ebayTitle = listingData.ebayTitle;
+      console.log(`Using pre-generated title: "${ebayTitle}"`);
     } else {
-      // Use the same stepwise title generation as in /processBook endpoint
+      // Fallback: generate a new title if somehow we don't have one
       ebayTitle = await generateStepwiseEbayTitle(listingData);
-      console.log(`Generated eBay title using stepwise approach: "${ebayTitle}"`);
+      console.log(`Generated new eBay title using stepwise approach: "${ebayTitle}"`);
     }
     
     // Add it to the listingData object so the description function can access it
