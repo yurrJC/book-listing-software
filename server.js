@@ -2273,8 +2273,8 @@ async function aiIntelligentTruncation(title) {
 // Generate keyword with no repetition and no guessing
 async function generateKeyword(listingData, bookType) {
   const systemMessage = `You are an expert book metadata analyst specializing in creating searchable, practical keywords for eBay book listings. Your task is to analyze book details and generate keywords that buyers actually search for.`;
-  const prompt = `\nBased on the following book metadata, generate a practical, searchable keyword for this book.\n- The keyword should be 1-3 words, max 25 characters.\n- Do NOT repeat any words from the book title in the keyword.\n- If you do not have enough information to confidently generate a keyword, leave the response completely blank. Do NOT guess.\n\nBook Title: "${listingData.title}"\nAuthor: "${listingData.author}"\nPublisher: "${listingData.publisher || 'Unknown'}"\nPublication Year: "${listingData.publicationYear || ''}"\nSynopsis: "${listingData.synopsis || ''}"\nSubjects/Categories: ${listingData.subjects ? listingData.subjects.join(', ') : ''}\n\nReturn ONLY the keyword, with no explanation or extra text.`;
-  
+  const prompt = `Based on the following book metadata, generate a practical, searchable keyword for this book for eBay.\n- The keyword should always include the most general subject (e.g., "History", "Business", "Cooking", "Self-Help") from the metadata.\n- If possible and space allows, add an enhancer (from the synopsis, title, or metadata) to make the subject more specific or relevant.\n- The enhancer should not repeat any words from the book title.\n- If no suitable enhancer, use just the subject.\n- The keyword should be in the format "Enhancer Subject" (e.g., "Aboriginal History", "Business Leadership", "Japanese Cooking"), or "Subject Enhancer" if it makes more sense.\n- If space is limited, just use the subject.\n- The keyword must be a maximum of 25 characters.\n- If you do not have enough information to confidently generate a keyword, leave the response completely blank. Do NOT guess.\n- Return ONLY the keyword, with no explanation or extra text.\n\nBook Title: "${listingData.title}"\nAuthor: "${listingData.author}"\nPublisher: "${listingData.publisher || 'Unknown'}"\nPublication Year: "${listingData.publicationYear || ''}"\nSynopsis: "${listingData.synopsis || ''}"\nSubjects/Categories: ${listingData.subjects ? listingData.subjects.join(', ') : ''}`;
+
   try {
     const response = await openai.chat.completions.create({
       model: "gpt-4o-mini",
@@ -2285,18 +2285,18 @@ async function generateKeyword(listingData, bookType) {
       max_tokens: 15,
       temperature: 0.2,
     });
-    
-    let keyword = response.choices[0].message.content.trim().replace(/^["']|["']$/g, '').replace(/\.$/, '');
+
+    let keyword = response.choices[0].message.content.trim().replace(/^\["']|["']$/g, '').replace(/\.$/, '');
     keyword = removeDuplicateKeywordWords(listingData.title, keyword);
-    
+
     if (!keyword || keyword.toLowerCase() === 'unknown' || keyword.trim() === '') {
       return '';
     }
-    
+
     if (bookType === "Cookbook" && keyword.toLowerCase().includes('cookbook')) {
       keyword = keyword.replace(/cookbook/i, 'Recipes');
     }
-    
+
     if (keyword.length > 25) {
       const words = keyword.split(' ');
       let smartTruncated = '';
@@ -2309,7 +2309,7 @@ async function generateKeyword(listingData, bookType) {
       }
       return smartTruncated;
     }
-    
+
     return keyword;
   } catch (error) {
     console.error('Error generating optimized keyword:', error);
