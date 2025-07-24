@@ -2273,7 +2273,12 @@ async function aiIntelligentTruncation(title) {
 // Generate keyword with no repetition and no guessing
 async function generateKeyword(listingData, bookType) {
   const systemMessage = `You are an expert book metadata analyst specializing in creating searchable, practical keywords for eBay book listings. Your task is to analyze book details and generate keywords that buyers actually search for.`;
-  const prompt = `Based on the following book metadata, generate a practical, highly searchable keyword for this book for eBay.\n\n- ALWAYS start with the most general subject (e.g., \"History\", \"Business\", \"Cooking\", \"Self-Help\") from the metadata.\n- Add ONE highly relevant enhancer (from the synopsis, title, or metadata) to make the subject more specific or relevant, if possible.\n- If space allows, and you are 95%+ confident it is highly relevant and flows naturally, add a SECOND subject or enhancer (from the book's metadata or synopsis) that is not already used and not in the title.\n- The keyword should be in the format: \"Enhancer Subject\", \"Subject Enhancer\", \"Enhancer Subject Subject2\", \"Enhancer1 Enhancer2 Subject\", or similar, as long as it reads naturally.\n- NEVER repeat words from the book title or already-used keywords.\n- The keyword must NOT exceed 25 characters.\n- If you do not have enough information to confidently generate a keyword, leave the response completely blank. Do NOT guess.\n- If in doubt about adding a second word, leave it out.\n- Return ONLY the keyword, with no explanation or extra text.\n\nBook Title: \"${listingData.title}\"\nAuthor: \"${listingData.author}\"\nPublisher: \"${listingData.publisher || 'Unknown'}\"\nPublication Year: \"${listingData.publicationYear || ''}\"\nSynopsis: \"${listingData.synopsis || ''}\"\nSubjects/Categories: ${listingData.subjects ? listingData.subjects.join(', ') : ''}`;
+  // Extract main title (before colon) for duplicate filtering
+  let mainTitle = listingData.title;
+  if (listingData.title && listingData.title.includes(':')) {
+    mainTitle = listingData.title.split(':')[0].trim();
+  }
+  const prompt = `Based on the following book metadata, generate a practical, highly searchable keyword for this book for eBay.\n\n- ALWAYS start with the most general subject (e.g., \"History\", \"Business\", \"Cooking\", \"Self-Help\") from the metadata.\n- Add ONE highly relevant enhancer (from the synopsis, title, or metadata) to make the subject more specific or relevant, if possible.\n- If space allows, and you are 95%+ confident it is highly relevant and flows naturally, add a SECOND subject or enhancer (from the book's metadata or synopsis) that is not already used and not in the title.\n- The keyword should be in the format: \"Enhancer Subject\", \"Subject Enhancer\", \"Enhancer Subject Subject2\", \"Enhancer1 Enhancer2 Subject\", or similar, as long as it reads naturally.\n- NEVER repeat words from the MAIN TITLE (before the colon) in the keyword. It is OK to use words from the subtitle (after the colon) if they are highly relevant.\n- The keyword must NOT exceed 25 characters.\n- If you do not have enough information to confidently generate a keyword, leave the response completely blank. Do NOT guess.\n- If in doubt about adding a second word, leave it out.\n- Return ONLY the keyword, with no explanation or extra text.\n\nBook Title: \"${listingData.title}\"\nAuthor: \"${listingData.author}\"\nPublisher: \"${listingData.publisher || 'Unknown'}\"\nPublication Year: \"${listingData.publicationYear || ''}\"\nSynopsis: \"${listingData.synopsis || ''}\"\nSubjects/Categories: ${listingData.subjects ? listingData.subjects.join(', ') : ''}`;
 
   try {
     const response = await openai.chat.completions.create({
@@ -2287,7 +2292,8 @@ async function generateKeyword(listingData, bookType) {
     });
 
     let keyword = response.choices[0].message.content.trim().replace(/^\["']|["']$/g, '').replace(/\.$/, '');
-    keyword = removeDuplicateKeywordWords(listingData.title, keyword);
+    // Only filter out words from the main title (not subtitle)
+    keyword = removeDuplicateKeywordWords(mainTitle, keyword);
 
     if (!keyword || keyword.toLowerCase() === 'unknown' || keyword.trim() === '') {
       return '';
