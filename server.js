@@ -500,27 +500,26 @@ The keyword should be 1-3 words and not exceed 25 characters. Return ONLY the ke
 }
 
 /**
- * NEW: Combined GPT function that generates book type, keyword, and title in a single API call
+ * NEW: Combined GPT function that generates book type and title in a single API call
  * This significantly speeds up the listing process while maintaining the same quality
  * 
  * @param {Object} listingData - Book metadata including title, author, subjects, and synopsis
- * @returns {Promise<Object>} - Object containing bookType, keyword, and title
+ * @returns {Promise<Object>} - Object containing bookType and title
  */
 // REMOVED: generateAllBookDataUsingGPT function - replaced with stepwise approach
 
 /**
- * Fallback function that uses the original three separate GPT calls
+ * Fallback function that uses the original separate GPT calls
  * This ensures the system continues to work even if the combined call fails
  * 
  * @param {Object} listingData - Book metadata
- * @returns {Promise<Object>} - Object containing bookType, keyword, and title
+ * @returns {Promise<Object>} - Object containing bookType and title
  */
 async function fallbackToIndividualCalls(listingData) {
   console.log('========== STARTING FALLBACK TO INDIVIDUAL CALLS ==========');
   
   try {
     const bookType = await determineBookTypeUsingGPT(listingData);
-    const keyword = await generateOptimizedKeywordUsingGPT(listingData, bookType);
     
     // For the title, we need to construct it manually since we have the parts
     let format = 'Paperback';
@@ -536,8 +535,8 @@ async function fallbackToIndividualCalls(listingData) {
       }
     }
     
-    // Build title manually
-    let title = `${listingData.title} by ${listingData.author} ${format} ${bookType} ${keyword}`;
+    // Build title manually (no keyword)
+    let title = `${listingData.title} by ${listingData.author} ${format} ${bookType}`;
     
     // NEW: For Fiction books, ensure the title ends with "Fiction"
     const narrativeType = await determineNarrativeTypeUsingGPT(listingData);
@@ -552,55 +551,28 @@ async function fallbackToIndividualCalls(listingData) {
         title = titleWithFiction;
         console.log(`Added "Fiction" to title: "${title}"`);
       } else {
-        // If adding "Fiction" would exceed 80 chars, try to preserve part of the keyword
-        const titleWithoutKeyword = title.replace(` ${keyword}`, '');
-        const titleWithFictionReplacement = `${titleWithoutKeyword} Fiction`;
-        
-        if (titleWithFictionReplacement.length <= 80) {
-          // Check if we can preserve part of a compound keyword
-          const keywordWords = keyword.split(' ');
-          if (keywordWords.length > 1) {
-            // Try to keep the first word of the compound keyword
-            const firstWord = keywordWords[0];
-            const titleWithFirstWord = `${titleWithoutKeyword} ${firstWord} Fiction`;
-            if (titleWithFirstWord.length <= 80) {
-              title = titleWithFirstWord;
-              console.log(`Preserved first word of keyword: "${title}"`);
-            } else {
-              // If even the first word doesn't fit, just use "Fiction"
-              title = titleWithFictionReplacement;
-              console.log(`Replaced keyword with "Fiction": "${title}"`);
-            }
-          } else {
-            // Single word keyword, just replace with "Fiction"
-            title = titleWithFictionReplacement;
-            console.log(`Replaced keyword with "Fiction": "${title}"`);
-          }
-        } else {
-          // If still too long, just truncate and add "Fiction"
-          const truncatedTitle = title.substring(0, 75).trim();
-          title = `${truncatedTitle} Fiction`;
-          console.log(`Truncated and added "Fiction": "${title}"`);
-        }
+        // If adding "Fiction" would exceed 80 chars, truncate the title
+        const truncatedTitle = title.substring(0, 75).trim();
+        title = `${truncatedTitle} Fiction`;
+        console.log(`Truncated and added "Fiction": "${title}"`);
       }
     }
     
     // Check if title exceeds 80 characters and shorten if necessary
     if (title.length > 80) {
-      title = shortenTitle(title, listingData.title, listingData.author, format, bookType, keyword);
+      title = shortenTitle(title, listingData.title, listingData.author, format, bookType);
     }
     
-    console.log(`Fallback results: BookType="${bookType}", Keyword="${keyword}", Title="${title}"`);
+    console.log(`Fallback results: BookType="${bookType}", Title="${title}"`);
     console.log('========== FINISHED FALLBACK TO INDIVIDUAL CALLS ==========');
     
-    return { bookType, keyword, title };
+    return { bookType, title };
     
   } catch (error) {
     console.error('Error in fallback calls:', error);
     // Ultimate fallback
     return {
       bookType: 'Book',
-      keyword: 'General Interest',
       title: `${listingData.title} by ${listingData.author}`.substring(0, 80)
     };
   }
@@ -740,9 +712,6 @@ if (listingData.ocrText) {
     const bookType = await determineBookTypeUsingGPT(listingData);
     console.log(`Book type determined: "${bookType}"`);
     
-    const keyword = await generateOptimizedKeywordUsingGPT(listingData, bookType);
-    console.log(`Keyword generated: "${keyword}"`);
-    
     let format = 'Paperback';
     if (listingData.format || listingData.binding) {
       const formatValue = (listingData.format || listingData.binding);
@@ -761,9 +730,9 @@ if (listingData.ocrText) {
     
     // Decide if we should use subtitle
     if (mainTitle.length < 10 && subtitle) {
-      title = `${mainTitle}: ${subtitle} by ${authorSection} ${format} ${bookType} ${keyword}`;
+      title = `${mainTitle}: ${subtitle} by ${authorSection} ${format} ${bookType}`;
     } else {
-      title = `${mainTitle} by ${authorSection} ${format} ${bookType} ${keyword}`;
+      title = `${mainTitle} by ${authorSection} ${format} ${bookType}`;
     }
     
     // NEW: For Fiction books, ensure the title ends with "Fiction"
@@ -776,36 +745,10 @@ if (listingData.ocrText) {
         title = titleWithFiction;
         console.log(`Added "Fiction" to title: "${title}"`);
       } else {
-        // If adding "Fiction" would exceed 80 chars, try to preserve part of the keyword
-        const titleWithoutKeyword = title.replace(` ${keyword}`, '');
-        const titleWithFictionReplacement = `${titleWithoutKeyword} Fiction`;
-        
-        if (titleWithFictionReplacement.length <= 80) {
-          // Check if we can preserve part of a compound keyword
-          const keywordWords = keyword.split(' ');
-          if (keywordWords.length > 1) {
-            // Try to keep the first word of the compound keyword
-            const firstWord = keywordWords[0];
-            const titleWithFirstWord = `${titleWithoutKeyword} ${firstWord} Fiction`;
-            if (titleWithFirstWord.length <= 80) {
-              title = titleWithFirstWord;
-              console.log(`Preserved first word of keyword: "${title}"`);
-            } else {
-              // If even the first word doesn't fit, just use "Fiction"
-              title = titleWithFictionReplacement;
-              console.log(`Replaced keyword with "Fiction": "${title}"`);
-            }
-          } else {
-            // Single word keyword, just replace with "Fiction"
-            title = titleWithFictionReplacement;
-            console.log(`Replaced keyword with "Fiction": "${title}"`);
-          }
-        } else {
-          // If still too long, just truncate and add "Fiction"
-          const truncatedTitle = title.substring(0, 75).trim();
-          title = `${truncatedTitle} Fiction`;
-          console.log(`Truncated and added "Fiction": "${title}"`);
-        }
+        // If adding "Fiction" would exceed 80 chars, truncate the title
+        const truncatedTitle = title.substring(0, 75).trim();
+        title = `${truncatedTitle} Fiction`;
+        console.log(`Truncated and added "Fiction": "${title}"`);
       }
     }
     
@@ -813,7 +756,7 @@ if (listingData.ocrText) {
     
     // Check if the title exceeds eBay's 80 character limit and shorten if necessary
     if (title.length > 80) {
-      title = shortenTitle(title, mainTitle, authorSection, format, bookType, keyword);
+      title = shortenTitle(title, mainTitle, authorSection, format, bookType);
     }
     
     console.log(`Final eBay title: "${title}" (${title.length} chars)`);
@@ -835,10 +778,9 @@ if (listingData.ocrText) {
  * @param {string} author - Author name
  * @param {string} format - Format (Paperback/Hardcover)
  * @param {string} bookType - Book type (Book/Cookbook/Textbook)
- * @param {string} keyword - Specific keyword
  * @returns {string} - Shortened title within 80 characters
  */
-function shortenTitle(fullTitle, mainTitle, author, format, bookType, keyword) {
+function shortenTitle(fullTitle, mainTitle, author, format, bookType) {
   console.log('Title exceeds 80 chars, beginning shortening process...');
   
   let shortenedTitle = fullTitle;
@@ -855,37 +797,18 @@ function shortenTitle(fullTitle, mainTitle, author, format, bookType, keyword) {
   
   console.log(`After format abbreviation: "${shortenedTitle}" (${shortenedTitle.length} chars)`);
   
-  // STEP 2: If still too long, remove keyword (but preserve "Fiction" if present)
+  // STEP 2: If still too long, remove book type (but preserve "Fiction" if present)
   if (shortenedTitle.length > 80) {
-    // Save the keyword for potential re-adding later
-    const savedKeyword = keyword;
-    
-    // Remove keyword, but be careful not to remove "Fiction" if it's part of the keyword
-    if (isFiction && savedKeyword.toLowerCase().includes('fiction')) {
-      // If the keyword contains "Fiction", just remove the non-fiction part
-      const keywordWithoutFiction = savedKeyword.replace(/\s*fiction\s*/i, '').trim();
-      if (keywordWithoutFiction) {
-        shortenedTitle = shortenedTitle.replace(` ${keywordWithoutFiction}`, '');
-      }
+    // Remove book type, but be careful not to remove "Fiction" if it's present
+    if (isFiction && shortenedTitle.toLowerCase().includes('fiction')) {
+      // If "Fiction" is present, just remove the book type part
+      shortenedTitle = shortenedTitle.replace(` ${bookType}`, '');
     } else {
-      // Remove the entire keyword
-      shortenedTitle = shortenedTitle.replace(` ${savedKeyword}`, '');
+      // Remove the entire book type
+      shortenedTitle = shortenedTitle.replace(` ${bookType}`, '');
     }
     
-    console.log(`After removing keyword: "${shortenedTitle}" (${shortenedTitle.length} chars)`);
-    
-    // Check if we can re-add the keyword now that we've removed it
-    if (shortenedTitle.length + savedKeyword.length + 1 <= 80) {
-      shortenedTitle = `${shortenedTitle} ${savedKeyword}`;
-      console.log(`Re-added keyword: "${shortenedTitle}" (${shortenedTitle.length} chars)`);
-    } else {
-      // Try to add just the first word of the compound keyword if possible
-      const firstWord = savedKeyword.split(' ')[0];
-      if (shortenedTitle.length + firstWord.length + 1 <= 80) {
-        shortenedTitle = `${shortenedTitle} ${firstWord}`;
-        console.log(`Added partial keyword: "${shortenedTitle}" (${shortenedTitle.length} chars)`);
-      }
-    }
+    console.log(`After removing book type: "${shortenedTitle}" (${shortenedTitle.length} chars)`);
   }
   
   // STEP 3: If still too long, just use the title and author
@@ -909,7 +832,7 @@ function shortenTitle(fullTitle, mainTitle, author, format, bookType, keyword) {
     }
   }
   
-  // STEP 4: Final intelligent trimming if needed
+  // STEP 3: Final intelligent trimming if needed
   if (shortenedTitle.length > 80) {
     console.log('Still exceeding 80 chars, applying intelligent trimming...');
     const byIndex = shortenedTitle.indexOf(' by ');
@@ -2196,30 +2119,26 @@ function enforceEbayTitleLimit(title) {
     return cleanTitle;
   }
   
-  // Extract the base title (everything before the keyword)
+  // Extract the base title (everything before the book type)
   const parts = cleanTitle.split(' ');
   const byIndex = parts.findIndex(word => word.toLowerCase() === 'by');
   
   if (byIndex !== -1 && byIndex + 2 < parts.length) {
-    // Find where the keyword starts (after "by Author Format BookType")
-    const keywordStartIndex = byIndex + 3; // by + author + format + booktype
-    const baseTitle = parts.slice(0, keywordStartIndex).join(' ');
-    const keyword = parts.slice(keywordStartIndex).join(' ');
+    // Find where the book type starts (after "by Author Format")
+    const bookTypeStartIndex = byIndex + 3; // by + author + format
+    const baseTitle = parts.slice(0, bookTypeStartIndex).join(' ');
+    const bookType = parts.slice(bookTypeStartIndex).join(' ');
     
-    // Use smart truncation for the keyword
-    const smartTruncated = smartKeywordTruncation(baseTitle, keyword);
-    
-    // FINAL CHECK: If smart truncation still doesn't work, hard truncate
-    if (Buffer.byteLength(smartTruncated, 'utf8') <= 80) {
-      return smartTruncated;
+    // Simple truncation approach - remove book type if too long
+    if (Buffer.byteLength(baseTitle, 'utf8') <= 80) {
+      return baseTitle;
     } else {
-      console.log(`Smart truncation failed, hard truncating from ${smartTruncated.length} to 80 chars`);
-      // Hard truncate to 80 characters, ensuring we don't cut words in half
-      let hardTruncated = smartTruncated;
-      while (Buffer.byteLength(hardTruncated, 'utf8') > 80) {
-        hardTruncated = hardTruncated.slice(0, -1).trim();
+      console.log(`Base title too long, removing book type`);
+      // Remove book type and check if that fits
+      const titleWithoutBookType = parts.slice(0, bookTypeStartIndex).join(' ');
+      if (Buffer.byteLength(titleWithoutBookType, 'utf8') <= 80) {
+        return titleWithoutBookType;
       }
-      return hardTruncated;
     }
   } else {
     // Fallback: simple truncation if we can't parse the structure
@@ -2233,7 +2152,7 @@ function enforceEbayTitleLimit(title) {
 
 // Fix the AI truncation to only use code logic as true fallback
 async function aiIntelligentTruncation(title) {
-  const prompt = `\nThe following eBay title is ${title.length} characters long, which exceeds eBay's 80-character limit.\n\nTitle: "${title}"\n\nPlease truncate this title intelligently to fit within 80 characters while following these rules:\n- Keep the most important keywords (first words)\n- Avoid awkward endings (no partial words)\n- Preserve the core meaning\n- Always end with complete words\n- If the title is "Title by Author Format BookType Keyword", prioritize keeping the first part of the keyword\n- The result MUST be 80 characters or less\n\nReturn ONLY the truncated title, with no explanation or extra text.`;
+  const prompt = `\nThe following eBay title is ${title.length} characters long, which exceeds eBay's 80-character limit.\n\nTitle: "${title}"\n\nPlease truncate this title intelligently to fit within 80 characters while following these rules:\n- Keep the most important words (first words)\n- Avoid awkward endings (no partial words)\n- Preserve the core meaning\n- Always end with complete words\n- If the title is "Title by Author Format BookType", prioritize keeping the title and author\n- The result MUST be 80 characters or less\n\nReturn ONLY the truncated title, with no explanation or extra text.`;
   
   try {
     const response = await openai.chat.completions.create({
@@ -2331,8 +2250,8 @@ function removeDuplicateKeywordWords(title, keyword) {
 }
 
 // Build the eBay title from components
-function buildEbayTitle({ title, author, format, bookType, keyword, narrativeType }) {
-  console.log('Building title with components:', { title, author, format, bookType, keyword, narrativeType });
+function buildEbayTitle({ title, author, format, bookType, narrativeType }) {
+  console.log('Building title with components:', { title, author, format, bookType, narrativeType });
   
   // 1. Handle main title vs subtitle
   let mainTitle = title;
@@ -2358,22 +2277,21 @@ function buildEbayTitle({ title, author, format, bookType, keyword, narrativeTyp
     console.log(`Using first author only: "${authorName}" (was: "${author}")`);
   }
   
-  // 3. Build the title components
+  // 3. Build the title components (no keyword)
   let titleParts = [
     mainTitle,
     authorName ? `by ${authorName}` : '',
     format,
     bookType,
-    keyword,
     narrativeType === 'Fiction' ? 'Fiction' : ''
   ];
   
   let ebayTitle = titleParts.filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
   console.log(`Built title: "${ebayTitle}" (${ebayTitle.length} chars)`);
   
-  // 4. If over 80 characters, prioritize keeping the keyword by removing other parts
+  // 4. If over 80 characters, optimize by removing less important parts
   if (Buffer.byteLength(ebayTitle, 'utf8') > 80) {
-    console.log(`Title too long (${ebayTitle.length} chars), optimizing for keyword...`);
+    console.log(`Title too long (${ebayTitle.length} chars), optimizing...`);
     
     // Try removing "Book" type first (least important)
     let optimizedTitle = ebayTitle.replace(` ${bookType}`, '');
@@ -2389,14 +2307,14 @@ function buildEbayTitle({ title, author, format, bookType, keyword, narrativeTyp
       return optimizedTitle;
     }
     
-    // If still too long, truncate the main title to fit the keyword
-    const baseStructure = `by ${authorName} ${keyword}`;
+    // If still too long, truncate the main title
+    const baseStructure = `by ${authorName}`;
     const availableSpace = 80 - baseStructure.length - 1; // -1 for space
     
     if (availableSpace > 0) {
       const truncatedMainTitle = mainTitle.substring(0, availableSpace).trim();
       optimizedTitle = `${truncatedMainTitle} ${baseStructure}`;
-      console.log(`Truncated main title to fit keyword, new length: ${optimizedTitle.length}`);
+      console.log(`Truncated main title, new length: ${optimizedTitle.length}`);
       return optimizedTitle;
     } else {
       // Last resort: just title and author
@@ -2431,13 +2349,8 @@ async function generateStepwiseEbayTitle(listingData) {
   const bookType = await determineBookTypeUsingGPT(listingData);
   console.log('Book type result:', bookType);
   
-  // Step 3: Generate keyword
-  console.log('Step 3: Generating keyword...');
-  const keyword = await generateKeyword(listingData, bookType);
-  console.log('Keyword result:', keyword);
-  
-  // Step 4: Determine format
-  console.log('Step 4: Determining format...');
+  // Step 3: Determine format (keyword generation removed)
+  console.log('Step 3: Determining format...');
   let format = 'Paperback';
   if (listingData.format || listingData.binding) {
     const formatValue = (listingData.format || listingData.binding);
@@ -2450,20 +2363,19 @@ async function generateStepwiseEbayTitle(listingData) {
   }
   console.log('Format result:', format);
   
-  // Step 5: Build title
-  console.log('Step 5: Building title...');
+  // Step 4: Build title
+  console.log('Step 4: Building title...');
   let ebayTitle = buildEbayTitle({
     title: listingData.title,
     author: listingData.author,
     format,
     bookType,
-    keyword,
     narrativeType
   });
   console.log('Built title:', ebayTitle);
   console.log('Title length:', ebayTitle.length);
   
-  // Step 6: AI-powered intelligent truncation if needed
+  // Step 5: AI-powered intelligent truncation if needed
   if (Buffer.byteLength(ebayTitle, 'utf8') > 80) {
     console.log(`Title exceeds 80 characters (${ebayTitle.length}), using AI truncation`);
     ebayTitle = await aiIntelligentTruncation(ebayTitle);
