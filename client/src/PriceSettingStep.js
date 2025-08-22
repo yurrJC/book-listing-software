@@ -86,6 +86,7 @@ function PriceSettingStep({
       ocrTextLength: ocrText ? ocrText.length : 0,
       conditionDowngraded: conditionDowngraded,
       customDescriptionNote: customDescriptionNote || 'Not provided',
+      subjects: metadata?.subjects || 'No subjects',
     });
     let currentError = null;
     if (!imageFileObjects || imageFileObjects.length === 0) {
@@ -326,6 +327,19 @@ function PriceSettingStep({
              {/* Display Title and Author */}
              <h3 className="book-title-display">{metadata?.title || 'Book Title Not Available'}</h3>
              <p className="book-author-display">by {metadata?.author || 'Unknown Author'}</p>
+
+             {/* Display Subjects */}
+             {metadata?.subjects && metadata.subjects.length > 0 ? (
+               <div className="book-subjects">
+                 <p className="subjects-label"><strong>Subjects:</strong></p>
+                 <p className="subjects-list">{metadata.subjects.join(', ')}</p>
+               </div>
+             ) : (
+               <div className="book-subjects no-subjects">
+                 <p className="subjects-label"><strong>Subjects:</strong></p>
+                 <p className="subjects-list">No subjects available</p>
+               </div>
+             )}
 
              {/* Info Table */}
              <table className="info-table">
