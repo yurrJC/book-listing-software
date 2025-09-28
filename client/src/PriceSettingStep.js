@@ -1,6 +1,7 @@
 /* PriceSettingStep.js */
 import React, { useState, useEffect } from 'react';
 import './PriceSettingStep.css';
+import TopicGenreSelector from './TopicGenreSelector';
 
 // Define API base URL
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://book-listing-software.onrender.com';
@@ -68,11 +69,66 @@ function PriceSettingStep({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [copySuccess, setCopySuccess] = useState(false);
+  
+  // Topic and Genre selection state
+  const [selectedTopic, setSelectedTopic] = useState('');
+  const [selectedGenre, setSelectedGenre] = useState('');
+  const [topicGenreSuggestions, setTopicGenreSuggestions] = useState({ topics: [], genres: [] });
+  const [allValidTopics, setAllValidTopics] = useState([]);
+  const [allValidGenres, setAllValidGenres] = useState([]);
+  const [narrativeType, setNarrativeType] = useState('');
+  const [suggestionsLoading, setSuggestionsLoading] = useState(false);
 
   // Effect to update listing title when props change
   useEffect(() => {
     setListingTitle(ebayTitle || metadata?.title || '');
   }, [ebayTitle, metadata?.title]);
+
+  // Effect to load topic/genre suggestions when component mounts
+  useEffect(() => {
+    const loadTopicGenreSuggestions = async () => {
+      if (!metadata?.title) return;
+      
+      setSuggestionsLoading(true);
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/getTopicGenreSuggestions`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            title: metadata.title,
+            author: metadata.author,
+            synopsis: metadata.synopsis,
+            subjects: metadata.subjects,
+            publisher: metadata.publisher,
+            format: metadata.format || metadata.binding,
+            language: metadata.language,
+            publicationYear: metadata.publicationYear || metadata.publishedDate
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to get suggestions');
+        }
+
+        const data = await response.json();
+        if (data.success) {
+          setTopicGenreSuggestions(data.suggestions);
+          setAllValidTopics(data.allValidTopics);
+          setAllValidGenres(data.allValidGenres);
+          setNarrativeType(data.narrativeType);
+        }
+      } catch (error) {
+        console.error('Error loading topic/genre suggestions:', error);
+        setError('Failed to load topic and genre suggestions');
+      } finally {
+        setSuggestionsLoading(false);
+      }
+    };
+
+    loadTopicGenreSuggestions();
+  }, [metadata]);
 
   // Effect for debugging and validation of received props
   useEffect(() => {
@@ -192,6 +248,16 @@ function PriceSettingStep({
       if (customDescriptionNote && customDescriptionNote.trim()) {
         formData.append('customDescriptionNote', customDescriptionNote.trim());
         console.log("Appending custom description note:", customDescriptionNote.trim());
+      }
+
+      // Append selected topic and genre
+      if (selectedTopic) {
+        formData.append('selectedTopic', selectedTopic);
+        console.log("Appending selected topic:", selectedTopic);
+      }
+      if (selectedGenre) {
+        formData.append('selectedGenre', selectedGenre);
+        console.log("Appending selected genre:", selectedGenre);
       }
 
       console.log('FormData prepared. Sending to /api/createListing...');
@@ -425,6 +491,25 @@ function PriceSettingStep({
                       />
                   </div>
                 </div>
+
+                {/* Topic and Genre Selection */}
+                {suggestionsLoading ? (
+                  <div className="loading-suggestions">
+                    <LoadingSpinner />
+                    Loading topic and genre suggestions...
+                  </div>
+                ) : (
+                  <TopicGenreSelector
+                    onTopicSelect={setSelectedTopic}
+                    onGenreSelect={setSelectedGenre}
+                    initialTopic={selectedTopic}
+                    initialGenre={selectedGenre}
+                    suggestions={topicGenreSuggestions}
+                    allValidTopics={allValidTopics}
+                    allValidGenres={allValidGenres}
+                    narrativeType={narrativeType}
+                  />
+                )}
 
                 {/* Action Buttons */}
                 <div className="action-buttons">

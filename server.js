@@ -11,6 +11,8 @@ const axios = require('axios');
 const FormData = require('form-data');
 const OpenAI = require('openai');
 const crypto = require('crypto');
+const { VALID_EBAY_TOPICS } = require('./utils/ebayTopics.js');
+const { VALID_EBAY_GENRES } = require('./utils/ebayGenres.js');
 const isProduction = true; // Force production mode
 console.log('Using production eBay environment:', isProduction);
 
@@ -974,178 +976,7 @@ async function determineBookTopicsUsingGPT(listingData) {
   try {
     console.log('Determining appropriate eBay Topics for book:', listingData.title);
     
-    // Complete list of valid eBay Topics
-    const validEbayTopics = [
-      "3D Art", "3D Design", "ABCs/Numbers", "Abstract Art", "Abstract Photography", 
-      "Abuse", "Accounting", "Action Movies", "Activity Holiday", "Addiction", 
-      "Administration", "Administrative Law", "Adoption", "African Americans", 
-      "African Cuisine", "Afterlife", "Agents", "Aging", "Agriculture", "Aircraft", 
-      "Air Force", "Airplanes", "Alcohol", "Alternative Belief Systems", "Alternative Health", 
-      "Alternative Medicine", "Alternative Therapies", "Amateur Radio", "American Cuisine", 
-      "American Football", "American History", "American Indian Wars", "American Revolution", 
-      "American Revolutionary War", "Ammunition", "Amphibians", "Anatomy", "Ancient World", 
-      "Ancillary Services", "Anecdotes", "Anesthesiology", "Angels", "Animal Care", 
-      "Animal Husbandry", "Animal Psychology", "Animal Sports", "Animal Training", 
-      "Animal Welfare", "Animation", "Anthology", "Anthropology", "Antiques", "Apple", 
-      "Applied Technology", "Archaeology", "Archery", "Architectural Photography", 
-      "Architecture", "Army", "Art Criticism", "Art Déco", "Art History", "Art Instruction", 
-      "Artists", "Art Nouveau", "Art Theory", "Asian Cuisine", "Assertiveness", "Astrology", 
-      "Astronomy", "Aura Soma", "Australasian Cuisine", "Australia", "Australian Cuisine", 
-      "Australian History", "Austrian Cuisine", "Autobiography", "Automobiles", "Avant Garde", 
-      "Baking", "Balcony", "Balkan Cuisine", "Ballet", "Ball Games", "Baptists", "Barbecue", 
-      "Baroque", "Baseball", "Basketball", "Bathroom", "BDSM", "Beauty", "Beer", "Beliefs", 
-      "Bereavement", "Beverages", "Bible", "Bicycles", "Bilingual", "Biochemistry", "Biology", 
-      "Birds", "Birds of Prey", "Birdwatching", "Blues", "Board Games", "Boating", "Bodybuilding", 
-      "Bonsai", "Books", "Botany", "Boxing", "Boys' Interest", "Brain Teasers", "Brazilian Cuisine", 
-      "Breeding", "Bridges", "British Cuisine", "British Wars", "Broadway", "Buddhism", "Budgies", 
-      "Building", "Building Plans", "Building Trade", "Business Analysis", "Business Ethics", 
-      "Business Software", "Byzantine Architecture", "Cactuses", "Calligraphy", "Camping", 
-      "Canadian Cuisine", "Canning", "Card Games", "Careers", "Caribbean Cuisine", "Cars", 
-      "Cartooning", "Castles", "Catering Trade", "Catholicism", "Cats", "Celebrity Chef", 
-      "Celtic Paganism", "Central American Cuisine", "Central European Cuisine", "Ceramics", 
-      "Certification", "Charts", "Chemistry", "Chess", "Chickens", "Childbirth", "Chinese Cuisine", 
-      "Christian History", "Christianity", "Christmas", "Church Buildings", "Cities", "Citizenship", 
-      "Civil Engineering", "Civil War", "Classical Music", "Classic Cars", "Classicism", 
-      "Classic Literature", "Classic Modern Art", "Classic Recipes", "Clean Eating", "Climbing", 
-      "Clocks", "Clubs", "Coaching", "Coast Guard", "Cocktails", "Coins", "Cold Meals", 
-      "Collectibles", "Colonialism", "Combat", "Combat Sports", "Comedies", "Comic Books", 
-      "Coming of Age", "Commercial Art", "Commercial Forest", "Commercial Policy", 
-      "Commercial Vehicle", "Commune", "Communications", "Communication Skills", 
-      "Comparative Religion", "Computer Hardware", "Computer Security", "Computing", 
-      "Connect the Dots", "Connoisseur", "Constitution", "Constitutional Law", "Construction", 
-      "Constructivism", "Consumer Electronics", "Consumer Issues", "Contemporary", 
-      "Contemporary Art", "Contemporary Folk Music", "Contemporary History", "Cooking", 
-      "Cooking by Ingredient", "Cooking for Children", "Cooking for One", "Cooking with Gadgets", 
-      "Coping with Illness", "Cosmology", "Costume", "Country Music", "Crafts", 
-      "Crafts for Children", "Creativity", "Cricket", "Crime", "Crises", "Criticism", 
-      "Crocheting", "Cross Stitch", "Crosswords", "Culinary Arts", "Culinary Techniques", 
-      "Cult Movies", "Cultural History", "Cultural Studies", "Culture", "Current Affairs", 
-      "Cycling", "Cycling Tours", "Dance", "Databases", "Death", "Decluttering", "Decorating", 
-      "Decorative Art", "Demons", "Dental Nursing", "Dentistry", "Design", "Desktop Publishing", 
-      "Desserts", "Detective Stories", "Devotions", "Diabetic Cooking", "Dice Games", "Dieting", 
-      "Digital Lifestyle", "Digital Media", "Digital Photography", "Dinosaurs", "Dips", 
-      "Disability Sports", "Diseases", "Disney", "Divination", "Divorce", "Doctors", 
-      "Documentaries", "Dogs", "Do-It-Yourself", "Dolls", "Dramas", "Drawing", 
-      "Dream Interpretation", "Drinks", "Driving", "Drugs", "Ducks", "Earth Sciences", 
-      "Easter", "Eastern European Cuisine", "Easy Meals", "Ecological Construction", 
-      "E-Commerce", "Economic History", "Economic Strategy", "Ecumenism", "Education", 
-      "Electrical Engineering", "Electrical Installation", "Electronic Music", "Electronics", 
-      "Embroidery", "Emotional Intelligence", "Employment References", "Energy Technology", 
-      "English Legal System", "Enjoyment", "Entertainment", "Entrepreneurship", "Environment", 
-      "Environmental Engineering", "Environmental Issues", "Environmental Protection", 
-      "Episcopal Church", "Equestrian Sports", "Erotic Photography", "Esotericism", 
-      "Espionage", "Ethnicity", "Ethnic Studies", "Etiquette", "EU Law", "European Championship", 
-      "European Cuisine", "Exercise", "Exhibitions", "Exploration", "Extreme Sports", 
-      "Family History", "Family Law", "Family Life", "Family Therapy", "Fan Fiction", 
-      "Farm Animals", "Farmed Poultry", "Farm Holidays", "Fashion Design", "Fashion Photography", 
-      "Fasting", "Felting", "Feng Shui", "Field Flowers", "Field Hockey", "Field Sports", 
-      "Film", "Film Noir", "Fine Arts", "First Aid", "First Love", "First Names", "Fish", 
-      "Fishing", "Fitness", "Floristics", "Fly Fishing", "Flying", "Food", "Food Writing", 
-      "Foreign Militaries", "Forensics", "Fortresses", "Fortune-Telling", "French Cuisine", 
-      "Freshwater Fish", "Freshwater Fishing", "Friendship", "Fringe Sciences", "Fruit", 
-      "Fruit-Bearing Trees", "Functionalism", "Furniture", "Futurism", "Gambling", 
-      "Game Programming", "Games", "Game Theory", "Garden Flowers", "Gardening", "Gardens", 
-      "Geese", "Gender Studies", "Genealogy", "General Politics", "General Thriller", 
-      "German Cuisine", "Germanic Paganism", "Ghosts", "Girls' Interest", "Glass", 
-      "Global Politics", "Gluten-Free Cooking", "Goats", "Golf", "Gourmet", "Government", 
-      "Graphical Media", "Graphic Arts", "Graphic Design", "Greek", "Greek Architecture", 
-      "Greek Wars", "Greenhouses", "Grief", "Grooming", "Gulf War", "Gymnastics", "Halloween", 
-      "Hamsters", "Health", "Heavy Metal", "Hedges", "Heimat", "Heimatfilme", "Helicopters", 
-      "Help", "Herbary", "Herbs", "Hiking", "Hinduism", "Hip Hop", "Historic Figures", 
-      "History of Ideas", "History of Technology", "Hobbies", "Holidays", "Holidays for Women", 
-      "Home Decor", "Homeopathy", "Homeschooling", "Horse Riding", "Horses", "Horticulture", 
-      "House Plants", "Houses", "HR", "Hundertwasser", "Hunting", "Hymns", "Ice Hockey", 
-      "Ice Skating", "Ikebana", "Illustration", "Image Processing", "Indian Cuisine", 
-      "Indoor Games", "Industrial Building", "Industrial Chemistry", "Industry", "Infographics", 
-      "Inheritance", "Inspirational Works", "Insurance", "Interior Design", "International Cuisine", 
-      "International Law", "International Politics", "International Relations", "Internet", 
-      "Inventions", "Investment", "Iranian Cuisine", "Iraq War", "Irish Cuisine", "Islam", 
-      "Israeli Cuisine", "IT", "Italian Cuisine", "Japanese Cuisine", "Jazz", "Jesus Christ", 
-      "Jewellery", "Job Applications", "Job Hunting", "Job Interviews", "Jogging", "Judaism", 
-      "Kakuro", "Kindergarten", "King Arthur", "Kitchen", "Kitchen Appliances", "Knitting", 
-      "Korean Cuisine", "Korean War", "Landscape Photography", "Landscaping", "Languages", 
-      "Language Skills", "Last Will and Testament", "Latin American Cuisine", "Learning to Read", 
-      "Legal Thriller", "Leisure", "LGBT Studies", "Life Crisis", "Life Management", 
-      "Life Partnership", "Lifestyle", "Linguistics", "Linux", "Literary Criticism", 
-      "Literary Theory", "Literature", "Liturgical Year", "Local History", "Local Interest", 
-      "Logic", "Love", "Low-Carb Cooking", "Lutheranism", "Mac", "Magic Tricks", 
-      "Management Techniques", "Managing Conflict", "Manners", "Marathon", "Marines", 
-      "Maritime History", "Marketing", "Marriage", "Martial Arts", "Massage", "Maternity", 
-      "Mathematics", "Mazes", "Mechanical Engineering", "Media", "Medical Nursing", 
-      "Medical Services", "Medicine", "Meditation", "Memoir", "Memorials", "Memory Improvement", 
-      "Men's Fiction", "Mental Exercise", "Mental Health", "Mental Illness", "Metaphysical", 
-      "Meteorology", "Methodism", "Mexican Cuisine", "Mice", "Microsoft", "Middle Ages", 
-      "Middle Class", "Middle Eastern Cuisine", "Military History", "Mind", "Minority Studies", 
-      "Model Railroads", "Modern Art", "Modern History", "Modern Literature", "Money", 
-      "Monsters", "Mormons", "Moroccan Cuisine", "Motorcycles", "Motor Sports", "Motor Vehicles", 
-      "Mountaineering", "Movies", "MS Office", "Museum Building", "Museums", "Music", 
-      "Musical Instruments", "Musicals", "Music of Latin America", "Napkin Decoupage", 
-      "Napoleonic Wars", "National Cooking", "National Guard", "National Law", "Native Americans", 
-      "Natural Disasters", "Natural History", "Natural Materials", "Natural Medicine", "Nature", 
-      "Navy", "Needlepoint", "Needlework", "Negotiating", "Neopaganism", "Network", "Networking", 
-      "Neuro-Linguistic Programming", "New Age", "New Wave", "Nobility", "North African Cuisine", 
-      "North American Cuisine", "North European Cuisine", "Number Puzzles", "Numismatics", 
-      "Nursing", "Nutrition", "Occultism", "Ocean", "Oceanian Cuisine", "Offshore Sportfishing", 
-      "Olympic Games", "Operating Systems", "Opinion of the People", "Optical Illusions", 
-      "Origami", "Ornamental Fishes", "Orthodox Church", "Outdoor Activities", "Paganism", 
-      "Painting Rooms", "Paintings", "Paleontology", "Paper", "Paralympic Games", 
-      "Parent-Child Relationship", "Parenting", "Parrots", "Partnership", "Party Games", 
-      "Patio", "Pearls", "Pediatrics", "People", "Performing Arts", "Periods of Art", 
-      "Personal Development", "Personal Finance", "Pet Birds", "Philately", "Phonics", 
-      "Photographers", "Photography Techniques", "Photojournalism", "Pigeons", "Pilgrimage", 
-      "Pistols", "Plants", "Plays", "Poetry", "Police Units", "Political Extremism", 
-      "Political History", "Political Ideologies", "Political Parties", "Political Science", 
-      "Political Theory", "Popes", "Pop Music", "Pop Stars", "Popular Culture", "Popular Media", 
-      "Popular Medicine", "Popular Philosophy", "Popular Psychology", "Popular Science", 
-      "Portrait Photography", "Portuguese Cuisine", "Positive Thinking", "Pottery", 
-      "Practical Skills", "Pregnancy", "Pre-Romanesque Architecture", "Presbyterianism", 
-      "Preschool", "Presentation", "Presents", "Preserving", "Princesses", "Print Art", 
-      "Product Design", "Professional Development", "Professional Finance", "Professions", 
-      "Programming Languages", "Property", "Protestantism", "Proverbs", "Puberty", 
-      "Public Speaking", "Pudding", "Pulps", "Puzzles", "Quackery", "Quick Meals", 
-      "Quilting", "Quizzes", "Quotations", "R&B", "Racquet Sports", "Radio", "Railway", 
-      "Rap", "Real Estate", "Recreation", "Recruitment Tests", "Redevelopment", "Reference", 
-      "Reform Style", "Refurbishment", "Regency", "Regional Cooking", "Regional History", 
-      "Relations", "Relationships", "Religions of the Ancient World", "Religious History", 
-      "Renaissance", "Renewable Energy", "Renting", "Repairing", "Reptiles", "Restoration", 
-      "Retirement Planning", "Revolution Architecture", "Revolvers", "Rhetoric", "Rifles", 
-      "Rights", "Rituals", "Road Vehicles", "Rock Climbing", "Rock Music", "Role Playing Games", 
-      "Rollerblading", "Roman Architecture", "Romanesque Art", "Roman Wars", "Royalty", 
-      "Rugby", "Running", "Russian Cuisine", "Saints", "Salary", "Sales", "Satire", "Sauces", 
-      "Scandinavian Cuisine", "Schlager Music", "School", "Science", "Scouting", "Scrapbooking", 
-      "Screenplays", "Script/Play", "Scuba & Snorkeling", "Sculpture", "Seafood", "Security", 
-      "Self-Defence", "Self-Esteem", "Self-Help", "Self-Improvement", "Self-Management", 
-      "Sermons", "Setting up Business", "Sewing", "Sexual Abuse", "Sheep", "Ships", 
-      "Shooting Sport", "Shrubs", "Sign Language", "Sikhism", "Silent Movies", "Silhouettes", 
-      "Single Parenting", "Skateboarding", "Skating", "Small Animals", "Small Business", 
-      "Snooker, Pool & Billiards", "Soccer", "Social Activists", "Social History", 
-      "Social Issues", "Social Sciences", "Social Services", "Social Situations", "Society", 
-      "Software Packages", "Songbirds", "Soul Music", "Soundtracks", "Soups", 
-      "South American Cuisine", "South European Cuisine", "Spacecraft", "Space Exploration", 
-      "Spanish Cuisine", "Speech Disorders", "Spirits", "Spooky Stories", "Sport Diving", 
-      "Sports Photography", "Sports Science", "Stamps", "Stews", "Stock Exchange", "Stocks", 
-      "Submarines", "Sub-Saharan African Cuisine", "Success", "Sudoku", "Sugar-Free Cooking", 
-      "Supernatural", "Surgery", "Surrealism", "Survival", "Suspense", "Swimming", 
-      "Swiss Cuisine", "Table Culture", "Taoism", "Tarot", "Task Force", "Tasmanian Tiger", 
-      "Taxes", "Tea", "Teaching", "Technology", "Telecommunications Engineering", "Television", 
-      "Tennis", "Terrorism", "Tests", "Textiles", "Theatre", "Theology", "Therapy", 
-      "Thinking Techniques", "Thriller", "Time Management", "Time Travel", "Tobacciana", 
-      "Topography", "Track and Field (Athletics)", "Tractors", "Trading Cards", 
-      "Traditional Folk Music", "Training", "Trains", "Transport Technology", "Travel Guide", 
-      "Travel with Children", "Travel Writing", "Treatments", "Trees", "Trivia", "True Crime", 
-      "True Military Stories", "True Stories", "Tuning", "Turkish Cuisine", "TV Game Shows", 
-      "TV Shows", "UFOlogy", "Underwater Photography", "United States Armed Forces", 
-      "Vampires", "Vegan Cooking", "Vegetarian Cooking", "Vehicle Maintenance", 
-      "Veterinary Medicine", "Video Games", "Video Processing", "Vietnam War", "Visualisation", 
-      "Vocational Skills", "Wallpaper", "War", "Warfare", "War Photography", "Water Sports", 
-      "Waterways", "Weapons", "Weather", "Web Development", "Weddings", "Weightlifting", 
-      "Weight Loss", "Weight Watchers", "Welfare", "Wellness", "Wellness Holidays", 
-      "Werewolves", "Western European Cuisine", "Westerns", "Wholefood", "Wicca", 
-      "Wilderness", "Wild Flowers", "Wildlife", "Window Color", "Windows", "Wines", 
-      "Winter Sports", "Witchcraft", "Women's Studies", "Women Sleuths", "Woodwork", 
-      "Wordsearch", "Work-Life-Balance", "World Championship", "World History", 
-      "World War I", "World War II", "Wrestling", "Writing", "Yoga", "Youth Work", "Zombies"
-    ];
+    // Use the imported valid eBay Topics list
     
     // Create a structured data object for the OpenAI analysis
     const bookData = {
@@ -1171,7 +1002,7 @@ BOOK METADATA:
 ${JSON.stringify(bookData, null, 2)}
 
 VALID EBAY TOPICS LIST:
-${validEbayTopics.join(", ")}
+${VALID_EBAY_TOPICS.join(", ")}
 
 INSTRUCTIONS:
 1. Consider the book's title, author, synopsis, and subject categories
@@ -1229,29 +1060,7 @@ async function determineBookGenresUsingGPT(listingData) {
   try {
     console.log('Determining appropriate eBay Genres for book:', listingData.title);
     
-    // Valid eBay book genres
-    const validGenres = [
-      "Action", "Adaptation", "Adult & Erotic", "Adventure", "Ancient Literature",
-      "Animals & Pets", "Anime", "Antiquarian & Collectible", "Art & Culture", 
-      "Aviation", "Bedtime Stories & Nursery Rhymes", "Biographies & True Stories",
-      "Business, Economics & Industry", "Children & Young Adults", "Comics",
-      "Computer & IT", "Cookbooks", "Crime & Thriller", "Drama", "Ecology",
-      "E-commerce", "Economics", "Engineering & Technology", "Environment, Nature & Earth",
-      "Fairy Tale", "Family, Parenting & Relations", "Fantasy", "Farming", "Fashion",
-      "Film/TV Adaptation", "Finance", "Folklore & Mythology", "Food & Drink",
-      "Geography", "Health, Treatments & Medicine", "Historical", "History", "Horror",
-      "Humour", "Imagery", "Law", "Leisure, Hobbies & Lifestyle", "LGBT",
-      "Life Sciences", "Magic", "Management", "Marine Life", "Mathematics & Sciences",
-      "Military", "Mind, Body & Spirit", "Modern & Contemporary", "Motivation",
-      "Mystery", "Mysticism", "Pageants, Parades & Festivals", "Paranormal",
-      "Parapsychology", "Personal & Professional Development", "Pharmacology",
-      "Philosophy", "Photography", "Physics", "Physiology", "Politics & Society",
-      "Psychiatry", "Psychology & Help", "Pulp Fiction", "Puzzles, Trivia & Indoor Games",
-      "Religious & Spiritual", "Romance", "Science", "Science Fiction", "Sexuality",
-      "Sociology", "Spirituality", "Sports", "Toys", "Transportation", "Travel",
-      "Urban Fiction", "War & Combat", "Western", "Women's Fiction",
-      "World literature & Classics", "Zoology"
-    ];
+    // Use the imported valid eBay Genres list
     
     // Create a structured data object for the OpenAI analysis
     const bookData = {
@@ -1278,7 +1087,7 @@ BOOK METADATA:
 ${JSON.stringify(bookData, null, 2)}
 
 VALID EBAY GENRES LIST:
-${validGenres.join(", ")}
+${VALID_EBAY_GENRES.join(", ")}
 
 INSTRUCTIONS:
 1. Consider the book's title, author, synopsis, and subject categories
@@ -1501,17 +1310,30 @@ async function createEbayDraftListing(listingData) {
     const paymentPolicyId = process.env.EBAY_PAYMENT_POLICY_ID;
     console.log("Auth Token Length:", authToken ? authToken.length : 0);
     console.log("Auth Token Preview:", authToken ? authToken.substring(0, 20) + "..." : "Not found");
-    // Determine book narrative type, topics, and genres using enhanced GPT functions
-    const narrativeType = await determineNarrativeTypeUsingGPT(listingData);
-    // Save narrative type to listingData for use in Genre determination
-    listingData.narrativeType = narrativeType;
-    // Get more comprehensive Topics and Genres using the enhanced functions
-    const bookTopics = await determineBookTopicsUsingGPT(listingData);
-    const bookGenres = await determineBookGenresUsingGPT(listingData);
-    console.log(`Book categorization results:
-     - Narrative Type: ${narrativeType}
-     - Topics (${bookTopics.length}): ${bookTopics.join(', ')}
-     - Genres (${bookGenres.length}): ${bookGenres.join(', ')}`);
+    // Use user-selected topic and genre, or fallback to AI generation if not provided
+    let bookTopics = [];
+    let bookGenres = [];
+    let narrativeType = '';
+    
+    if (listingData.selectedTopic && listingData.selectedGenre) {
+      // Use user-selected values
+      bookTopics = [listingData.selectedTopic];
+      bookGenres = [listingData.selectedGenre];
+      console.log(`Using user-selected values:
+       - Topic: ${listingData.selectedTopic}
+       - Genre: ${listingData.selectedGenre}`);
+    } else {
+      // Fallback to AI generation (for backwards compatibility)
+      console.log('User selections not provided, falling back to AI generation...');
+      narrativeType = await determineNarrativeTypeUsingGPT(listingData);
+      listingData.narrativeType = narrativeType;
+      bookTopics = await determineBookTopicsUsingGPT(listingData);
+      bookGenres = await determineBookGenresUsingGPT(listingData);
+      console.log(`AI-generated categorization results:
+       - Narrative Type: ${narrativeType}
+       - Topics (${bookTopics.length}): ${bookTopics.join(', ')}
+       - Genres (${bookGenres.length}): ${bookGenres.join(', ')}`);
+    }
     
     // Check if customTitle was provided and use it, otherwise use the pre-generated title
     let ebayTitle;
@@ -1965,6 +1787,62 @@ app.post('/api/processBook', upload.fields([
   }
 });
 
+// API endpoint to get topic and genre suggestions for a book
+app.post('/api/getTopicGenreSuggestions', async (req, res) => {
+  try {
+    console.log('Getting topic and genre suggestions for book:', req.body.title);
+    
+    const { title, author, synopsis, subjects, publisher, format, language, publicationYear } = req.body;
+    
+    if (!title) {
+      return res.status(400).json({ success: false, error: 'Book title is required' });
+    }
+    
+    // Create listingData object for the AI functions
+    const listingData = {
+      title,
+      author: author || '',
+      synopsis: synopsis || '',
+      subjects: subjects || [],
+      publisher: publisher || '',
+      format: format || 'Paperback',
+      language: language || 'English',
+      publicationYear: publicationYear || ''
+    };
+    
+    // Determine narrative type first
+    const narrativeType = await determineNarrativeTypeUsingGPT(listingData);
+    listingData.narrativeType = narrativeType;
+    
+    // Get AI suggestions for topics and genres
+    const [bookTopics, bookGenres] = await Promise.all([
+      determineBookTopicsUsingGPT(listingData),
+      determineBookGenresUsingGPT(listingData)
+    ]);
+    
+    console.log(`AI suggestions - Topics: ${bookTopics.join(', ')}, Genres: ${bookGenres.join(', ')}`);
+    
+    // Return the suggestions along with the full lists for manual selection
+    res.json({
+      success: true,
+      suggestions: {
+        topics: bookTopics,
+        genres: bookGenres
+      },
+      narrativeType,
+      allValidTopics: VALID_EBAY_TOPICS,
+      allValidGenres: VALID_EBAY_GENRES
+    });
+    
+  } catch (error) {
+    console.error('Error getting topic/genre suggestions:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Failed to generate topic and genre suggestions' 
+    });
+  }
+});
+
 // In your server.js or routes file
 app.post('/api/createListing', upload.fields([{ name: 'imageFiles', maxCount: 24 }]), async (req, res) => {
   console.log('\n--- Received /api/createListing Request (Multipart) ---');
@@ -1981,7 +1859,9 @@ app.post('/api/createListing', upload.fields([{ name: 'imageFiles', maxCount: 24
         format, // Assuming format is sent back if needed for display/logic
         subjects, // Expecting this as a JSON string potentially
         ebayTitle, // Expecting the pre-generated title
-        customDescriptionNote // Custom description note from frontend
+        customDescriptionNote, // Custom description note from frontend
+        selectedTopic, // User-selected topic
+        selectedGenre // User-selected genre
     } = req.body;
 
     // *** Parse selectedFlawKeys from body ***
@@ -2027,7 +1907,9 @@ app.post('/api/createListing', upload.fields([{ name: 'imageFiles', maxCount: 24
       synopsis: synopsis || '', language: language || '', format: format || 'Paperback', // Add default format
       subjects: parsedSubjects, // Use parsed subjects
       ebayTitle, // Generated title passed back from frontend
-      customDescriptionNote: customDescriptionNote || '' // Custom description note
+      customDescriptionNote: customDescriptionNote || '', // Custom description note
+      selectedTopic: selectedTopic || '', // User-selected topic
+      selectedGenre: selectedGenre || '' // User-selected genre
     };
 
     // --- Create eBay Listing ---

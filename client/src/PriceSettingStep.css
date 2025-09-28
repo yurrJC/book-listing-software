@@ -154,6 +154,18 @@
     justify-content: space-between;
     margin-top: 24px;
   }
+
+  /* Loading suggestions styles */
+  .loading-suggestions {
+    margin: 20px 0;
+    padding: 20px;
+    text-align: center;
+    background-color: #f8f9fa;
+    border: 2px solid #e1e5e9;
+    border-radius: 8px;
+    color: #6c757d;
+    font-size: 14px;
+  }
   
   .btn {
     padding: 10px 20px;
