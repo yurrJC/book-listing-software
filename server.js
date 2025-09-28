@@ -1341,7 +1341,7 @@ async function createEbayDraftListing(listingData) {
       bookTopics = [listingData.selectedTopic];
       bookGenres = [listingData.selectedGenre];
       narrativeType = await determineNarrativeTypeUsingGPT(listingData);
-      listingData.narrativeType = narrativeType;
+    listingData.narrativeType = narrativeType;
       console.log(`✅ Using user-selected values:
        - Topic: "${listingData.selectedTopic}"
        - Genre: "${listingData.selectedGenre}"
@@ -1354,9 +1354,9 @@ async function createEbayDraftListing(listingData) {
       bookTopics = await determineBookTopicsUsingGPT(listingData);
       bookGenres = await determineBookGenresUsingGPT(listingData);
       console.log(`AI-generated categorization results:
-       - Narrative Type: ${narrativeType}
-       - Topics (${bookTopics.length}): ${bookTopics.join(', ')}
-       - Genres (${bookGenres.length}): ${bookGenres.join(', ')}`);
+     - Narrative Type: ${narrativeType}
+     - Topics (${bookTopics.length}): ${bookTopics.join(', ')}
+     - Genres (${bookGenres.length}): ${bookGenres.join(', ')}`);
     }
     
     // Check if customTitle was provided and use it, otherwise use the pre-generated title
@@ -1939,6 +1939,54 @@ app.post('/api/createListing', upload.fields([{ name: 'imageFiles', maxCount: 24
       selectedTopic: selectedTopic || '', // User-selected topic
       selectedGenre: selectedGenre || '' // User-selected genre
     };
+
+    // --- Validate Required eBay Fields ---
+    console.log('Validating required eBay fields...');
+    
+    // Ensure Language has a default value
+    if (!listingData.language || listingData.language.trim() === '') {
+      listingData.language = 'English';
+      console.log('⚠️ Language was missing, defaulting to English');
+    }
+    
+    const requiredFields = {
+      author: listingData.author,
+      title: listingData.title,
+      language: listingData.language
+    };
+    
+    const missingFields = [];
+    if (!requiredFields.author || requiredFields.author.trim() === '') {
+      missingFields.push('Author');
+    }
+    if (!requiredFields.title || requiredFields.title.trim() === '') {
+      missingFields.push('Book Title');
+    }
+    if (!requiredFields.language || requiredFields.language.trim() === '') {
+      missingFields.push('Language');
+    }
+    
+    if (missingFields.length > 0) {
+      const errorMessage = `Missing required eBay fields: ${missingFields.join(', ')}. Please provide these fields to continue.`;
+      console.error('❌ Required field validation failed:', errorMessage);
+      return res.status(400).json({
+        success: false,
+        error: errorMessage,
+        missingFields: missingFields,
+        requiresManualInput: true,
+        currentData: {
+          author: listingData.author || '',
+          title: listingData.title || '',
+          language: listingData.language || 'English'
+        }
+      });
+    }
+    
+    console.log('✅ Required eBay fields validation passed:', {
+      author: requiredFields.author,
+      title: requiredFields.title,
+      language: requiredFields.language
+    });
 
     // --- Create eBay Listing ---
     console.log('Calling createEbayDraftListing with prepared data...');

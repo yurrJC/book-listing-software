@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import './PriceSettingStep.css';
 import TopicGenreSelector from './TopicGenreSelector';
+import RequiredFieldsPopup from './RequiredFieldsPopup';
 
 // Define API base URL
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://book-listing-software.onrender.com';
@@ -78,6 +79,10 @@ function PriceSettingStep({
   const [allValidGenres, setAllValidGenres] = useState([]);
   const [narrativeType, setNarrativeType] = useState('');
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
+  
+  // Required fields popup state
+  const [showRequiredFieldsPopup, setShowRequiredFieldsPopup] = useState(false);
+  const [missingFieldsData, setMissingFieldsData] = useState(null);
 
   // Effect to update listing title when props change
   useEffect(() => {
@@ -289,8 +294,10 @@ function PriceSettingStep({
 
       if (!response.ok) {
         let errorMessage = `Listing creation failed (Status: ${response.status})`;
+        let errorData = null;
+        
         try {
-             const errorData = JSON.parse(responseText);
+             errorData = JSON.parse(responseText);
              // Use more specific error from backend if available
              errorMessage = errorData.error || errorData.message || errorMessage;
              if(errorData.details) {
@@ -307,6 +314,18 @@ function PriceSettingStep({
                 errorMessage += `: ${responseText}`;
             }
         }
+        
+        // Check if this is a required fields error
+        if (errorData && errorData.requiresManualInput) {
+          setMissingFieldsData({
+            missingFields: errorData.missingFields,
+            currentData: errorData.currentData
+          });
+          setShowRequiredFieldsPopup(true);
+          setLoading(false);
+          return;
+        }
+        
         throw new Error(errorMessage);
       }
 
@@ -368,6 +387,87 @@ function PriceSettingStep({
       }
     };
   }, [previewImageUrl]); // Rerun effect if the previewImageUrl changes
+
+  // Required fields popup handlers
+  const handleRequiredFieldsConfirm = async (manualData) => {
+    setShowRequiredFieldsPopup(false);
+    setLoading(true);
+    
+    try {
+      // Retry the listing creation with manual data
+      const formData = new FormData();
+
+      // Append Image Files from props
+      imageFileObjects.forEach((file, index) => {
+        const fileName = file.name || `image_${index}.jpg`;
+        const fileType = file.type || 'image/jpeg';
+        formData.append('imageFiles', file, fileName);
+      });
+
+      // Append Other Data as Fields with manual overrides
+      formData.append('isbn', isbn || '');
+      formData.append('price', price);
+      formData.append('sku', sku || '');
+      formData.append('selectedCondition', selectedCondition);
+      formData.append('selectedFlawKeys', JSON.stringify(selectedFlawKeys || []));
+      formData.append('ocrText', ocrText || '');
+
+      // Handle custom vs generated title
+      if (listingTitle.trim() !== (ebayTitle || '').trim()) {
+        formData.append('customTitle', listingTitle.trim());
+      }
+      formData.append('ebayTitle', ebayTitle || '');
+
+      // Append metadata fields with manual overrides
+      formData.append('title', manualData.title || metadata?.title || '');
+      formData.append('author', manualData.author || metadata?.author || '');
+      formData.append('publisher', metadata?.publisher || '');
+      formData.append('publicationYear', String(metadata?.publishedDate || metadata?.publicationYear || ''));
+      formData.append('synopsis', metadata?.synopsis || '');
+      formData.append('language', manualData.language || metadata?.language || '');
+      formData.append('format', metadata?.binding || metadata?.format || 'Paperback');
+      formData.append('subjects', JSON.stringify(metadata?.subjects || []));
+
+      // Append custom description note if provided
+      if (customDescriptionNote && customDescriptionNote.trim()) {
+        formData.append('customDescriptionNote', customDescriptionNote.trim());
+      }
+
+      // Append selected topic and genre
+      if (selectedTopic) {
+        formData.append('selectedTopic', selectedTopic);
+      }
+      if (selectedGenre) {
+        formData.append('selectedGenre', selectedGenre);
+      }
+
+      // Retry the request
+      const response = await fetch(`${API_BASE_URL}/api/createListing`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      const responseText = await response.text();
+      
+      if (!response.ok) {
+        throw new Error(`Listing creation failed: ${responseText}`);
+      }
+
+      const data = JSON.parse(responseText);
+      onSubmit(data);
+      
+    } catch (err) {
+      console.error('Error during retry listing creation:', err);
+      setError(err.message || 'An unknown error occurred during listing creation.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRequiredFieldsCancel = () => {
+    setShowRequiredFieldsPopup(false);
+    setMissingFieldsData(null);
+  };
 
 
   // --- Component Render ---
@@ -538,6 +638,15 @@ function PriceSettingStep({
          </div> {/* End listing-form */}
        </div> {/* End listing-content */}
     </div> // End listing-container
+
+    {/* Required Fields Popup */}
+    <RequiredFieldsPopup
+      isOpen={showRequiredFieldsPopup}
+      onClose={handleRequiredFieldsCancel}
+      onConfirm={handleRequiredFieldsConfirm}
+      missingFields={missingFieldsData?.missingFields || []}
+      currentData={missingFieldsData?.currentData || {}}
+    />
   ); // End return
 } // End PriceSettingStep component
 
