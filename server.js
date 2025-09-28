@@ -1006,16 +1006,19 @@ ${VALID_EBAY_TOPICS.join(", ")}
 
 INSTRUCTIONS:
 1. Analyze the book's title, author, synopsis, and subject categories
-2. Select ONLY topics from the VALID EBAY TOPICS LIST that are highly relevant (95%+ confidence)
-3. Prioritize the most specific and relevant topics for this particular book
-4. Always include "Books" as the first topic
+2. Select ONLY topics from the VALID EBAY TOPICS LIST that are relevant and commonly useful
+3. Prioritize broad, commonly searched topics that work well for this type of book
+4. Always include "Books" as the first topic (100% confidence)
 5. Focus on topics that buyers would actually search for when looking for this book
-6. For biographies, include: "Books", "Biography", and 2-3 most relevant subject-specific topics
-7. For fiction, include: "Books", "Literature", and 2-3 most relevant genre topics
-8. For non-fiction, include: "Books" and 3-4 most relevant subject topics
+6. For biographies, include: "Books", "Biography", and broad relevant topics (e.g., "History", "Australia", "Australian History", "Business & Money")
+7. For fiction, include: "Books", "Literature", and broad genre topics (e.g., "Fiction", "Romance", "Mystery")
+8. For non-fiction, include: "Books" and broad subject topics (e.g., "History", "Science", "Business & Money")
+9. Always include relevant geographical/country topics (e.g., "Australia", "United States", "United Kingdom") when applicable
+10. Prefer broader, more commonly used topics over very specific niche ones
+11. ORDER topics by confidence level: 100% confidence first, then 95%, 90%, etc.
 
-RESPOND WITH A JSON OBJECT containing ONLY the most relevant valid eBay topics (maximum 5):
-Format: {"topics": ["Books", "MostRelevantTopic1", "MostRelevantTopic2", "MostRelevantTopic3", "MostRelevantTopic4"]}
+RESPOND WITH A JSON OBJECT containing ALL relevant valid eBay topics ordered by confidence (highest confidence first):
+Format: {"topics": ["Books", "HighConfidenceTopic1", "HighConfidenceTopic2", "MediumConfidenceTopic3", "LowerConfidenceTopic4"]}
 `;
 
     // Call OpenAI API for topics
@@ -1043,8 +1046,8 @@ Format: {"topics": ["Books", "MostRelevantTopic1", "MostRelevantTopic2", "MostRe
         validTopics.unshift("Books");
       }
       
-      // Limit to top 5 most relevant topics for faster selection
-      const finalTopics = validTopics.slice(0, 5);
+      // Return ALL valid topics (no limit) - let AI suggest everything it's confident about
+      const finalTopics = validTopics;
       
       console.log(`Determined valid eBay Topics for "${listingData.title}":`, finalTopics);
       return finalTopics;
@@ -1099,16 +1102,17 @@ ${VALID_EBAY_GENRES.join(", ")}
 
 INSTRUCTIONS:
 1. Analyze the book's title, author, synopsis, and subject categories
-2. Select ONLY genres from the VALID EBAY GENRES LIST that are highly relevant (95%+ confidence)
-3. Prioritize the most specific and relevant genres for this particular book
+2. Select ONLY genres from the VALID EBAY GENRES LIST that are relevant and commonly useful
+3. Prioritize broad, commonly searched genres that work well for this type of book
 4. Focus on genres that buyers would actually search for when looking for this book
-5. For biographies, include: "Biographies & True Stories" and 1-2 most relevant subject genres
-6. For fiction, include: "Fiction" and 1-2 most relevant genre categories
-7. For non-fiction, include: "Non-Fiction" and 1-2 most relevant subject genres
-8. Maximum 3 genres total for faster selection
+5. For biographies, include: "Biographies & True Stories" and broad relevant genres (e.g., "Historical", "History")
+6. For fiction, include: "Fiction" and broad genre categories (e.g., "Romance", "Mystery", "Fantasy")
+7. For non-fiction, include: "Non-Fiction" and broad subject genres (e.g., "History", "Science", "Business, Economics & Industry")
+8. Prefer broader, more commonly used genres over very specific niche ones
+9. ORDER genres by confidence level: highest confidence first, then 95%, 90%, etc.
 
-RESPOND WITH A JSON OBJECT containing ONLY the most relevant valid eBay genres (maximum 3):
-Format: {"genres": ["MostRelevantGenre1", "MostRelevantGenre2", "MostRelevantGenre3"]}
+RESPOND WITH A JSON OBJECT containing ALL relevant valid eBay genres ordered by confidence (highest confidence first):
+Format: {"genres": ["HighConfidenceGenre1", "HighConfidenceGenre2", "MediumConfidenceGenre3", "LowerConfidenceGenre4"]}
 `;
 
     // Call OpenAI API for genres
@@ -1140,8 +1144,8 @@ Format: {"genres": ["MostRelevantGenre1", "MostRelevantGenre2", "MostRelevantGen
         }
       }
       
-      // Limit to top 3 most relevant genres for faster selection
-      const finalGenres = validGenres.slice(0, 3);
+      // Return ALL valid genres (no limit) - let AI suggest everything it's confident about
+      const finalGenres = validGenres;
       
       console.log(`Determined valid eBay Genres for "${listingData.title}":`, finalGenres);
       return finalGenres;
