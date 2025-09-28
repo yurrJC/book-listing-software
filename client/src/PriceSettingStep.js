@@ -637,16 +637,16 @@ function PriceSettingStep({
              </form>
          </div> {/* End listing-form */}
        </div> {/* End listing-content */}
+       
+       {/* Required Fields Popup */}
+       <RequiredFieldsPopup
+         isOpen={showRequiredFieldsPopup}
+         onClose={handleRequiredFieldsCancel}
+         onConfirm={handleRequiredFieldsConfirm}
+         missingFields={missingFieldsData?.missingFields || []}
+         currentData={missingFieldsData?.currentData || {}}
+       />
     </div> // End listing-container
-
-    {/* Required Fields Popup */}
-    <RequiredFieldsPopup
-      isOpen={showRequiredFieldsPopup}
-      onClose={handleRequiredFieldsCancel}
-      onConfirm={handleRequiredFieldsConfirm}
-      missingFields={missingFieldsData?.missingFields || []}
-      currentData={missingFieldsData?.currentData || {}}
-    />
   ); // End return
 } // End PriceSettingStep component
 
