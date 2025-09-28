@@ -1316,12 +1316,15 @@ async function createEbayDraftListing(listingData) {
     let narrativeType = '';
     
     if (listingData.selectedTopic && listingData.selectedGenre) {
-      // Use user-selected values
+      // Use user-selected values, but still determine narrative type for the item specific
       bookTopics = [listingData.selectedTopic];
       bookGenres = [listingData.selectedGenre];
+      narrativeType = await determineNarrativeTypeUsingGPT(listingData);
+      listingData.narrativeType = narrativeType;
       console.log(`✅ Using user-selected values:
        - Topic: "${listingData.selectedTopic}"
-       - Genre: "${listingData.selectedGenre}"`);
+       - Genre: "${listingData.selectedGenre}"
+       - Narrative Type: "${narrativeType}"`);
     } else {
       // Fallback to AI generation (for backwards compatibility)
       console.log('User selections not provided, falling back to AI generation...');
@@ -1363,7 +1366,6 @@ async function createEbayDraftListing(listingData) {
     const nameValueList = [
       { 'Name': 'Format', 'Value': listingData.format || 'Paperback' },
       { 'Name': 'Author', 'Value': listingData.author },
-      { 'Name': 'ISBN', 'Value': listingData.isbn },
       { 'Name': 'Book Title', 'Value': listingData.title.length > 65 
           ? listingData.title.substring(0, 62) + '...' 
           : listingData.title }
