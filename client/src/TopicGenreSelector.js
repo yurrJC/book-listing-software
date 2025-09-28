@@ -107,21 +107,19 @@ const TopicGenreSelector = ({
             <p className="suggestions-label">AI Suggestions:</p>
             <div className="suggestion-tags">
               {suggestions.topics.map((topic, index) => {
-                const isValid = allValidTopics.includes(topic);
                 return (
                   <button
                     key={index}
                     type="button"
-                    className={`suggestion-tag ${isValid ? 'valid' : 'invalid'} ${selectedTopic === topic ? 'selected' : ''}`}
+                    className={`suggestion-tag valid ${selectedTopic === topic ? 'selected' : ''}`}
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
                       handleTopicSelect(topic);
                     }}
-                    title={isValid ? 'Valid eBay topic' : 'Not a valid eBay topic'}
+                    title="Valid eBay topic"
                   >
-                    {topic}
-                    {isValid ? ' ✓' : ' ✗'}
+                    {topic} ✓
                   </button>
                 );
               })}
@@ -174,21 +172,19 @@ const TopicGenreSelector = ({
             <p className="suggestions-label">AI Suggestions:</p>
             <div className="suggestion-tags">
               {suggestions.genres.map((genre, index) => {
-                const isValid = allValidGenres.includes(genre);
                 return (
                   <button
                     key={index}
                     type="button"
-                    className={`suggestion-tag ${isValid ? 'valid' : 'invalid'} ${selectedGenre === genre ? 'selected' : ''}`}
+                    className={`suggestion-tag valid ${selectedGenre === genre ? 'selected' : ''}`}
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
                       handleGenreSelect(genre);
                     }}
-                    title={isValid ? 'Valid eBay genre' : 'Not a valid eBay genre'}
+                    title="Valid eBay genre"
                   >
-                    {genre}
-                    {isValid ? ' ✓' : ' ✗'}
+                    {genre} ✓
                   </button>
                 );
               })}
@@ -233,13 +229,13 @@ const TopicGenreSelector = ({
       </div>
 
       <div className="validation-status">
-        {isTopicValid && isGenreValid ? (
+        {selectedTopic && selectedGenre ? (
           <div className="status-valid">
-            ✓ Both topic and genre are valid eBay values
+            ✓ Topic and genre selected - ready to list!
           </div>
         ) : (
-          <div className="status-warning">
-            ⚠ Please select valid eBay topics and genres
+          <div className="status-info">
+            💡 Click suggestions above or search manually to select topic and genre
           </div>
         )}
       </div>

@@ -1005,15 +1005,17 @@ VALID EBAY TOPICS LIST:
 ${VALID_EBAY_TOPICS.join(", ")}
 
 INSTRUCTIONS:
-1. Consider the book's title, author, synopsis, and subject categories
-2. Go through each topic in the VALID EBAY TOPICS LIST
-3. For each topic, determine if it matches this book with 95%+ confidence
-4. Include both general (e.g., "Books") and specific (e.g., "Biography", "Photography") relevant topics
-5. For biographies, include appropriate topics like "Biography", related field topics, and geographical relevance
-6. For the book "Max Dupain" (biography of Australian photographer), appropriate topics would include: "Books", "Biography", "Photography", "Australian History", "Artists", "Photographers"
+1. Analyze the book's title, author, synopsis, and subject categories
+2. Select ONLY topics from the VALID EBAY TOPICS LIST that are highly relevant (95%+ confidence)
+3. Prioritize the most specific and relevant topics for this particular book
+4. Always include "Books" as the first topic
+5. Focus on topics that buyers would actually search for when looking for this book
+6. For biographies, include: "Books", "Biography", and 2-3 most relevant subject-specific topics
+7. For fiction, include: "Books", "Literature", and 2-3 most relevant genre topics
+8. For non-fiction, include: "Books" and 3-4 most relevant subject topics
 
-RESPOND WITH A JSON OBJECT containing ONLY the highly relevant topics:
-Format: {"topics": ["Topic1", "Topic2", "Topic3", "Topic4", "Topic5"]}
+RESPOND WITH A JSON OBJECT containing ONLY the most relevant valid eBay topics (maximum 5):
+Format: {"topics": ["Books", "MostRelevantTopic1", "MostRelevantTopic2", "MostRelevantTopic3", "MostRelevantTopic4"]}
 `;
 
     // Call OpenAI API for topics
@@ -1033,13 +1035,19 @@ Format: {"topics": ["Topic1", "Topic2", "Topic3", "Topic4", "Topic5"]}
       const responseJson = JSON.parse(topicsResponse.choices[0].message.content);
       topics = responseJson.topics || [];
       
+      // Filter to only include valid eBay topics
+      const validTopics = topics.filter(topic => VALID_EBAY_TOPICS.includes(topic));
+      
       // Ensure we have at least "Books" as a fallback
-      if (!topics.includes("Books")) {
-        topics.unshift("Books");
+      if (!validTopics.includes("Books")) {
+        validTopics.unshift("Books");
       }
       
-      console.log(`Determined eBay Topics for "${listingData.title}":`, topics);
-      return topics;
+      // Limit to top 5 most relevant topics for faster selection
+      const finalTopics = validTopics.slice(0, 5);
+      
+      console.log(`Determined valid eBay Topics for "${listingData.title}":`, finalTopics);
+      return finalTopics;
     } catch (error) {
       console.error('Error parsing OpenAI response for topics:', error);
       return ["Books"]; // Fallback to basic category
@@ -1090,14 +1098,17 @@ VALID EBAY GENRES LIST:
 ${VALID_EBAY_GENRES.join(", ")}
 
 INSTRUCTIONS:
-1. Consider the book's title, author, synopsis, and subject categories
-2. Go through each genre in the VALID EBAY GENRES LIST
-3. For each genre, determine if it matches this book with 95%+ confidence
-4. For biographies, include "Biographies & True Stories" and any subject-specific genres
-5. For the book "Max Dupain" (biography of Australian photographer), appropriate genres would include: "Biographies & True Stories", "Art & Culture", "Photography" 
+1. Analyze the book's title, author, synopsis, and subject categories
+2. Select ONLY genres from the VALID EBAY GENRES LIST that are highly relevant (95%+ confidence)
+3. Prioritize the most specific and relevant genres for this particular book
+4. Focus on genres that buyers would actually search for when looking for this book
+5. For biographies, include: "Biographies & True Stories" and 1-2 most relevant subject genres
+6. For fiction, include: "Fiction" and 1-2 most relevant genre categories
+7. For non-fiction, include: "Non-Fiction" and 1-2 most relevant subject genres
+8. Maximum 3 genres total for faster selection
 
-RESPOND WITH A JSON OBJECT containing ONLY the highly relevant genres:
-Format: {"genres": ["Genre1", "Genre2", "Genre3"]}
+RESPOND WITH A JSON OBJECT containing ONLY the most relevant valid eBay genres (maximum 3):
+Format: {"genres": ["MostRelevantGenre1", "MostRelevantGenre2", "MostRelevantGenre3"]}
 `;
 
     // Call OpenAI API for genres
@@ -1117,17 +1128,23 @@ Format: {"genres": ["Genre1", "Genre2", "Genre3"]}
       const responseJson = JSON.parse(genresResponse.choices[0].message.content);
       genres = responseJson.genres || [];
       
+      // Filter to only include valid eBay genres
+      const validGenres = genres.filter(genre => VALID_EBAY_GENRES.includes(genre));
+      
       // Ensure we have at least a basic fallback genre based on narrative type
-      if (genres.length === 0) {
+      if (validGenres.length === 0) {
         if (listingData.narrativeType === "Fiction") {
-          genres.push("Fiction");
+          validGenres.push("Fiction");
         } else {
-          genres.push("Non-Fiction");
+          validGenres.push("Non-Fiction");
         }
       }
       
-      console.log(`Determined eBay Genres for "${listingData.title}":`, genres);
-      return genres;
+      // Limit to top 3 most relevant genres for faster selection
+      const finalGenres = validGenres.slice(0, 3);
+      
+      console.log(`Determined valid eBay Genres for "${listingData.title}":`, finalGenres);
+      return finalGenres;
     } catch (error) {
       console.error('Error parsing OpenAI response for genres:', error);
       // Fallback based on narrative type

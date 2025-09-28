@@ -199,6 +199,12 @@
   border: 1px solid #ffeaa7;
 }
 
+.status-info {
+  background-color: #d1ecf1;
+  color: #0c5460;
+  border: 1px solid #bee5eb;
+}
+
 /* Responsive design */
 @media (max-width: 768px) {
   .topic-genre-selector {
