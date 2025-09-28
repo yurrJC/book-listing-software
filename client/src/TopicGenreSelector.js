@@ -111,8 +111,13 @@ const TopicGenreSelector = ({
                 return (
                   <button
                     key={index}
+                    type="button"
                     className={`suggestion-tag ${isValid ? 'valid' : 'invalid'} ${selectedTopic === topic ? 'selected' : ''}`}
-                    onClick={() => handleTopicSelect(topic)}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleTopicSelect(topic);
+                    }}
                     title={isValid ? 'Valid eBay topic' : 'Not a valid eBay topic'}
                   >
                     {topic}
@@ -173,8 +178,13 @@ const TopicGenreSelector = ({
                 return (
                   <button
                     key={index}
+                    type="button"
                     className={`suggestion-tag ${isValid ? 'valid' : 'invalid'} ${selectedGenre === genre ? 'selected' : ''}`}
-                    onClick={() => handleGenreSelect(genre)}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleGenreSelect(genre);
+                    }}
                     title={isValid ? 'Valid eBay genre' : 'Not a valid eBay genre'}
                   >
                     {genre}

@@ -253,11 +253,15 @@ function PriceSettingStep({
       // Append selected topic and genre
       if (selectedTopic) {
         formData.append('selectedTopic', selectedTopic);
-        console.log("Appending selected topic:", selectedTopic);
+        console.log("✅ Appending selected topic:", selectedTopic);
+      } else {
+        console.log("❌ No topic selected");
       }
       if (selectedGenre) {
         formData.append('selectedGenre', selectedGenre);
-        console.log("Appending selected genre:", selectedGenre);
+        console.log("✅ Appending selected genre:", selectedGenre);
+      } else {
+        console.log("❌ No genre selected");
       }
 
       console.log('FormData prepared. Sending to /api/createListing...');

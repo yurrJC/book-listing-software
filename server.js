@@ -1319,9 +1319,9 @@ async function createEbayDraftListing(listingData) {
       // Use user-selected values
       bookTopics = [listingData.selectedTopic];
       bookGenres = [listingData.selectedGenre];
-      console.log(`Using user-selected values:
-       - Topic: ${listingData.selectedTopic}
-       - Genre: ${listingData.selectedGenre}`);
+      console.log(`✅ Using user-selected values:
+       - Topic: "${listingData.selectedTopic}"
+       - Genre: "${listingData.selectedGenre}"`);
     } else {
       // Fallback to AI generation (for backwards compatibility)
       console.log('User selections not provided, falling back to AI generation...');
@@ -1864,6 +1864,11 @@ app.post('/api/createListing', upload.fields([{ name: 'imageFiles', maxCount: 24
         selectedGenre // User-selected genre
     } = req.body;
 
+    // Debug: Log the received topic and genre selections
+    console.log('🔍 Received topic/genre selections:');
+    console.log('  - selectedTopic:', selectedTopic);
+    console.log('  - selectedGenre:', selectedGenre);
+
     // *** Parse selectedFlawKeys from body ***
     let selectedFlawKeys = [];
     try {
@@ -1936,6 +1941,8 @@ app.post('/api/createListing', upload.fields([{ name: 'imageFiles', maxCount: 24
     } else {
       // SUCCESS: listingResponse contains success:true
       console.log('Sending success response from /api/createListing');
+      console.log('📤 Response metadata topics:', listingResponse?.metadata?.topics);
+      console.log('📤 Response metadata genres:', listingResponse?.metadata?.genres);
       // Image deletion happens inside createEbayDraftListing upon its success
       res.json({
           success: true,
