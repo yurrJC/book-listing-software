@@ -1,68 +1,41 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import './StoreCategoriesConfig.css';
-
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:3001';
 
 function StoreCategoriesConfig({ onClose }) {
   const [config, setConfig] = useState({
     storeCategory1: '',
     storeCategory2: '',
-    categoryMappings: {}
+    categoryMappings: {
+      'Fiction': '',
+      'Non-Fiction': '',
+      'Cookbook': '',
+      'Textbook': '',
+      'Biography': '',
+      'History': '',
+      'Science': '',
+      'Art': '',
+      'Psychology': '',
+      'Business': ''
+    }
   });
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
 
-  useEffect(() => {
-    fetchStoreCategories();
-  }, []);
-
-  const fetchStoreCategories = async () => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/storeCategories`);
-      const data = await response.json();
-      
-      if (data.success) {
-        setConfig(data.config);
-      } else {
-        setMessage('Failed to load store category configuration');
-      }
-    } catch (error) {
-      console.error('Error fetching store categories:', error);
-      setMessage('Error loading store category configuration');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSave = async () => {
+  const handleSave = () => {
     setSaving(true);
     setMessage('');
     
-    try {
-      // Note: In a real implementation, you'd need a backend endpoint to save these
-      // For now, we'll just show a message about environment variables
-      setMessage('Store categories are configured via environment variables. Please update your .env file with the following variables:');
-      
-      // Show the environment variables that need to be set
-      const envVars = [
-        `EBAY_STORE_CATEGORY_1=${config.storeCategory1}`,
-        `EBAY_STORE_CATEGORY_2=${config.storeCategory2}`,
-        ...Object.entries(config.categoryMappings).map(([key, value]) => 
-          `EBAY_STORE_CATEGORY_${key.toUpperCase().replace(/[^A-Z0-9]/g, '_')}=${value}`
-        )
-      ].filter(envVar => envVar.includes('=') && envVar.split('=')[1]);
-      
-      setTimeout(() => {
-        setMessage(prev => prev + '\n\n' + envVars.join('\n'));
-      }, 1000);
-      
-    } catch (error) {
-      console.error('Error saving store categories:', error);
-      setMessage('Error saving store category configuration');
-    } finally {
-      setSaving(false);
-    }
+    // Show the environment variables that need to be set
+    const envVars = [
+      `EBAY_STORE_CATEGORY_1=${config.storeCategory1}`,
+      `EBAY_STORE_CATEGORY_2=${config.storeCategory2}`,
+      ...Object.entries(config.categoryMappings).map(([key, value]) => 
+        `EBAY_STORE_CATEGORY_${key.toUpperCase().replace(/[^A-Z0-9]/g, '_')}=${value}`
+      )
+    ].filter(envVar => envVar.includes('=') && envVar.split('=')[1]);
+    
+    setMessage('Store categories are configured via environment variables. Please update your .env file with the following variables:\n\n' + envVars.join('\n'));
+    setSaving(false);
   };
 
   const handleInputChange = (field, value) => {
@@ -83,15 +56,6 @@ function StoreCategoriesConfig({ onClose }) {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="store-categories-overlay">
-        <div className="store-categories-modal">
-          <div className="loading">Loading store category configuration...</div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="store-categories-overlay">
