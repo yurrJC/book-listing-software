@@ -1088,26 +1088,59 @@ function determineStoreCategory2(bookGenres, bookTopics, narrativeType) {
   
   console.log('Available category mappings:', categoryMappings);
   
+  // Helper to normalize strings for loose matching
+  const normalize = (s) => (s || '')
+    .toString()
+    .toLowerCase()
+    .replace(/&/g, ' and ')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  // Build an array of [displayName, id, normalized] entries
+  const mappingEntries = Object.entries(categoryMappings).map(([name, id]) => {
+    return [name, id, normalize(name)];
+  });
+
+  const tryMatch = (labels, labelType) => {
+    for (const raw of labels || []) {
+      const norm = normalize(raw);
+      if (!norm) continue;
+      // Exact normalized match first
+      const exact = mappingEntries.find(([, id, n]) => !!id && n === norm);
+      if (exact) {
+        console.log(`Matched ${labelType} EXACT: "${raw}" -> ${exact[0]} (${exact[1]})`);
+        return exact[1];
+      }
+      // Token subset match (e.g., "business economics industry" should match "business")
+      const tokens = norm.split(' ');
+      const subset = mappingEntries.find(([, id, n]) => !!id && tokens.includes(n));
+      if (subset) {
+        console.log(`Matched ${labelType} SUBSET: "${raw}" -> ${subset[0]} (${subset[1]})`);
+        return subset[1];
+      }
+      // Partial contains either direction
+      const partial = mappingEntries.find(([, id, n]) => !!id && (n.includes(norm) || norm.includes(n)));
+      if (partial) {
+        console.log(`Matched ${labelType} PARTIAL: "${raw}" -> ${partial[0]} (${partial[1]})`);
+        return partial[1];
+      }
+    }
+    return null;
+  };
+
   // Check genres first (highest priority)
-  for (const genre of bookGenres) {
-    if (categoryMappings[genre]) {
-      console.log(`Found matching genre category: ${genre} -> ${categoryMappings[genre]}`);
-      return categoryMappings[genre];
-    }
-  }
-  
+  const genreHit = tryMatch(bookGenres, 'genre');
+  if (genreHit) return genreHit;
+
   // Check topics second
-  for (const topic of bookTopics) {
-    if (categoryMappings[topic]) {
-      console.log(`Found matching topic category: ${topic} -> ${categoryMappings[topic]}`);
-      return categoryMappings[topic];
-    }
-  }
+  const topicHit = tryMatch(bookTopics, 'topic');
+  if (topicHit) return topicHit;
   
   // Fallback to narrative type
-  if (narrativeType && categoryMappings[narrativeType]) {
-    console.log(`Using narrative type fallback: ${narrativeType} -> ${categoryMappings[narrativeType]}`);
-    return categoryMappings[narrativeType];
+  if (narrativeType) {
+    const narrativeHit = tryMatch([narrativeType], 'narrative');
+    if (narrativeHit) return narrativeHit;
   }
   
   console.log('No matching store category found');
@@ -1561,13 +1594,22 @@ bookGenres.forEach((genre, index) => {
 
     // Add Store Categories if configured
     const storeCategory1 = process.env.EBAY_STORE_CATEGORY_1 || listingData.storeCategory1;
-    let storeCategory2 = process.env.EBAY_STORE_CATEGORY_2 || listingData.storeCategory2;
+    const defaultStoreCategory2 = process.env.EBAY_STORE_CATEGORY_2 || null; // fallback only
+    let storeCategory2 = listingData.storeCategory2 || null; // prefer explicit or auto
+    console.log('Store category env check:', {
+      EBAY_STORE_CATEGORY_1: process.env.EBAY_STORE_CATEGORY_1 || null,
+      EBAY_STORE_CATEGORY_2: process.env.EBAY_STORE_CATEGORY_2 || null
+    });
     
     // Auto-assign Category 2 based on book genre/topic if not explicitly set
     if (!storeCategory2) {
-      storeCategory2 = determineStoreCategory2(bookGenres, bookTopics, narrativeType);
-      if (storeCategory2) {
+      const autoCat2 = determineStoreCategory2(bookGenres, bookTopics, narrativeType);
+      if (autoCat2) {
+        storeCategory2 = autoCat2;
         console.log(`Auto-assigned Store Category 2 based on book content: ${storeCategory2}`);
+      } else if (defaultStoreCategory2) {
+        storeCategory2 = defaultStoreCategory2; // fallback to default env var
+        console.log(`Using default Store Category 2 fallback: ${storeCategory2}`);
       }
     }
     
