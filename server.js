@@ -1071,19 +1071,22 @@ Format: {"topics": ["Books", "HighConfidenceTopic1", "HighConfidenceTopic2", "Me
 function determineStoreCategory2(bookGenres, bookTopics, narrativeType) {
   console.log('Determining Store Category 2 based on:', { bookGenres, bookTopics, narrativeType });
   
-  // Priority order for category assignment
-  const categoryMappings = {
-    'Fiction': process.env.EBAY_STORE_CATEGORY_FICTION,
-    'Non-Fiction': process.env.EBAY_STORE_CATEGORY_NON_FICTION,
-    'Cookbook': process.env.EBAY_STORE_CATEGORY_COOKBOOK,
-    'Textbook': process.env.EBAY_STORE_CATEGORY_TEXTBOOK,
-    'Biography': process.env.EBAY_STORE_CATEGORY_BIOGRAPHY,
-    'History': process.env.EBAY_STORE_CATEGORY_HISTORY,
-    'Science': process.env.EBAY_STORE_CATEGORY_SCIENCE,
-    'Art': process.env.EBAY_STORE_CATEGORY_ART,
-    'Psychology': process.env.EBAY_STORE_CATEGORY_PSYCHOLOGY,
-    'Business': process.env.EBAY_STORE_CATEGORY_BUSINESS
-  };
+  // Build category mappings dynamically from ALL environment variables
+  const categoryMappings = {};
+  
+  // Get all environment variables that start with EBAY_STORE_CATEGORY_
+  Object.keys(process.env).forEach(key => {
+    if (key.startsWith('EBAY_STORE_CATEGORY_') && key !== 'EBAY_STORE_CATEGORY_1' && key !== 'EBAY_STORE_CATEGORY_2') {
+      // Extract the category name from the key
+      const categoryName = key.replace('EBAY_STORE_CATEGORY_', '').replace(/_/g, ' ');
+      // Convert to proper case (e.g., "COOKBOOKS" -> "Cookbooks")
+      const formattedName = categoryName.toLowerCase().replace(/\b\w/g, l => l.toUpperCase());
+      categoryMappings[formattedName] = process.env[key];
+      console.log(`Found category mapping: ${formattedName} -> ${process.env[key]}`);
+    }
+  });
+  
+  console.log('Available category mappings:', categoryMappings);
   
   // Check genres first (highest priority)
   for (const genre of bookGenres) {
@@ -1256,6 +1259,7 @@ function generateBookDescription(bookData, selectedFlawKeys = []) { // Now accep
       <p>Inscriptions on the inside cover of the book are always pictured</p>
       <p>If a book has further pen or pencil underlines, highlights, tears, or flaws a sample page will be shown with a picture reference. However it is not possible to show every page of the book where these may be apparent</p>
       <p>General pre-owned wear (e.g. dog-eared corners, page indentations, yellowing/tanning, spine creasing, shelf wear) may be present due to prior use</p>
+      <p>Some items may include a small inventory sticker from our internal cataloguing system. These are visible in the listing photos and are standard practice in book retailing.</p>
       <p>Remainder Copies – Some books may have a small marker line or dot on the page edges, occasionally touching the cover or some page edges. This is a standard mark used to indicate discounted remainder stock.</p>
       <p>Labels – Books may have secondhand or retail store labels on the covers that may have been covered (e.g., with white out). This will always be pictured if present.</p>
       <p>All pre-owned books have been cleaned to the best of our ability before listing</p>
