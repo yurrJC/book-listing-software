@@ -2,11 +2,13 @@ import React, { useState } from 'react';
 import FileUpload from './FileUpload';
 import PriceSettingStep from './PriceSettingStep';
 import ResultView from './ResultView';
+import StoreCategoriesConfig from './StoreCategoriesConfig';
 
 function App() {
   const [step, setStep] = useState(1); // 1: Upload, 2: Price/Review, 3: Result
   const [processedData, setProcessedData] = useState(null); // Holds data from /processBook
   const [originalFiles, setOriginalFiles] = useState([]); // Holds the actual File objects
+  const [showStoreCategoriesConfig, setShowStoreCategoriesConfig] = useState(false);
 
   // Callback from FileUpload
   const handleProcessSuccess = ({ apiResponseData, originalFileObjects, customDescriptionNote }) => {
@@ -50,6 +52,17 @@ function App() {
 
   return (
     <div className="App">
+      {/* Store Categories Configuration Button */}
+      <div className="config-button-container">
+        <button 
+          className="config-button"
+          onClick={() => setShowStoreCategoriesConfig(true)}
+          title="Configure Store Categories"
+        >
+          ⚙️ Store Categories
+        </button>
+      </div>
+
       {step === 1 && <FileUpload onSuccess={handleProcessSuccess} />}
       {step === 2 && processedData && (
         <PriceSettingStep
@@ -73,6 +86,13 @@ function App() {
            // Pass combined data: initial process data + listing response
            result={processedData}
            onReset={handleReset}
+        />
+      )}
+
+      {/* Store Categories Configuration Modal */}
+      {showStoreCategoriesConfig && (
+        <StoreCategoriesConfig 
+          onClose={() => setShowStoreCategoriesConfig(false)} 
         />
       )}
     </div>

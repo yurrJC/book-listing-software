@@ -1061,6 +1061,57 @@ Format: {"topics": ["Books", "HighConfidenceTopic1", "HighConfidenceTopic2", "Me
   }
 }
 /**
+ * Determines Store Category 2 based on book genres, topics, and narrative type
+ * 
+ * @param {Array<string>} bookGenres - Array of book genres
+ * @param {Array<string>} bookTopics - Array of book topics
+ * @param {string} narrativeType - Fiction or Non-Fiction
+ * @returns {string|null} - Store Category 2 ID or null if no match
+ */
+function determineStoreCategory2(bookGenres, bookTopics, narrativeType) {
+  console.log('Determining Store Category 2 based on:', { bookGenres, bookTopics, narrativeType });
+  
+  // Priority order for category assignment
+  const categoryMappings = {
+    'Fiction': process.env.EBAY_STORE_CATEGORY_FICTION,
+    'Non-Fiction': process.env.EBAY_STORE_CATEGORY_NON_FICTION,
+    'Cookbook': process.env.EBAY_STORE_CATEGORY_COOKBOOK,
+    'Textbook': process.env.EBAY_STORE_CATEGORY_TEXTBOOK,
+    'Biography': process.env.EBAY_STORE_CATEGORY_BIOGRAPHY,
+    'History': process.env.EBAY_STORE_CATEGORY_HISTORY,
+    'Science': process.env.EBAY_STORE_CATEGORY_SCIENCE,
+    'Art': process.env.EBAY_STORE_CATEGORY_ART,
+    'Psychology': process.env.EBAY_STORE_CATEGORY_PSYCHOLOGY,
+    'Business': process.env.EBAY_STORE_CATEGORY_BUSINESS
+  };
+  
+  // Check genres first (highest priority)
+  for (const genre of bookGenres) {
+    if (categoryMappings[genre]) {
+      console.log(`Found matching genre category: ${genre} -> ${categoryMappings[genre]}`);
+      return categoryMappings[genre];
+    }
+  }
+  
+  // Check topics second
+  for (const topic of bookTopics) {
+    if (categoryMappings[topic]) {
+      console.log(`Found matching topic category: ${topic} -> ${categoryMappings[topic]}`);
+      return categoryMappings[topic];
+    }
+  }
+  
+  // Fallback to narrative type
+  if (narrativeType && categoryMappings[narrativeType]) {
+    console.log(`Using narrative type fallback: ${narrativeType} -> ${categoryMappings[narrativeType]}`);
+    return categoryMappings[narrativeType];
+  }
+  
+  console.log('No matching store category found');
+  return null;
+}
+
+/**
  * Uses OpenAI to intelligently determine appropriate eBay genres for a book
  * by evaluating each potential genre against a high confidence threshold
  * 
@@ -1504,6 +1555,32 @@ bookGenres.forEach((genre, index) => {
       }
     };
 
+    // Add Store Categories if configured
+    const storeCategory1 = process.env.EBAY_STORE_CATEGORY_1 || listingData.storeCategory1;
+    let storeCategory2 = process.env.EBAY_STORE_CATEGORY_2 || listingData.storeCategory2;
+    
+    // Auto-assign Category 2 based on book genre/topic if not explicitly set
+    if (!storeCategory2) {
+      storeCategory2 = determineStoreCategory2(bookGenres, bookTopics, narrativeType);
+      if (storeCategory2) {
+        console.log(`Auto-assigned Store Category 2 based on book content: ${storeCategory2}`);
+      }
+    }
+    
+    if (storeCategory1 || storeCategory2) {
+      requestObj.Item.Storefront = {};
+      
+      if (storeCategory1) {
+        requestObj.Item.Storefront.StoreCategoryID = storeCategory1;
+        console.log(`Adding Store Category 1: ${storeCategory1}`);
+      }
+      
+      if (storeCategory2) {
+        requestObj.Item.Storefront.StoreCategory2ID = storeCategory2;
+        console.log(`Adding Store Category 2: ${storeCategory2}`);
+      }
+    }
+
     // Add SKU at the Item level if provided - ADD THIS CODE HERE
 if (typeof listingData.sku === 'string' && listingData.sku.trim() !== '') {
   console.log('Setting SKU at Item level:', listingData.sku);
@@ -1807,6 +1884,40 @@ app.post('/api/processBook', upload.fields([
     } else {
         console.log('No req.files.mainImages found to clean up after error.');
     }
+  }
+});
+
+// API endpoint to get store category configuration
+app.get('/api/storeCategories', (req, res) => {
+  try {
+    const config = {
+      storeCategory1: process.env.EBAY_STORE_CATEGORY_1 || '',
+      storeCategory2: process.env.EBAY_STORE_CATEGORY_2 || '',
+      // Predefined category mappings for automatic assignment
+      categoryMappings: {
+        'Fiction': process.env.EBAY_STORE_CATEGORY_FICTION || '',
+        'Non-Fiction': process.env.EBAY_STORE_CATEGORY_NON_FICTION || '',
+        'Cookbook': process.env.EBAY_STORE_CATEGORY_COOKBOOK || '',
+        'Textbook': process.env.EBAY_STORE_CATEGORY_TEXTBOOK || '',
+        'Biography': process.env.EBAY_STORE_CATEGORY_BIOGRAPHY || '',
+        'History': process.env.EBAY_STORE_CATEGORY_HISTORY || '',
+        'Science': process.env.EBAY_STORE_CATEGORY_SCIENCE || '',
+        'Art': process.env.EBAY_STORE_CATEGORY_ART || '',
+        'Psychology': process.env.EBAY_STORE_CATEGORY_PSYCHOLOGY || '',
+        'Business': process.env.EBAY_STORE_CATEGORY_BUSINESS || ''
+      }
+    };
+    
+    res.json({
+      success: true,
+      config
+    });
+  } catch (error) {
+    console.error('Error getting store category configuration:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get store category configuration'
+    });
   }
 });
 

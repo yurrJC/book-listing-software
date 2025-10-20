@@ -176,3 +176,28 @@ input[value*="Back"]:hover {
   margin: 20px 0;
   flex-wrap: wrap;
 }
+
+/* Store Categories Configuration Button */
+.config-button-container {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 100;
+}
+
+.config-button {
+  background-color: #007bff;
+  color: white;
+  border: none;
+  padding: 10px 15px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: background-color 0.2s;
+}
+
+.config-button:hover {
+  background-color: #0056b3;
+}
