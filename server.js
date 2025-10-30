@@ -659,10 +659,18 @@ async function generateCompleteEbayTitle(listingData) {
     // Step 2: Extract and prepare title parts
     let mainTitle = listingData.title;
     let subtitle = '';
+    
+    // Check if title contains colon (old ISBNdb format)
     if (listingData.title.includes(':')) {
       const parts = listingData.title.split(':');
       mainTitle = parts[0].trim();
       subtitle = parts.slice(1).join(':').trim();
+    } else {
+      // No colon - ISBNdb concatenated the title and subtitle
+      // Use OpenAI to intelligently extract the main title
+      console.log('generateCompleteEbayTitle: No colon detected - extracting main title with OpenAI...');
+      mainTitle = await extractMainTitleFromConcatenatedTitle(listingData.title);
+      console.log(`generateCompleteEbayTitle: Extracted main title: "${mainTitle}"`);
     }
     
     // Prepare author name for use in title - minimal processing
@@ -2314,6 +2322,11 @@ async function generateKeyword(listingData, bookType) {
   let mainTitle = listingData.title;
   if (listingData.title && listingData.title.includes(':')) {
     mainTitle = listingData.title.split(':')[0].trim();
+  } else {
+    // No colon - ISBNdb concatenated the title, use OpenAI to extract main title
+    console.log('generateKeyword: No colon detected - extracting main title with OpenAI...');
+    mainTitle = await extractMainTitleFromConcatenatedTitle(listingData.title);
+    console.log(`generateKeyword: Extracted main title: "${mainTitle}"`);
   }
   const prompt = `Based on the following book metadata, generate a practical, highly searchable keyword for this book for eBay.\n\n- ALWAYS start with the most general subject (e.g., \"History\", \"Business\", \"Cooking\", \"Self-Help\") from the metadata.\n- Add ONE highly relevant enhancer (from the synopsis, title, or metadata) to make the subject more specific or relevant, if possible.\n- If space allows, and you are 95%+ confident it is highly relevant and flows naturally, add a SECOND subject or enhancer (from the book's metadata or synopsis) that is not already used and not in the title.\n- The keyword should be in the format: \"Enhancer Subject\", \"Subject Enhancer\", \"Enhancer Subject Subject2\", \"Enhancer1 Enhancer2 Subject\", or similar, as long as it reads naturally.\n- NEVER repeat words from the MAIN TITLE (before the colon) in the keyword. It is OK to use words from the subtitle (after the colon) if they are highly relevant.\n- The keyword must NOT exceed 25 characters.\n- If you do not have enough information to confidently generate a keyword, leave the response completely blank. Do NOT guess.\n- If in doubt about adding a second word, leave it out.\n- Return ONLY the keyword, with no explanation or extra text.\n\nBook Title: \"${listingData.title}\"\nAuthor: \"${listingData.author}\"\nPublisher: \"${listingData.publisher || 'Unknown'}\"\nPublication Year: \"${listingData.publicationYear || ''}\"\nSynopsis: \"${listingData.synopsis || ''}\"\nSubjects/Categories: ${listingData.subjects ? listingData.subjects.join(', ') : ''}`;
 
@@ -2367,12 +2380,126 @@ function removeDuplicateKeywordWords(title, keyword) {
   return filtered.join(' ');
 }
 
+/**
+ * Extracts the main title from a concatenated book title using OpenAI
+ * ISBNdb now returns titles without colons, so we need to intelligently separate main title from subtitle
+ * 
+ * Rules:
+ * - Extract only the main title (what would be before the colon originally)
+ * - Exception: If the main title is just one word, keep the subtitle
+ * 
+ * @param {string} fullTitle - The full concatenated title from ISBNdb
+ * @returns {Promise<string>} - The extracted main title
+ */
+async function extractMainTitleFromConcatenatedTitle(fullTitle) {
+  // First, check if title already contains a colon (old format)
+  if (fullTitle.includes(':')) {
+    const parts = fullTitle.split(':');
+    const mainTitle = parts[0].trim();
+    // If main title is just one word, return the full title
+    if (mainTitle.split(/\s+/).length === 1) {
+      return fullTitle;
+    }
+    return mainTitle;
+  }
+
+  // If no colon, use OpenAI to intelligently extract the main title
+  try {
+    console.log(`Extracting main title from: "${fullTitle}"`);
+
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o-mini", // Using low-cost model for this task
+      messages: [
+        { 
+          role: "system", 
+          content: `You are an expert at analyzing book titles. Your task is to extract the main title from a concatenated book title where the main title and subtitle have been merged together without punctuation.
+
+Rules:
+1. Return ONLY the main title (the primary part that would appear before a colon in the original formatted title)
+2. Exception: If the main title is just ONE word, return the ENTIRE title including the subtitle
+3. Remove any subtitle information that appears after the main title
+4. Return only the extracted title, no explanations or additional text
+
+Examples:
+Input: "The Great Gatsby A Classic Tale of the Roaring Twenties"
+Output: "The Great Gatsby"
+
+Input: "War A Comprehensive Analysis of Modern Warfare"
+Output: "War A Comprehensive Analysis of Modern Warfare" (one word, return entire title)
+
+Input: "War and Peace A Russian Epic"
+Output: "War and Peace" (one main title phrase, return this)
+
+Input: "Python Programming A Beginners Guide"
+Output: "Python Programming" (main title is two words)
+
+Input: "Machine A Visual Guide to Technology"
+Output: "Machine A Visual Guide to Technology" (one word, return entire title)
+
+Now process this title:` 
+        },
+        { 
+          role: "user", 
+          content: fullTitle 
+        }
+      ],
+      temperature: 0.3,
+      max_tokens: 100
+    });
+
+    const extractedTitle = response.choices[0].message.content.trim();
+    console.log(`Extracted main title: "${extractedTitle}"`);
+    return extractedTitle;
+
+  } catch (error) {
+    console.error('Error extracting main title with OpenAI:', error);
+    // Fallback: try simple heuristics if OpenAI fails
+    return fallbackExtractMainTitle(fullTitle);
+  }
+}
+
+/**
+ * Fallback method to extract main title using simple heuristics
+ * Used when OpenAI API call fails
+ */
+function fallbackExtractMainTitle(fullTitle) {
+  console.log(`Using fallback title extraction for: "${fullTitle}"`);
+  
+  // Split by common subtitle indicators
+  const subtitleIndicators = [' A ', ' An ', ' The ', ' How to ', ' Guide to ', ' Complete ', ' Comprehensive ', ' The Story of ', ' The History of '];
+  
+  for (const indicator of subtitleIndicators) {
+    const index = fullTitle.indexOf(indicator);
+    if (index > 0) {
+      const mainTitle = fullTitle.substring(0, index).trim();
+      // If main title is just one word, return full title
+      if (mainTitle.split(/\s+/).length === 1) {
+        return fullTitle;
+      }
+      return mainTitle;
+    }
+  }
+  
+  // If no subtitle indicator found, assume first 5 words is main title
+  const words = fullTitle.split(/\s+/);
+  if (words.length === 1) {
+    return fullTitle;
+  }
+  
+  // Try first 3-5 words as main title
+  const mainTitle = words.slice(0, Math.min(5, words.length)).join(' ');
+  console.log(`Fallback extracted main title: "${mainTitle}"`);
+  return mainTitle;
+}
+
 // Build the eBay title from components
-function buildEbayTitle({ title, author, format, bookType, narrativeType }) {
+async function buildEbayTitle({ title, author, format, bookType, narrativeType }) {
   console.log('Building title with components:', { title, author, format, bookType, narrativeType });
   
   // 1. Handle main title vs subtitle
   let mainTitle = title;
+  
+  // First check if title contains colon (old ISBNdb format)
   if (title.includes(':')) {
     const parts = title.split(':');
     const beforeColon = parts[0].trim();
@@ -2386,6 +2513,12 @@ function buildEbayTitle({ title, author, format, bookType, narrativeType }) {
       mainTitle = title; // Use full title if main title is short
       console.log(`Using full title (main title too short): "${mainTitle}" (${mainTitle.length} chars)`);
     }
+  } else {
+    // No colon - ISBNdb concatenated the title and subtitle
+    // Use OpenAI to intelligently extract the main title
+    console.log('No colon detected in title - extracting main title with OpenAI...');
+    mainTitle = await extractMainTitleFromConcatenatedTitle(title);
+    console.log(`Extracted main title: "${mainTitle}"`);
   }
   
   // 2. Handle multiple authors - use only the first one
@@ -2483,7 +2616,7 @@ async function generateStepwiseEbayTitle(listingData) {
   
   // Step 4: Build title
   console.log('Step 4: Building title...');
-  let ebayTitle = buildEbayTitle({
+  let ebayTitle = await buildEbayTitle({
     title: listingData.title,
     author: listingData.author,
     format,
