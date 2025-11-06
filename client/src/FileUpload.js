@@ -83,6 +83,16 @@ function FileUpload({ onSuccess }) {
   // Handle ISBN input change (remains the same)
   const handleIsbnChange = (e) => setManualIsbn(e.target.value);
 
+  // Auto-copy ISBN to clipboard when scanned/entered
+  useEffect(() => {
+    if (manualIsbn && manualIsbn.trim().length >= 10) {
+      // Copy to clipboard when ISBN is entered (assuming scanned ISBNs are at least 10 chars)
+      navigator.clipboard.writeText(manualIsbn.trim()).catch(err => {
+        console.warn('Failed to copy ISBN to clipboard:', err);
+      });
+    }
+  }, [manualIsbn]);
+
   // Handle custom description note change
   const handleCustomDescriptionNoteChange = (e) => setCustomDescriptionNote(e.target.value);
 
