@@ -1299,10 +1299,11 @@ function generateBookDescription(bookData, selectedFlawKeys = []) { // Now accep
       <p>Please be aware that this book is in pre-owned condition</p>
       <p>Inscriptions on the inside cover of the book are always pictured</p>
       <p>If a book has further pen or pencil underlines, highlights, tears, or flaws a sample page will be shown with a picture reference. However it is not possible to show every page of the book where these may be apparent</p>
-      <p>General pre-owned wear (e.g. dog-eared corners, page indentations, yellowing/tanning, spine creasing, shelf wear) may be present due to prior use</p>
+      <p>General pre-owned wear (e.g. dog-eared corners, page indentations, yellowing/tanning, spine creasing, cover creasing, shelf wear) may be present due to prior use</p>
       <p>Some items may include a small inventory sticker from our internal cataloguing system. These are visible in the listing photos and are standard practice in book retailing.</p>
       <p>Remainder Copies – Some books may have a small marker line or dot on the page edges, occasionally touching the cover or some page edges. This is a standard mark used to indicate discounted remainder stock.</p>
-      <p>Labels – Books may have secondhand or retail store labels on the covers that may have been covered (e.g., with white out). This will always be pictured if present.</p>
+      <p>Labels – Books may have secondhand or retail store labels on the covers that may have been covered (e.g., with white out).</p>
+      <p>Books graded as acceptable condition may display minor cosmetic water damage. Significant damage that impairs readability is always shown separately in photographs.</p>
       <p>All pre-owned books have been cleaned to the best of our ability before listing</p>
       <p>All photos show the exact item for sale — you will receive the item pictured</p>
       
