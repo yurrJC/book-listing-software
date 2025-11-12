@@ -17,7 +17,7 @@
   "scripts": {
     "preinstall": "npm config set fetch-retries 5 && npm config set fetch-retry-maxtimeout 120000 && npm config set fetch-retry-mintimeout 20000 && npm config set registry https://registry.npmjs.org/",
     "start": "react-scripts start",
-    "build": "react-scripts build",
+    "build": "NODE_OPTIONS='--localstorage-file=.localstorage' react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },
