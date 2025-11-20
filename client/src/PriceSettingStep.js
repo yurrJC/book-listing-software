@@ -190,6 +190,53 @@ function PriceSettingStep({
     }
   };
 
+  // Handler to extract and copy "title by author" when SKU is pasted
+  const extractTitleByAuthor = (titleText) => {
+    if (!titleText) return '';
+    
+    // Find " by " in the title
+    const byIndex = titleText.indexOf(' by ');
+    if (byIndex === -1) return titleText.trim(); // If no " by " found, return the whole title trimmed
+    
+    // Extract everything up to and including " by "
+    let extracted = titleText.substring(0, byIndex + 4); // +4 to include " by "
+    
+    // Find the rest of the string after " by "
+    const afterBy = titleText.substring(byIndex + 4);
+    
+    // Find where the author name ends (before format words like "Hardcover", "Paperback", "Book")
+    const formatWords = ['hardcover', 'paperback', 'book', 'hardback', 'softcover'];
+    let authorEndIndex = afterBy.length;
+    
+    for (const formatWord of formatWords) {
+      const formatIndex = afterBy.toLowerCase().indexOf(formatWord.toLowerCase());
+      if (formatIndex !== -1 && formatIndex < authorEndIndex) {
+        authorEndIndex = formatIndex;
+      }
+    }
+    
+    // Extract author name (trim any trailing spaces)
+    const authorName = afterBy.substring(0, authorEndIndex).trim();
+    
+    // Combine title + " by " + author and trim
+    return (extracted + authorName).trim();
+  };
+
+  // Handler for SKU paste event
+  const handleSkuPaste = async (e) => {
+    // Extract and copy title by author when SKU is pasted
+    // Note: The SKU value will be updated automatically via onChange after paste
+    const titleByAuthor = extractTitleByAuthor(listingTitle);
+    if (titleByAuthor) {
+      try {
+        await navigator.clipboard.writeText(titleByAuthor);
+        console.log('Copied to clipboard:', titleByAuthor);
+      } catch (err) {
+        console.error('Failed to copy title by author:', err);
+      }
+    }
+  };
+
   // Handler for form submission to create listing
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -574,6 +621,7 @@ function PriceSettingStep({
                           type="text"
                           value={sku}
                           onChange={(e) => setSku(e.target.value)}
+                          onPaste={handleSkuPaste}
                           placeholder="Optional identifier"
                           className="form-input"
                       />
