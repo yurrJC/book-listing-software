@@ -1069,15 +1069,23 @@ Format: {"topics": ["Books", "HighConfidenceTopic1", "HighConfidenceTopic2", "Me
   }
 }
 /**
- * Determines Store Category 2 based on book genres, topics, and narrative type
+ * Uses OpenAI to intelligently determine the best Store Category 2 match
+ * based on book metadata, genres, topics, and available store categories
  * 
+ * @param {Object} listingData - Book metadata including title, author, synopsis, etc.
  * @param {Array<string>} bookGenres - Array of book genres
  * @param {Array<string>} bookTopics - Array of book topics
  * @param {string} narrativeType - Fiction or Non-Fiction
- * @returns {string|null} - Store Category 2 ID or null if no match
+ * @returns {Promise<string|null>} - Store Category 2 ID or null if no match
  */
-function determineStoreCategory2(bookGenres, bookTopics, narrativeType) {
-  console.log('Determining Store Category 2 based on:', { bookGenres, bookTopics, narrativeType });
+async function determineStoreCategory2(listingData, bookGenres, bookTopics, narrativeType) {
+  try {
+    console.log('Determining Store Category 2 using OpenAI based on:', { 
+      title: listingData.title,
+      bookGenres, 
+      bookTopics, 
+      narrativeType 
+    });
   
   // Build category mappings dynamically from ALL environment variables
   const categoryMappings = {};
@@ -1090,69 +1098,111 @@ function determineStoreCategory2(bookGenres, bookTopics, narrativeType) {
       // Convert to proper case (e.g., "COOKBOOKS" -> "Cookbooks")
       const formattedName = categoryName.toLowerCase().replace(/\b\w/g, l => l.toUpperCase());
       categoryMappings[formattedName] = process.env[key];
-      console.log(`Found category mapping: ${formattedName} -> ${process.env[key]}`);
+      }
+    });
+    
+    // If no category mappings exist, return null
+    if (Object.keys(categoryMappings).length === 0) {
+      console.log('No store category mappings found in environment variables');
+      return null;
     }
-  });
-  
-  console.log('Available category mappings:', categoryMappings);
-  
-  // Helper to normalize strings for loose matching
-  const normalize = (s) => (s || '')
-    .toString()
-    .toLowerCase()
-    .replace(/&/g, ' and ')
-    .replace(/[^a-z0-9]+/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
+    
+    console.log(`Found ${Object.keys(categoryMappings).length} available store categories`);
+    
+    // Prepare book metadata for OpenAI
+    const bookMetadata = {
+      title: listingData.title,
+      author: listingData.author,
+      synopsis: listingData.synopsis || 'Not available',
+      subjects: listingData.subjects || [],
+      genres: bookGenres || [],
+      topics: bookTopics || [],
+      narrativeType: narrativeType || 'Unknown',
+      publisher: listingData.publisher || 'Unknown',
+      format: listingData.format || 'Paperback'
+    };
+    
+    // Build the list of available categories for OpenAI
+    const availableCategories = Object.entries(categoryMappings).map(([name, id]) => ({
+      name: name,
+      id: id
+    }));
+    
+    const systemMessage = `You are an expert book categorization system for eBay store organization.
+Your task is to select the SINGLE BEST matching store category for a book based on its metadata.
+You must choose the most appropriate category from the provided list, considering the book's content, genre, topics, and narrative type.`;
+    
+    const prompt = `Analyze this book and select the BEST matching store category from the available options:
 
-  // Build an array of [displayName, id, normalized] entries
-  const mappingEntries = Object.entries(categoryMappings).map(([name, id]) => {
-    return [name, id, normalize(name)];
-  });
+BOOK METADATA:
+Title: ${bookMetadata.title}
+Author: ${bookMetadata.author}
+Narrative Type: ${bookMetadata.narrativeType}
+Genres: ${bookMetadata.genres.join(', ') || 'None'}
+Topics: ${bookMetadata.topics.join(', ') || 'None'}
+Synopsis: ${bookMetadata.synopsis}
+Subjects: ${bookMetadata.subjects.join(', ') || 'None'}
 
-  const tryMatch = (labels, labelType) => {
-    for (const raw of labels || []) {
-      const norm = normalize(raw);
-      if (!norm) continue;
-      // Exact normalized match first
-      const exact = mappingEntries.find(([, id, n]) => !!id && n === norm);
-      if (exact) {
-        console.log(`Matched ${labelType} EXACT: "${raw}" -> ${exact[0]} (${exact[1]})`);
-        return exact[1];
-      }
-      // Token subset match (e.g., "business economics industry" should match "business")
-      const tokens = norm.split(' ');
-      const subset = mappingEntries.find(([, id, n]) => !!id && tokens.includes(n));
-      if (subset) {
-        console.log(`Matched ${labelType} SUBSET: "${raw}" -> ${subset[0]} (${subset[1]})`);
-        return subset[1];
-      }
-      // Partial contains either direction
-      const partial = mappingEntries.find(([, id, n]) => !!id && (n.includes(norm) || norm.includes(n)));
-      if (partial) {
-        console.log(`Matched ${labelType} PARTIAL: "${raw}" -> ${partial[0]} (${partial[1]})`);
-        return partial[1];
-      }
-    }
+AVAILABLE STORE CATEGORIES:
+${availableCategories.map(cat => `- ${cat.name} (ID: ${cat.id})`).join('\n')}
+
+INSTRUCTIONS:
+1. Analyze the book's title, synopsis, genres, topics, and narrative type
+2. Select the SINGLE BEST matching category from the available list
+3. Consider the book's primary focus and content
+4. If the book is clearly a cookbook, choose a cookbook category
+5. If the book is clearly a textbook, choose a textbook category
+6. For biographies, choose a biography category if available
+7. For fiction, prefer fiction-specific categories over generic ones
+8. For non-fiction, match to the most relevant subject category
+9. If no category is a good match, return null
+
+RESPOND WITH A JSON OBJECT containing the selected category ID:
+Format: {"categoryId": "123456"} or {"categoryId": null} if no good match exists`;
+    
+    // Call OpenAI API - using gpt-4o-mini for speed and cost efficiency
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: systemMessage },
+        { role: "user", content: prompt }
+      ],
+      temperature: 0.1, // Low temperature for consistent, precise results
+      response_format: { type: "json_object" },
+      max_tokens: 150, // Small response, so limit tokens for efficiency
+    });
+    
+    // Process the OpenAI response
+    try {
+      const responseJson = JSON.parse(response.choices[0].message.content);
+      const selectedCategoryId = responseJson.categoryId;
+      
+      if (!selectedCategoryId) {
+        console.log('OpenAI determined no suitable store category match');
     return null;
-  };
-
-  // Check genres first (highest priority)
-  const genreHit = tryMatch(bookGenres, 'genre');
-  if (genreHit) return genreHit;
-
-  // Check topics second
-  const topicHit = tryMatch(bookTopics, 'topic');
-  if (topicHit) return topicHit;
-  
-  // Fallback to narrative type
-  if (narrativeType) {
-    const narrativeHit = tryMatch([narrativeType], 'narrative');
-    if (narrativeHit) return narrativeHit;
-  }
-  
-  console.log('No matching store category found');
+      }
+      
+      // Validate that the selected category ID exists in our mappings
+      const isValidCategory = Object.values(categoryMappings).includes(selectedCategoryId.toString());
+      
+      if (!isValidCategory) {
+        console.warn(`OpenAI returned invalid category ID: ${selectedCategoryId}`);
+        return null;
+      }
+      
+      // Find the category name for logging
+      const categoryName = Object.entries(categoryMappings).find(([name, id]) => id === selectedCategoryId.toString())?.[0];
+      console.log(`✅ OpenAI selected Store Category 2: "${categoryName}" (ID: ${selectedCategoryId})`);
+      
+      return selectedCategoryId.toString();
+    } catch (error) {
+      console.error('Error parsing OpenAI response for store category:', error);
   return null;
+    }
+  } catch (error) {
+    console.error('Error determining store category using OpenAI:', error);
+    return null; // Fail gracefully - don't break the listing creation
+  }
 }
 
 /**
@@ -1612,7 +1662,7 @@ bookGenres.forEach((genre, index) => {
     
     // Auto-assign Category 2 based on book genre/topic if not explicitly set
     if (!storeCategory2) {
-      const autoCat2 = determineStoreCategory2(bookGenres, bookTopics, narrativeType);
+      const autoCat2 = await determineStoreCategory2(listingData, bookGenres, bookTopics, narrativeType);
       if (autoCat2) {
         storeCategory2 = autoCat2;
         console.log(`Auto-assigned Store Category 2 based on book content: ${storeCategory2}`);
