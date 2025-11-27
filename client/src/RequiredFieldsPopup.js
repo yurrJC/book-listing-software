@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './RequiredFieldsPopup.css';
 
 const RequiredFieldsPopup = ({ 
@@ -6,13 +6,24 @@ const RequiredFieldsPopup = ({
   onClose, 
   onConfirm, 
   missingFields, 
-  currentData = {} 
+  currentData = {},
+  isAuthorEdit = false
 }) => {
   const [formData, setFormData] = useState({
     author: currentData.author || '',
     title: currentData.title || '',
     language: currentData.language || 'English'
   });
+  
+  // Update formData when currentData changes (important for author edit case)
+  useEffect(() => {
+    if (currentData.author !== undefined) {
+      setFormData(prev => ({
+        ...prev,
+        author: currentData.author || ''
+      }));
+    }
+  }, [currentData.author]);
 
   const handleInputChange = (field, value) => {
     setFormData(prev => ({
@@ -46,8 +57,12 @@ const RequiredFieldsPopup = ({
     <div className="popup-overlay">
       <div className="popup-content">
         <div className="popup-header">
-          <h3>Missing Required Fields</h3>
-          <p>eBay requires these fields to create a listing. Please provide the missing information:</p>
+          <h3>{isAuthorEdit ? 'Author Name Too Long' : 'Missing Required Fields'}</h3>
+          <p>
+            {isAuthorEdit 
+              ? 'The author name is too long for eBay. Please shorten it by removing excess words:'
+              : 'eBay requires these fields to create a listing. Please provide the missing information:'}
+          </p>
         </div>
 
         <div className="popup-body">

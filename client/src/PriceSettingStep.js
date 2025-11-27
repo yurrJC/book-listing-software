@@ -373,6 +373,22 @@ function PriceSettingStep({
           return;
         }
         
+        // Check if this is an "author too long" error
+        if (errorData && errorData.requiresAuthorEdit) {
+          setMissingFieldsData({
+            missingFields: ['Author'], // Only show author field
+            currentData: errorData.currentData || {
+              author: metadata?.author || '',
+              title: metadata?.title || '',
+              language: metadata?.language || 'English'
+            },
+            isAuthorEdit: true // Flag to show different message
+          });
+          setShowRequiredFieldsPopup(true);
+          setLoading(false);
+          return;
+        }
+        
         throw new Error(errorMessage);
       }
 
@@ -693,6 +709,7 @@ function PriceSettingStep({
          onConfirm={handleRequiredFieldsConfirm}
          missingFields={missingFieldsData?.missingFields || []}
          currentData={missingFieldsData?.currentData || {}}
+         isAuthorEdit={missingFieldsData?.isAuthorEdit || false}
        />
     </div> // End listing-container
   ); // End return

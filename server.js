@@ -1456,6 +1456,285 @@ async function uploadPhotosToEbay(imageFiles) {
     throw error;
   }
 }
+
+/**
+ * Helper function to check if the error is the category change error
+ */
+function isCategoryChangeError(errors) {
+  if (!errors) return false;
+  
+  const errorArray = Array.isArray(errors) ? errors : [errors];
+  
+  for (const error of errorArray) {
+    const longMessage = error.LongMessage || '';
+    const shortMessage = error.ShortMessage || '';
+    
+    if (longMessage.includes('This product belongs to a different category, so the category has been changed') ||
+        shortMessage.includes('This product belongs to a different category, so the category has been changed')) {
+      return true;
+    }
+  }
+  
+  return false;
+}
+
+/**
+ * Helper function to check if the error is related to author being too long
+ */
+function isAuthorTooLongError(errors) {
+  if (!errors) return false;
+  
+  const errorArray = Array.isArray(errors) ? errors : [errors];
+  
+  for (const error of errorArray) {
+    const longMessage = (error.LongMessage || '').toLowerCase();
+    const shortMessage = (error.ShortMessage || '').toLowerCase();
+    const errorCode = String(error.ErrorCode || '');
+    
+    // Combine all messages for comprehensive checking
+    const allMessages = `${longMessage} ${shortMessage}`.toLowerCase();
+    
+    // Check if error mentions "author" and any length-related terms
+    const hasAuthor = allMessages.includes('author');
+    const hasLengthIssue = 
+      allMessages.includes('too long') || 
+      allMessages.includes('exceeds') || 
+      allMessages.includes('maximum length') ||
+      allMessages.includes('length limit') ||
+      allMessages.includes('too many characters') ||
+      allMessages.includes('maximum') ||
+      allMessages.includes('limit') ||
+      allMessages.includes('characters') ||
+      allMessages.includes('char');
+    
+    if (hasAuthor && hasLengthIssue) {
+      console.log('✅ Author too long error detected:', {
+        longMessage: error.LongMessage,
+        shortMessage: error.ShortMessage,
+        errorCode: error.ErrorCode
+      });
+      return true;
+    }
+    
+    // Check for specific eBay error codes related to field length (21916, 21917, etc.)
+    if (errorCode && /^219\d{2}$/.test(errorCode)) {
+      // These are common eBay error codes for field length issues
+      if (hasAuthor) {
+        console.log('✅ Author too long error detected via error code:', errorCode);
+        return true;
+      }
+    }
+    
+    // Also check for "ItemSpecifics" errors that mention author
+    if (allMessages.includes('itemspecifics') && hasAuthor && hasLengthIssue) {
+      console.log('✅ Author too long error detected in ItemSpecifics');
+      return true;
+    }
+  }
+  
+  return false;
+}
+
+/**
+ * Helper function to build the eBay listing request object
+ */
+async function buildEbayListingRequest(listingData, options = {}) {
+  const {
+    includeISBN = true,
+    categoryMappingAllowed = true,
+    selectedCondition = 'Good',
+    selectedFlawKeys = [],
+    ebayTitle,
+    nameValueList,
+    bookTopics,
+    bookGenres,
+    narrativeType,
+    epsImageUrls,
+    authToken,
+    shippingPolicyId,
+    returnPolicyId,
+    paymentPolicyId
+  } = options;
+
+    const requestObj = {
+      '$': { xmlns: 'urn:ebay:apis:eBLBaseComponents' },
+      'RequesterCredentials': {
+        'eBayAuthToken': authToken
+      },
+      'ErrorLanguage': 'en_AU',
+      'WarningLevel': 'High',
+      'Item': {
+        'Title': ebayTitle,
+      'Description': generateBookDescription(listingData, selectedFlawKeys),
+        'PrimaryCategory': {
+          'CategoryID': '261186'
+        },
+        'StartPrice': listingData.price || '9.99',
+      'CategoryMappingAllowed': categoryMappingAllowed ? 'true' : 'false',
+        'ConditionID': EBAY_CONDITION_MAP[selectedCondition] || 
+        EBAY_CONDITION_MAP['Good'],
+        'ConditionDescription': listingData.conditionDescription || 'Please refer to the attached product photos and description for detailed condition before purchasing',
+        'Country': 'AU',
+        'Currency': 'AUD',
+        'DispatchTimeMax': '3',
+        'ListingDuration': 'GTC',
+        'ListingType': 'FixedPriceItem',
+        'BestOfferDetails': {
+  'BestOfferEnabled': 'true'
+},
+        'Location': process.env.SELLER_LOCATION || 'Ascot Vale, VIC',
+        'PictureDetails': {
+          'PictureSource': 'EPS',
+          'GalleryType': 'Gallery',
+          'PictureURL': epsImageUrls
+        },
+        'PostalCode': process.env.SELLER_POSTAL_CODE,
+        'Quantity': '1',
+        'ItemSpecifics': {
+          'NameValueList': nameValueList
+      }
+    }
+  };
+
+  // Only include ProductListingDetails with ISBN if includeISBN is true
+  if (includeISBN && listingData.isbn) {
+    requestObj.Item.ProductListingDetails = {
+          'ISBN': listingData.isbn,
+          'IncludePrefilledItemInformation': 'true',
+          'UseStockPhotoURLAsGallery': 'false'
+    };
+  }
+
+    // Add Store Categories if configured
+    const storeCategory1 = process.env.EBAY_STORE_CATEGORY_1 || listingData.storeCategory1;
+  const defaultStoreCategory2 = process.env.EBAY_STORE_CATEGORY_2 || null;
+  let storeCategory2 = listingData.storeCategory2 || null;
+    
+    // Auto-assign Category 2 based on book genre/topic if not explicitly set
+    if (!storeCategory2) {
+      const autoCat2 = await determineStoreCategory2(listingData, bookGenres, bookTopics, narrativeType);
+      if (autoCat2) {
+        storeCategory2 = autoCat2;
+        console.log(`Auto-assigned Store Category 2 based on book content: ${storeCategory2}`);
+      } else if (defaultStoreCategory2) {
+      storeCategory2 = defaultStoreCategory2;
+        console.log(`Using default Store Category 2 fallback: ${storeCategory2}`);
+      }
+    }
+    
+    if (storeCategory1 || storeCategory2) {
+      requestObj.Item.Storefront = {};
+      
+      if (storeCategory1) {
+        requestObj.Item.Storefront.StoreCategoryID = storeCategory1;
+        console.log(`Adding Store Category 1: ${storeCategory1}`);
+      }
+      
+      if (storeCategory2) {
+        requestObj.Item.Storefront.StoreCategory2ID = storeCategory2;
+        console.log(`Adding Store Category 2: ${storeCategory2}`);
+      }
+    }
+
+  // Add SKU at the Item level if provided
+if (typeof listingData.sku === 'string' && listingData.sku.trim() !== '') {
+  console.log('Setting SKU at Item level:', listingData.sku);
+  requestObj.Item.SKU = listingData.sku.trim();
+}
+    
+    // Conditional logic based on environment and available policy IDs
+    if (process.env.NODE_ENV === 'production' && (shippingPolicyId || returnPolicyId || paymentPolicyId)) {
+      // Use Business Policies in production if available
+      requestObj.Item.SellerProfiles = {};
+      
+      if (shippingPolicyId) {
+        requestObj.Item.SellerProfiles.SellerShippingProfile = {
+          'ShippingProfileID': shippingPolicyId
+        };
+      }
+      
+      if (returnPolicyId) {
+        requestObj.Item.SellerProfiles.SellerReturnProfile = {
+          'ReturnProfileID': returnPolicyId
+        };
+      }
+      
+      if (paymentPolicyId) {
+        requestObj.Item.SellerProfiles.SellerPaymentProfile = {
+          'PaymentProfileID': paymentPolicyId
+        };
+      }
+      
+      console.log('Using seller business policies:', JSON.stringify(requestObj.Item.SellerProfiles));
+    } else {
+      // Use explicit policies for sandbox or when business policies aren't available
+      console.log('Using explicit shipping and return policies for sandbox testing');
+      
+      // Add explicit Return Policy
+      requestObj.Item.ReturnPolicy = {
+        'ReturnsAcceptedOption': 'ReturnsAccepted',
+        'ReturnsWithinOption': 'Days_30',
+        'ShippingCostPaidByOption': 'Buyer'
+      };
+      
+      // Add explicit Shipping Details
+      requestObj.Item.ShippingDetails = {
+        'ShippingType': 'Flat',
+        'ShippingServiceOptions': [{
+          'ShippingServicePriority': '1',
+          'ShippingService': 'AU_Regular',
+          'ShippingServiceCost': '8.95'
+        }]
+      };
+    }
+
+  return requestObj;
+}
+
+/**
+ * Helper function to submit the listing to eBay
+ */
+async function submitEbayListing(requestObj, appId, devId, certId) {
+  const builder = new xml2js.Builder({
+    rootName: 'AddItemRequest',
+    xmldec: { version: '1.0', encoding: 'UTF-8' },
+    renderOpts: { pretty: true, indent: '  ', newline: '\n' },
+    headless: false
+  });
+    
+    const xml = builder.buildObject(requestObj);
+    
+    console.log('AddItem XML Payload:', xml);
+    
+    const apiEndpoint = isProduction
+  ? 'https://api.ebay.com/ws/api.dll'
+  : 'https://api.sandbox.ebay.com/ws/api.dll';
+
+console.log(`Creating eBay listing at: ${apiEndpoint}`);
+
+const response = await axios({
+  method: 'post',
+  url: apiEndpoint,
+  headers: {
+    'X-EBAY-API-CALL-NAME': 'AddItem',
+    'X-EBAY-API-APP-NAME': appId,
+    'X-EBAY-API-DEV-NAME': devId,
+    'X-EBAY-API-CERT-NAME': certId,
+    'X-EBAY-API-SITEID': '15',
+    'X-EBAY-API-COMPATIBILITY-LEVEL': '1155',
+    'Content-Type': 'text/xml'
+  },
+  data: xml
+});
+    
+    const parser = new xml2js.Parser({ explicitArray: false });
+    const result = await parser.parseStringPromise(response.data);
+    
+    console.log('eBay AddItem Response:', result);
+  
+  return result;
+}
+
 async function createEbayDraftListing(listingData) {
   try {
     console.log('Creating eBay draft book listing with data:', listingData);
@@ -1523,12 +1802,6 @@ async function createEbayDraftListing(listingData) {
     
     // Add it to the listingData object so the description function can access it
     listingData.ebayTitle = ebayTitle;
-    const builder = new xml2js.Builder({
-      rootName: 'AddItemRequest',
-      xmldec: { version: '1.0', encoding: 'UTF-8' },
-      renderOpts: { pretty: true, indent: '  ', newline: '\n' },
-      headless: false
-    });
     
     // Build the base ItemSpecifics NameValueList
     const nameValueList = [
@@ -1606,167 +1879,53 @@ bookGenres.forEach((genre, index) => {
       });
     }
 
-    const requestObj = {
-      '$': { xmlns: 'urn:ebay:apis:eBLBaseComponents' },
-      'RequesterCredentials': {
-        'eBayAuthToken': authToken
-      },
-      'ErrorLanguage': 'en_AU',
-      'WarningLevel': 'High',
-      'Item': {
-        'Title': ebayTitle,
-        'Description': generateBookDescription(listingData, selectedFlawKeys), // Pass selectedFlawKeys
-        'PrimaryCategory': {
-          'CategoryID': '261186'
-        },
-        'StartPrice': listingData.price || '9.99',
-        'CategoryMappingAllowed': 'true',
-        'ConditionID': EBAY_CONDITION_MAP[selectedCondition] || 
-        EBAY_CONDITION_MAP['Good'],
-        'ConditionDescription': listingData.conditionDescription || 'Please refer to the attached product photos and description for detailed condition before purchasing',
-        'Country': 'AU',
-        'Currency': 'AUD',
-        'DispatchTimeMax': '3',
-        'ListingDuration': 'GTC',
-        'ListingType': 'FixedPriceItem',
-        'BestOfferDetails': {
-  'BestOfferEnabled': 'true'
-},
-        'Location': process.env.SELLER_LOCATION || 'Ascot Vale, VIC',
-        'PictureDetails': {
-          'PictureSource': 'EPS',
-          'GalleryType': 'Gallery',
-          'PictureURL': epsImageUrls
-        },
-        'PostalCode': process.env.SELLER_POSTAL_CODE,
-        'Quantity': '1',
-        'ItemSpecifics': {
-          'NameValueList': nameValueList
-        },
-        'ProductListingDetails': {
-          'ISBN': listingData.isbn,
-          'IncludePrefilledItemInformation': 'true',
-          'UseStockPhotoURLAsGallery': 'false'
-        }
-      }
-    };
-
-    // Add Store Categories if configured
-    const storeCategory1 = process.env.EBAY_STORE_CATEGORY_1 || listingData.storeCategory1;
-    const defaultStoreCategory2 = process.env.EBAY_STORE_CATEGORY_2 || null; // fallback only
-    let storeCategory2 = listingData.storeCategory2 || null; // prefer explicit or auto
-    console.log('Store category env check:', {
-      EBAY_STORE_CATEGORY_1: process.env.EBAY_STORE_CATEGORY_1 || null,
-      EBAY_STORE_CATEGORY_2: process.env.EBAY_STORE_CATEGORY_2 || null
+    // Try listing with ISBN first
+    let requestObj = await buildEbayListingRequest(listingData, {
+      includeISBN: true,
+      categoryMappingAllowed: true,
+      selectedCondition,
+      selectedFlawKeys,
+      ebayTitle,
+      nameValueList,
+      bookTopics,
+      bookGenres,
+      narrativeType,
+      epsImageUrls,
+      authToken,
+      shippingPolicyId,
+      returnPolicyId,
+      paymentPolicyId
     });
-    
-    // Auto-assign Category 2 based on book genre/topic if not explicitly set
-    if (!storeCategory2) {
-      const autoCat2 = await determineStoreCategory2(listingData, bookGenres, bookTopics, narrativeType);
-      if (autoCat2) {
-        storeCategory2 = autoCat2;
-        console.log(`Auto-assigned Store Category 2 based on book content: ${storeCategory2}`);
-      } else if (defaultStoreCategory2) {
-        storeCategory2 = defaultStoreCategory2; // fallback to default env var
-        console.log(`Using default Store Category 2 fallback: ${storeCategory2}`);
-      }
-    }
-    
-    if (storeCategory1 || storeCategory2) {
-      requestObj.Item.Storefront = {};
-      
-      if (storeCategory1) {
-        requestObj.Item.Storefront.StoreCategoryID = storeCategory1;
-        console.log(`Adding Store Category 1: ${storeCategory1}`);
-      }
-      
-      if (storeCategory2) {
-        requestObj.Item.Storefront.StoreCategory2ID = storeCategory2;
-        console.log(`Adding Store Category 2: ${storeCategory2}`);
-      }
-    }
 
-    // Add SKU at the Item level if provided - ADD THIS CODE HERE
-if (typeof listingData.sku === 'string' && listingData.sku.trim() !== '') {
-  console.log('Setting SKU at Item level:', listingData.sku);
-  requestObj.Item.SKU = listingData.sku.trim();
-}
+    let result = await submitEbayListing(requestObj, appId, devId, certId);
     
-    // Conditional logic based on environment and available policy IDs
-    if (process.env.NODE_ENV === 'production' && (shippingPolicyId || returnPolicyId || paymentPolicyId)) {
-      // Use Business Policies in production if available
-      requestObj.Item.SellerProfiles = {};
+    // Check if we got the category change error
+    if (result.AddItemResponse.Ack !== 'Success' && 
+        result.AddItemResponse.Ack !== 'Warning' &&
+        isCategoryChangeError(result.AddItemResponse.Errors)) {
       
-      if (shippingPolicyId) {
-        requestObj.Item.SellerProfiles.SellerShippingProfile = {
-          'ShippingProfileID': shippingPolicyId
-        };
-      }
+      console.log('⚠️ Category change error detected. Retrying without ISBN and forcing book category...');
       
-      if (returnPolicyId) {
-        requestObj.Item.SellerProfiles.SellerReturnProfile = {
-          'ReturnProfileID': returnPolicyId
-        };
-      }
-      
-      if (paymentPolicyId) {
-        requestObj.Item.SellerProfiles.SellerPaymentProfile = {
-          'PaymentProfileID': paymentPolicyId
-        };
-      }
-      
-      console.log('Using seller business policies:', JSON.stringify(requestObj.Item.SellerProfiles));
-    } else {
-      // Use explicit policies for sandbox or when business policies aren't available
-      console.log('Using explicit shipping and return policies for sandbox testing');
-      
-      // Add explicit Return Policy
-      requestObj.Item.ReturnPolicy = {
-        'ReturnsAcceptedOption': 'ReturnsAccepted',
-        'ReturnsWithinOption': 'Days_30',
-        'ShippingCostPaidByOption': 'Buyer'
-      };
-      
-      // Add explicit Shipping Details
-      requestObj.Item.ShippingDetails = {
-        'ShippingType': 'Flat',
-        'ShippingServiceOptions': [{
-          'ShippingServicePriority': '1',
-          'ShippingService': 'AU_Regular',
-          'ShippingServiceCost': '8.95'
-        }]
-      };
+      // Retry without ISBN and with category mapping disabled
+      requestObj = await buildEbayListingRequest(listingData, {
+        includeISBN: false, // Don't include ISBN
+        categoryMappingAllowed: false, // Force the category
+        selectedCondition,
+        selectedFlawKeys,
+        ebayTitle,
+        nameValueList,
+        bookTopics,
+        bookGenres,
+        narrativeType,
+        epsImageUrls,
+        authToken,
+        shippingPolicyId,
+        returnPolicyId,
+        paymentPolicyId
+      });
+
+      result = await submitEbayListing(requestObj, appId, devId, certId);
     }
-    
-    const xml = builder.buildObject(requestObj);
-    
-    console.log('AddItem XML Payload:', xml);
-    
-    const apiEndpoint = isProduction
-  ? 'https://api.ebay.com/ws/api.dll'
-  : 'https://api.sandbox.ebay.com/ws/api.dll';
-
-console.log(`Creating eBay listing at: ${apiEndpoint}`);
-
-const response = await axios({
-  method: 'post',
-  url: apiEndpoint,
-  headers: {
-    'X-EBAY-API-CALL-NAME': 'AddItem',
-    'X-EBAY-API-APP-NAME': appId,
-    'X-EBAY-API-DEV-NAME': devId,
-    'X-EBAY-API-CERT-NAME': certId,
-    'X-EBAY-API-SITEID': '15',
-    'X-EBAY-API-COMPATIBILITY-LEVEL': '1155',
-    'Content-Type': 'text/xml'
-  },
-  data: xml
-});
-    
-    const parser = new xml2js.Parser({ explicitArray: false });
-    const result = await parser.parseStringPromise(response.data);
-    
-    console.log('eBay AddItem Response:', result);
     
     if (result.AddItemResponse.Ack === 'Success' || 
         result.AddItemResponse.Ack === 'Warning') {
@@ -2219,6 +2378,23 @@ app.post('/api/createListing', upload.fields([{ name: 'imageFiles', maxCount: 24
              if (ebayError?.SeverityCode === 'Error') statusCode = 400;
              errorMessage = ebayError?.LongMessage || ebayError?.ShortMessage || errorMessage;
          }
+         
+         // Check if this is an "author too long" error
+         if (listingResponse?.errors && isAuthorTooLongError(listingResponse.errors)) {
+           console.log('⚠️ Author too long error detected. Requesting user to edit author.');
+           return res.status(400).json({
+             success: false,
+             error: errorMessage,
+             requiresAuthorEdit: true,
+             currentData: {
+               author: author || '',
+               title: title || '',
+               language: language || 'English'
+             },
+             details: listingResponse?.errors
+           });
+         }
+         
          // IMPORTANT: Do NOT delete image files here if listing failed
          return res.status(statusCode).json({
              success: false,
