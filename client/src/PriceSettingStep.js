@@ -532,6 +532,60 @@ function PriceSettingStep({
     setMissingFieldsData(null);
   };
 
+  // Extract clickable words from subjects (excluding commas and ampersands)
+  const extractClickableWords = (subjects) => {
+    if (!subjects || subjects.length === 0) return [];
+    
+    const allWords = [];
+    subjects.forEach(subject => {
+      // Split subject by spaces to get individual words
+      const words = subject.split(/\s+/);
+      words.forEach(word => {
+        // Remove commas and ampersands from the word
+        const cleanWord = word.replace(/[,&]/g, '').trim();
+        // Only add if word has content and is not empty
+        if (cleanWord.length > 0) {
+          allWords.push(cleanWord);
+        }
+      });
+    });
+    
+    // Remove duplicates while preserving order
+    return [...new Set(allWords)];
+  };
+
+  // Handle clicking on a subject word to add it to the title
+  const handleSubjectWordClick = (word) => {
+    const currentTitle = listingTitle.trim();
+    
+    // Check if the word is already in the title (case-insensitive)
+    const titleWords = currentTitle.toLowerCase().split(/\s+/);
+    if (titleWords.includes(word.toLowerCase())) {
+      return; // Word already in title, don't add again
+    }
+    
+    // Calculate what the new title would be
+    const spaceNeeded = currentTitle.length > 0 ? 1 : 0; // Space before word if title not empty
+    const totalLength = currentTitle.length + spaceNeeded + word.length;
+    
+    // If adding would exceed 80 chars, truncate the current title to fit
+    if (totalLength > 80) {
+      const maxLength = 80;
+      // Calculate how much space we have for the truncated title
+      const availableSpace = maxLength - word.length - spaceNeeded;
+      const truncatedTitle = currentTitle.substring(0, Math.max(0, availableSpace)).trim();
+      
+      // Ensure we don't add a space if truncated title is empty
+      const finalSpace = truncatedTitle.length > 0 ? ' ' : '';
+      const finalTitle = truncatedTitle + finalSpace + word;
+      
+      // Final safety check: ensure we don't exceed 80 (shouldn't happen, but just in case)
+      setListingTitle(finalTitle.substring(0, 80));
+    } else {
+      setListingTitle(currentTitle + (spaceNeeded ? ' ' : '') + word);
+    }
+  };
+
 
   // --- Component Render ---
   return (
@@ -565,7 +619,19 @@ function PriceSettingStep({
              {metadata?.subjects && metadata.subjects.length > 0 ? (
                <div className="book-subjects">
                  <p className="subjects-label"><strong>Subjects:</strong></p>
-                 <p className="subjects-list">{metadata.subjects.join(', ')}</p>
+                 <div className="subjects-list">
+                   {extractClickableWords(metadata.subjects).map((word, index) => (
+                     <button
+                       key={index}
+                       type="button"
+                       className="subject-word-button"
+                       onClick={() => handleSubjectWordClick(word)}
+                       title={`Click to add "${word}" to listing title`}
+                     >
+                       {word}
+                     </button>
+                   ))}
+                 </div>
                </div>
              ) : (
                <div className="book-subjects no-subjects">

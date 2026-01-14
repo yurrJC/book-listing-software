@@ -79,7 +79,10 @@
     margin: 0;
     font-size: 0.95rem;
     color: #333;
-    line-height: 1.4;
+    line-height: 1.6;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
   }
   
   .book-subjects.no-subjects {
@@ -90,6 +93,7 @@
   .book-subjects.no-subjects .subjects-list {
     color: #888;
     font-style: italic;
+    display: block; /* Override flex for no-subjects case */
   }
   
   .info-table {
@@ -331,4 +335,37 @@
   padding: 8px 0;
   border-bottom: 1px solid #eee;
   vertical-align: top; /* Align text to the top */
+}
+
+/* Clickable subject word buttons */
+.subject-word-button {
+  background-color: #e3f2fd;
+  color: #0053a0;
+  border: 1px solid #90caf9;
+  border-radius: 4px;
+  padding: 4px 10px;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin: 0;
+  font-family: inherit;
+  line-height: 1.4;
+}
+
+.subject-word-button:hover {
+  background-color: #bbdefb;
+  border-color: #64b5f6;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 83, 160, 0.2);
+}
+
+.subject-word-button:active {
+  background-color: #90caf9;
+  transform: translateY(0);
+  box-shadow: 0 1px 2px rgba(0, 83, 160, 0.2);
+}
+
+.subject-word-button:focus {
+  outline: 2px solid #0053a0;
+  outline-offset: 2px;
 }
