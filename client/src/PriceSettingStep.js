@@ -532,26 +532,32 @@ function PriceSettingStep({
     setMissingFieldsData(null);
   };
 
-  // Extract clickable words from subjects (excluding commas and ampersands)
+  // Extract clickable keywords from subjects
+  // Keywords are separated by commas in the original data (already split into array)
+  // Within each keyword, & separates parts that should be split
+  // Multi-word phrases (like "Women's Studies", "New Zealand") stay together
   const extractClickableWords = (subjects) => {
     if (!subjects || subjects.length === 0) return [];
     
-    const allWords = [];
+    const allKeywords = [];
     subjects.forEach(subject => {
-      // Split subject by spaces to get individual words
-      const words = subject.split(/\s+/);
-      words.forEach(word => {
-        // Remove commas and ampersands from the word
-        const cleanWord = word.replace(/[,&]/g, '').trim();
-        // Only add if word has content and is not empty
-        if (cleanWord.length > 0) {
-          allWords.push(cleanWord);
+      // Remove commas from the subject string (just in case)
+      const cleanSubject = subject.replace(/,/g, '').trim();
+      
+      // Split by & to separate parts (e.g., "Biography & Autobiography" → ["Biography", "Autobiography"])
+      // or "Australia & New Zealand" → ["Australia", "New Zealand"])
+      const parts = cleanSubject.split('&').map(part => part.trim());
+      
+      // Each part is a keyword (keep multi-word phrases together)
+      parts.forEach(part => {
+        if (part.length > 0) {
+          allKeywords.push(part);
         }
       });
     });
     
     // Remove duplicates while preserving order
-    return [...new Set(allWords)];
+    return [...new Set(allKeywords)];
   };
 
   // Handle clicking on a subject word to add it to the title
