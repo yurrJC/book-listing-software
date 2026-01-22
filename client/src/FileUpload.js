@@ -33,7 +33,7 @@ const FLAW_DEFINITIONS = {
 const FLAW_OPTIONS = Object.values(FLAW_DEFINITIONS);
 // --- END NEW DEFINITIONS ---
 
-function FileUpload({ onSuccess }) {
+function FileUpload({ onSuccess, onOpenReadyToList, draftCount = 0 }) {
   const [files, setFiles] = useState({ mainImages: [] });
   const [selectedCondition, setSelectedCondition] = useState('Good');
   const [selectedFlaws, setSelectedFlaws] = useState([]);
@@ -316,7 +316,27 @@ function FileUpload({ onSuccess }) {
   return (
     <div className="file-upload-container">
       <div className="card"> {/* Wrap content in a card */}
-        <h2 className="card-title">Upload Book Details</h2>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+          <h2 className="card-title" style={{ margin: 0 }}>Upload Book Details</h2>
+          {onOpenReadyToList && (
+            <button
+              onClick={onOpenReadyToList}
+              className="ready-to-list-button"
+              style={{
+                padding: '10px 20px',
+                backgroundColor: '#007bff',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: '500'
+              }}
+            >
+              Ready to List {draftCount > 0 && `(${draftCount})`}
+            </button>
+          )}
+        </div>
 
         {/* API Status indicator */}
         {apiStatus && (

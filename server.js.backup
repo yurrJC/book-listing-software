@@ -1,0 +1,185 @@
+// Add after other requires, around line 57
+const DRAFTS_FILE = path.join(__dirname, 'drafts.json');
+
+// Helper functions for draft storage
+function loadDrafts() {
+  try {
+    if (fs.existsSync(DRAFTS_FILE)) {
+      const data = fs.readFileSync(DRAFTS_FILE, 'utf8');
+      return JSON.parse(data);
+    }
+    return [];
+  } catch (error) {
+    console.error('Error loading drafts:', error);
+    return [];
+  }
+}
+
+function saveDrafts(drafts) {
+  try {
+    fs.writeFileSync(DRAFTS_FILE, JSON.stringify(drafts, null, 2), 'utf8');
+    return true;
+  } catch (error) {
+    console.error('Error saving drafts:', error);
+    return false;
+  }
+}
+
+// API endpoint to save draft
+app.post('/api/saveDraft', upload.fields([{ name: 'imageFiles', maxCount: 24 }]), async (req, res) => {
+  try {
+    const imageFileObjects = req.files?.imageFiles || [];
+    const {
+      isbn, price, sku, customTitle, selectedCondition, ocrText,
+      title, author, publisher, publicationYear, synopsis, language,
+      format, subjects, ebayTitle, customDescriptionNote,
+      selectedTopic, selectedGenre
+    } = req.body;
+
+    let selectedFlawKeys = [];
+    try {
+      if (req.body.selectedFlawKeys) {
+        selectedFlawKeys = JSON.parse(req.body.selectedFlawKeys);
+        if (!Array.isArray(selectedFlawKeys)) selectedFlawKeys = [];
+      }
+    } catch (e) {
+      console.error("Failed to parse selectedFlawKeys:", e);
+    }
+
+    let parsedSubjects = [];
+    try {
+      if (subjects && typeof subjects === 'string') {
+        parsedSubjects = JSON.parse(subjects);
+        if (!Array.isArray(parsedSubjects)) parsedSubjects = [];
+      } else if (Array.isArray(subjects)) {
+        parsedSubjects = subjects;
+      }
+    } catch(e) {
+      parsedSubjects = [];
+    }
+
+    // Convert images to base64
+    const imageBase64Array = [];
+    const imageFileNames = [];
+    
+    for (const file of imageFileObjects) {
+      const imageBuffer = fs.readFileSync(file.path);
+      const base64 = imageBuffer.toString('base64');
+      const mimeType = file.mimetype || 'image/jpeg';
+      imageBase64Array.push(`data:${mimeType};base64,${base64}`);
+      imageFileNames.push(file.originalname || file.filename);
+      
+      // Delete temporary file
+      fs.unlinkSync(file.path);
+    }
+
+    const draft = {
+      id: Date.now().toString() + '-' + Math.random().toString(36).substr(2, 9),
+      timestamp: new Date().toISOString(),
+      isbn: isbn || '',
+      price: price,
+      sku: sku || '',
+      selectedCondition: selectedCondition,
+      selectedFlawKeys: selectedFlawKeys,
+      ocrText: ocrText || '',
+      listingTitle: customTitle || ebayTitle || '',
+      ebayTitle: ebayTitle || '',
+      customTitle: customTitle || null,
+      metadata: {
+        title: title || '',
+        author: author || '',
+        publisher: publisher || '',
+        publicationYear: publicationYear || '',
+        synopsis: synopsis || '',
+        language: language || '',
+        format: format || 'Paperback',
+        subjects: parsedSubjects,
+        coverUrl: null // Can be added if available
+      },
+      customDescriptionNote: customDescriptionNote || '',
+      selectedTopic: selectedTopic || '',
+      selectedGenre: selectedGenre || '',
+      imageBase64Array: imageBase64Array,
+      imageFileNames: imageFileNames
+    };
+
+    const drafts = loadDrafts();
+    drafts.push(draft);
+    saveDrafts(drafts);
+
+    res.json({ success: true, draftId: draft.id });
+  } catch (error) {
+    console.error('Error saving draft:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// API endpoint to get all drafts
+app.get('/api/drafts', (req, res) => {
+  try {
+    const drafts = loadDrafts();
+    // Don't send full base64 images in list - just metadata
+    const draftsList = drafts.map(draft => ({
+      id: draft.id,
+      timestamp: draft.timestamp,
+      isbn: draft.isbn,
+      price: draft.price,
+      sku: draft.sku,
+      listingTitle: draft.listingTitle,
+      metadata: draft.metadata,
+      selectedTopic: draft.selectedTopic,
+      selectedGenre: draft.selectedGenre,
+      hasImages: draft.imageBase64Array && draft.imageBase64Array.length > 0,
+      imageCount: draft.imageBase64Array ? draft.imageBase64Array.length : 0
+    }));
+    res.json({ success: true, drafts: draftsList });
+  } catch (error) {
+    console.error('Error loading drafts:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// API endpoint to get a specific draft with images
+app.get('/api/drafts/:id', (req, res) => {
+  try {
+    const drafts = loadDrafts();
+    const draft = drafts.find(d => d.id === req.params.id);
+    if (!draft) {
+      return res.status(404).json({ success: false, error: 'Draft not found' });
+    }
+    res.json({ success: true, draft });
+  } catch (error) {
+    console.error('Error loading draft:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// API endpoint to delete a draft
+app.delete('/api/drafts/:id', (req, res) => {
+  try {
+    const drafts = loadDrafts();
+    const filteredDrafts = drafts.filter(d => d.id !== req.params.id);
+    saveDrafts(filteredDrafts);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting draft:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// API endpoint to delete multiple drafts
+app.post('/api/drafts/delete', (req, res) => {
+  try {
+    const { ids } = req.body;
+    if (!Array.isArray(ids)) {
+      return res.status(400).json({ success: false, error: 'ids must be an array' });
+    }
+    const drafts = loadDrafts();
+    const filteredDrafts = drafts.filter(d => !ids.includes(d.id));
+    saveDrafts(filteredDrafts);
+    res.json({ success: true, deleted: drafts.length - filteredDrafts.length });
+  } catch (error) {
+    console.error('Error deleting drafts:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});

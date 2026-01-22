@@ -1,14 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import FileUpload from './FileUpload';
 import PriceSettingStep from './PriceSettingStep';
 import ResultView from './ResultView';
 import StoreCategoriesConfig from './StoreCategoriesConfig';
+import ReadyToList from './ReadyToList';
 
 function App() {
   const [step, setStep] = useState(1); // 1: Upload, 2: Price/Review, 3: Result
   const [processedData, setProcessedData] = useState(null); // Holds data from /processBook
   const [originalFiles, setOriginalFiles] = useState([]); // Holds the actual File objects
   const [showStoreCategoriesConfig, setShowStoreCategoriesConfig] = useState(false);
+  const [showReadyToList, setShowReadyToList] = useState(false);
+  const [draftCount, setDraftCount] = useState(0);
 
   // Callback from FileUpload
   const handleProcessSuccess = ({ apiResponseData, originalFileObjects, customDescriptionNote }) => {
@@ -50,6 +53,35 @@ function App() {
     setStep(1);
   };
 
+  // Update draft count on mount and when ready to list is shown
+  useEffect(() => {
+    const updateDraftCount = async () => {
+      try {
+        const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://book-listing-software.onrender.com';
+        const response = await fetch(`${API_BASE_URL}/api/drafts`);
+        const data = await response.json();
+        if (data.success) {
+          setDraftCount(data.drafts.length);
+        } else {
+          setDraftCount(0);
+        }
+      } catch (error) {
+        console.error('Error reading draft count:', error);
+        setDraftCount(0);
+      }
+    };
+    
+    updateDraftCount();
+    // Poll for updates every 5 seconds when ready to list is not shown
+    const interval = setInterval(() => {
+      if (!showReadyToList) {
+        updateDraftCount();
+      }
+    }, 5000);
+    
+    return () => clearInterval(interval);
+  }, [showReadyToList]);
+
   return (
     <div className="App">
       {/* Store Categories Configuration Button */}
@@ -63,7 +95,20 @@ function App() {
         </button>
       </div>
 
-      {step === 1 && <FileUpload onSuccess={handleProcessSuccess} />}
+      {showReadyToList ? (
+        <ReadyToList 
+          onClose={() => setShowReadyToList(false)} 
+          onDraftCountChange={setDraftCount}
+        />
+      ) : (
+        <>
+          {step === 1 && (
+            <FileUpload 
+              onSuccess={handleProcessSuccess} 
+              onOpenReadyToList={() => setShowReadyToList(true)}
+              draftCount={draftCount}
+            />
+          )}
       {step === 2 && processedData && (
         <PriceSettingStep
           onSubmit={handleListingSuccess}
@@ -81,12 +126,14 @@ function App() {
           imageFileObjects={originalFiles}
         />
       )}
-      {step === 3 && processedData && processedData.listingResponse && (
-        <ResultView
-           // Pass combined data: initial process data + listing response
-           result={processedData}
-           onReset={handleReset}
-        />
+          {step === 3 && processedData && processedData.listingResponse && (
+            <ResultView
+               // Pass combined data: initial process data + listing response
+               result={processedData}
+               onReset={handleReset}
+            />
+          )}
+        </>
       )}
 
       {/* Store Categories Configuration Modal */}

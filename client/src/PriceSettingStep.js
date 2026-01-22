@@ -237,27 +237,111 @@ function PriceSettingStep({
     }
   };
 
-  // Handler for form submission to create listing
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  // Handler for saving draft
+  const handleSaveDraft = async () => {
     setLoading(true);
     setError(null);
-
-    console.log('Starting listing creation (sending FormData)...');
 
     // --- Validation ---
     if (!selectedCondition) { setError("Condition is missing."); setLoading(false); return; }
     if (!price || isNaN(parseFloat(price)) || parseFloat(price) <= 0) { setError("Valid price is required."); setLoading(false); return; }
     if (!listingTitle || listingTitle.trim().length === 0) { setError("Listing title is required."); setLoading(false); return; }
+    if (listingTitle.trim().length > 80) { 
+      setError(`Listing title is too long (${listingTitle.trim().length} characters). eBay allows a maximum of 80 characters.`); 
+      setLoading(false); 
+      return; 
+    }
     if (!imageFileObjects || imageFileObjects.length === 0) {
       setError('No image files available for listing. Please go back.');
       setLoading(false);
       return;
     }
+    // Note: Author length validation will be done by eBay API when listing is actually created
     // --- End Validation ---
 
     try {
+      // Prepare FormData to send to server
       const formData = new FormData();
+
+      // Append Image Files
+      imageFileObjects.forEach((file, index) => {
+        const fileName = file.name || `image_${index}.jpg`;
+        const fileType = file.type || 'image/jpeg';
+        formData.append('imageFiles', file, fileName);
+      });
+
+      // Append Other Data as Fields
+      formData.append('isbn', isbn || '');
+      formData.append('price', price);
+      formData.append('sku', sku || '');
+      formData.append('selectedCondition', selectedCondition);
+      formData.append('selectedFlawKeys', JSON.stringify(selectedFlawKeys || []));
+      formData.append('ocrText', ocrText || '');
+
+      // Handle custom vs generated title
+      if (listingTitle.trim() !== (ebayTitle || '').trim()) {
+        formData.append('customTitle', listingTitle.trim());
+      }
+      formData.append('ebayTitle', ebayTitle || '');
+
+      // Append necessary metadata fields
+      formData.append('title', metadata?.title || '');
+      formData.append('author', metadata?.author || '');
+      formData.append('publisher', metadata?.publisher || '');
+      formData.append('publicationYear', String(metadata?.publishedDate || metadata?.publicationYear || ''));
+      formData.append('synopsis', metadata?.synopsis || '');
+      formData.append('language', metadata?.language || '');
+      formData.append('format', metadata?.binding || metadata?.format || 'Paperback');
+      formData.append('subjects', JSON.stringify(metadata?.subjects || []));
+
+      // Append custom description note if provided
+      if (customDescriptionNote && customDescriptionNote.trim()) {
+        formData.append('customDescriptionNote', customDescriptionNote.trim());
+      }
+
+      // Append selected topic and genre
+      if (selectedTopic) {
+        formData.append('selectedTopic', selectedTopic);
+      }
+      if (selectedGenre) {
+        formData.append('selectedGenre', selectedGenre);
+      }
+
+      // Send to server
+      const response = await fetch(`${API_BASE_URL}/api/saveDraft`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      const responseText = await response.text();
+      let data;
+      try {
+        data = JSON.parse(responseText);
+      } catch (parseErr) {
+        throw new Error('Invalid response from server');
+      }
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Failed to save draft');
+      }
+
+      // Show success message and go back
+      alert('Draft saved successfully! You can view it in the "Ready to List" tab.');
+      onBack(); // Go back to intake page
+    } catch (err) {
+      console.error('Error saving draft:', err);
+      setError(err.message || 'An error occurred while saving the draft.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handler for form submission to create listing (kept for backward compatibility if needed)
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    // Redirect to save draft instead
+    await handleSaveDraft();
+  };
 
       // Append Image Files from props
       imageFileObjects.forEach((file, index) => {
@@ -683,7 +767,7 @@ function PriceSettingStep({
 
          {/* Right Side: Listing Form */}
          <div className="listing-form">
-             <form onSubmit={handleSubmit}>
+             <form onSubmit={(e) => { e.preventDefault(); handleSaveDraft(); }}>
                 {/* Editable Listing Title */}
                 <div className="form-group">
                     <label htmlFor="listingTitle" className="form-label">eBay Listing Title (Edit if needed):</label>
@@ -762,12 +846,13 @@ function PriceSettingStep({
                         Back
                     </button>
                     <button
-                        type="submit"
+                        type="button"
+                        onClick={handleSaveDraft}
                         className="btn submit-button"
                         // More robust disabling condition
                         disabled={loading || !selectedCondition || !imageFileObjects || imageFileObjects.length === 0 || !listingTitle.trim() || !price || parseFloat(price) <= 0}
                     >
-                       {loading ? <><LoadingSpinner /> Creating...</> : 'Create eBay Listing'}
+                       {loading ? <><LoadingSpinner /> Saving...</> : 'Save Draft'}
                     </button>
                  </div>
              </form>
