@@ -314,29 +314,37 @@ function FileUpload({ onSuccess, onOpenReadyToList, draftCount = 0 }) {
 
 
   return (
-    <div className="file-upload-container">
+    <div className="file-upload-container" style={{ position: 'relative' }}>
+      {/* Ready to List Button - Always visible at top right */}
+      {onOpenReadyToList && (
+        <button
+          onClick={onOpenReadyToList}
+          className="ready-to-list-button"
+          style={{
+            position: 'absolute',
+            top: '20px',
+            right: '20px',
+            zIndex: 1000,
+            padding: '12px 24px',
+            backgroundColor: '#007bff',
+            color: 'white',
+            border: 'none',
+            borderRadius: '6px',
+            cursor: 'pointer',
+            fontSize: '16px',
+            fontWeight: '600',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+            transition: 'background-color 0.2s'
+          }}
+          onMouseOver={(e) => e.target.style.backgroundColor = '#0056b3'}
+          onMouseOut={(e) => e.target.style.backgroundColor = '#007bff'}
+        >
+          📋 Ready to List {draftCount > 0 && `(${draftCount})`}
+        </button>
+      )}
+      
       <div className="card"> {/* Wrap content in a card */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-          <h2 className="card-title" style={{ margin: 0 }}>Upload Book Details</h2>
-          {onOpenReadyToList && (
-            <button
-              onClick={onOpenReadyToList}
-              className="ready-to-list-button"
-              style={{
-                padding: '10px 20px',
-                backgroundColor: '#007bff',
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: '500'
-              }}
-            >
-              Ready to List {draftCount > 0 && `(${draftCount})`}
-            </button>
-          )}
-        </div>
+        <h2 className="card-title">Upload Book Details</h2>
 
         {/* API Status indicator */}
         {apiStatus && (
