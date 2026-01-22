@@ -2499,14 +2499,37 @@ app.post('/api/saveDraft', upload.fields([{ name: 'imageFiles', maxCount: 24 }])
     const imageFileNames = [];
     
     for (const file of imageFileObjects) {
-      const imageBuffer = fs.readFileSync(file.path);
-      const base64 = imageBuffer.toString('base64');
-      const mimeType = file.mimetype || 'image/jpeg';
-      imageBase64Array.push(`data:${mimeType};base64,${base64}`);
-      imageFileNames.push(file.originalname || file.filename);
-      
-      // Delete temporary file
-      fs.unlinkSync(file.path);
+      try {
+        if (!file || !file.path) {
+          console.warn('Skipping invalid file object:', file);
+          continue;
+        }
+        
+        if (!fs.existsSync(file.path)) {
+          console.warn('File path does not exist:', file.path);
+          continue;
+        }
+        
+        const imageBuffer = fs.readFileSync(file.path);
+        const base64 = imageBuffer.toString('base64');
+        const mimeType = file.mimetype || 'image/jpeg';
+        imageBase64Array.push(`data:${mimeType};base64,${base64}`);
+        imageFileNames.push(file.originalname || file.filename || 'image.jpg');
+        
+        // Delete temporary file
+        try {
+          fs.unlinkSync(file.path);
+        } catch (unlinkError) {
+          console.warn('Could not delete temporary file:', file.path, unlinkError);
+        }
+      } catch (fileError) {
+        console.error('Error processing file:', fileError);
+        // Continue with other files even if one fails
+      }
+    }
+    
+    if (imageBase64Array.length === 0) {
+      return res.status(400).json({ success: false, error: 'No valid image files were provided' });
     }
 
     const draft = {
@@ -2546,7 +2569,8 @@ app.post('/api/saveDraft', upload.fields([{ name: 'imageFiles', maxCount: 24 }])
     res.json({ success: true, draftId: draft.id });
   } catch (error) {
     console.error('Error saving draft:', error);
-    res.status(500).json({ success: false, error: error.message });
+    const errorMessage = error?.message || error?.toString() || 'An unknown error occurred while saving the draft';
+    res.status(500).json({ success: false, error: errorMessage });
   }
 });
 
@@ -2571,7 +2595,8 @@ app.get('/api/drafts', (req, res) => {
     res.json({ success: true, drafts: draftsList });
   } catch (error) {
     console.error('Error loading drafts:', error);
-    res.status(500).json({ success: false, error: error.message });
+    const errorMessage = error?.message || error?.toString() || 'An unknown error occurred while loading drafts';
+    res.status(500).json({ success: false, error: errorMessage });
   }
 });
 
@@ -2586,7 +2611,8 @@ app.get('/api/drafts/:id', (req, res) => {
     res.json({ success: true, draft });
   } catch (error) {
     console.error('Error loading draft:', error);
-    res.status(500).json({ success: false, error: error.message });
+    const errorMessage = error?.message || error?.toString() || 'An unknown error occurred while loading the draft';
+    res.status(500).json({ success: false, error: errorMessage });
   }
 });
 
@@ -2599,7 +2625,8 @@ app.delete('/api/drafts/:id', (req, res) => {
     res.json({ success: true });
   } catch (error) {
     console.error('Error deleting draft:', error);
-    res.status(500).json({ success: false, error: error.message });
+    const errorMessage = error?.message || error?.toString() || 'An unknown error occurred while deleting the draft';
+    res.status(500).json({ success: false, error: errorMessage });
   }
 });
 
@@ -2616,7 +2643,8 @@ app.post('/api/drafts/delete', (req, res) => {
     res.json({ success: true, deleted: drafts.length - filteredDrafts.length });
   } catch (error) {
     console.error('Error deleting drafts:', error);
-    res.status(500).json({ success: false, error: error.message });
+    const errorMessage = error?.message || error?.toString() || 'An unknown error occurred while deleting drafts';
+    res.status(500).json({ success: false, error: errorMessage });
   }
 });
 // ===== END DRAFT STORAGE SYSTEM =====
