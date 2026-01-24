@@ -325,12 +325,14 @@ function PriceSettingStep({
         throw new Error(data.error || 'Failed to save draft');
       }
 
-      // Show success message and go back
-      alert('Draft saved successfully! You can view it in the "Ready to List" tab.');
+      // Success - silently go back to intake page (no popup)
       onBack(); // Go back to intake page
     } catch (err) {
       console.error('Error saving draft:', err);
-      setError(err.message || 'An error occurred while saving the draft.');
+      const errorMessage = err.message || 'An error occurred while saving the draft.';
+      setError(errorMessage);
+      // Show error popup
+      alert(`Failed to save draft: ${errorMessage}`);
     } finally {
       setLoading(false);
     }

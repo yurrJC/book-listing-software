@@ -15,6 +15,7 @@ const RATE_LIMIT_DELAY_MS = 171000; // 171 seconds = 2.85 minutes between listin
 function ReadyToList({ onClose, onDraftCountChange }) {
   const [drafts, setDrafts] = useState([]);
   const [selectedDrafts, setSelectedDrafts] = useState(new Set());
+  const [expandedRows, setExpandedRows] = useState(new Set());
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0, currentTitle: '' });
   const [uploadResults, setUploadResults] = useState(null);
@@ -56,6 +57,13 @@ function ReadyToList({ onClose, onDraftCountChange }) {
     } else {
       setSelectedDrafts(new Set(drafts.map((_, index) => index)));
     }
+  };
+
+  const handleToggleExpanded = (index) => {
+    const next = new Set(expandedRows);
+    if (next.has(index)) next.delete(index);
+    else next.add(index);
+    setExpandedRows(next);
   };
 
   const handleToggleSelect = (index) => {
@@ -282,7 +290,7 @@ function ReadyToList({ onClose, onDraftCountChange }) {
       <div className="ready-to-list-container">
         <div className="ready-to-list-header">
           <h2>Upload Summary</h2>
-          <button onClick={() => { setUploadResults(null); onClose(); }} className="close-button">Close</button>
+          <button onClick={() => { setUploadResults(null); onClose(); }} className="rtl-close-button">Close</button>
         </div>
         <div className="upload-summary">
           <div className="summary-stats">
@@ -347,7 +355,7 @@ function ReadyToList({ onClose, onDraftCountChange }) {
       <div className="image-gallery-modal">
         <div className="modal-header">
           <h3>Image Gallery</h3>
-          <button onClick={() => setViewingImageGallery(null)} className="close-button">×</button>
+          <button onClick={() => setViewingImageGallery(null)} className="rtl-modal-close-button">×</button>
         </div>
         <div className="gallery-images">
           {images.map((img, index) => (
@@ -366,7 +374,7 @@ function ReadyToList({ onClose, onDraftCountChange }) {
       <div className="item-specifics-modal">
         <div className="modal-header">
           <h3>Item Specifics</h3>
-          <button onClick={() => setViewingItemSpecifics(null)} className="close-button">×</button>
+          <button onClick={() => setViewingItemSpecifics(null)} className="rtl-modal-close-button">×</button>
         </div>
         <div className="specifics-content">
           <div className="specifics-row">
@@ -431,10 +439,10 @@ function ReadyToList({ onClose, onDraftCountChange }) {
       <div className="ready-to-list-header">
         <h2>Ready to List</h2>
         <div className="header-actions">
-          <button onClick={handleSelectAll} className="select-all-button">
+          <button onClick={handleSelectAll} className="rtl-select-all-button">
             {selectedDrafts.size === drafts.length ? 'Deselect All' : 'Select All'}
           </button>
-          <button onClick={onClose} className="close-button">Close</button>
+          <button onClick={onClose} className="rtl-close-button">Close</button>
         </div>
       </div>
 
@@ -446,30 +454,63 @@ function ReadyToList({ onClose, onDraftCountChange }) {
         <>
           <div className="drafts-table-container">
             <table className="drafts-table">
+              <colgroup>
+                <col style={{ width: '34px' }} />
+                <col style={{ width: '44px' }} />
+                <col style={{ width: '96px' }} />
+                <col style={{ width: '84px' }} />
+                <col />
+                <col style={{ width: '160px' }} />
+                <col style={{ width: '120px' }} />
+                <col style={{ width: '120px' }} />
+                <col style={{ width: '88px' }} />
+              </colgroup>
               <thead>
                 <tr>
-                  <th style={{ width: '50px' }}>Select</th>
-                  <th style={{ width: '100px' }}>SKU</th>
-                  <th style={{ width: '120px' }}>Image</th>
+                  <th aria-label="Expand" />
+                  <th>Select</th>
+                  <th>SKU</th>
+                  <th>Image</th>
                   <th>Title</th>
                   <th>Author</th>
-                  <th style={{ width: '150px' }}>Item Specifics</th>
-                  <th style={{ width: '80px' }}>Actions</th>
+                  <th>Item Specifics</th>
+                  <th>Status</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {drafts.map((draft, index) => {
                   const firstImageUrl = getFirstImageUrl(draft);
+                  const titleText = draft.listingTitle || draft.metadata?.title || 'N/A';
+                  const authorText = draft.metadata?.author || 'N/A';
+                  const isExpanded = expandedRows.has(index);
                   return (
-                    <tr key={index}>
-                      <td>
+                    <React.Fragment key={index}>
+                      <tr>
+                        <td>
+                          <button
+                            type="button"
+                            className="rtl-expand-button"
+                            onClick={() => handleToggleExpanded(index)}
+                            aria-label={isExpanded ? 'Collapse row' : 'Expand row'}
+                            aria-expanded={isExpanded}
+                            title={isExpanded ? 'Collapse' : 'Expand'}
+                          >
+                            {isExpanded ? '▾' : '▸'}
+                          </button>
+                        </td>
+                        <td>
                         <input
                           type="checkbox"
                           checked={selectedDrafts.has(index)}
                           onChange={() => handleToggleSelect(index)}
                         />
                       </td>
-                      <td>{draft.sku || 'N/A'}</td>
+                      <td>
+                        <span className="cell-truncate" title={draft.sku || 'N/A'}>
+                          {draft.sku || <span className="cell-muted">N/A</span>}
+                        </span>
+                      </td>
                       <td>
                         {firstImageUrl ? (
                           <img
@@ -482,25 +523,81 @@ function ReadyToList({ onClose, onDraftCountChange }) {
                           <div className="no-image-placeholder">No Image</div>
                         )}
                       </td>
-                      <td>{draft.listingTitle || draft.metadata?.title || 'N/A'}</td>
-                      <td>{draft.metadata?.author || 'N/A'}</td>
+                      <td>
+                        <span className="cell-truncate" title={titleText}>
+                          {titleText}
+                        </span>
+                      </td>
+                      <td>
+                        <span className="cell-truncate" title={authorText}>
+                          {authorText}
+                        </span>
+                      </td>
                       <td>
                         <button
                           onClick={() => setViewingItemSpecifics(index)}
-                          className="view-button"
+                          className="rtl-view-button"
                         >
                           View
                         </button>
                       </td>
                       <td>
+                        <span className="rtl-status-pill" title="Ready to list">
+                          Ready
+                        </span>
+                      </td>
+                      <td>
                         <button
                           onClick={() => handleDeleteDraft(index)}
-                          className="delete-button"
+                          className="rtl-delete-button"
                         >
                           Delete
                         </button>
                       </td>
-                    </tr>
+                      </tr>
+                      {isExpanded && (
+                        <tr className="rtl-expanded-row">
+                          <td colSpan={9}>
+                            <div className="rtl-expanded-panel">
+                              <div className="rtl-expanded-grid">
+                                <div>
+                                  <div className="rtl-k">ISBN</div>
+                                  <div className="rtl-v">{draft.isbn || 'N/A'}</div>
+                                </div>
+                                <div>
+                                  <div className="rtl-k">Price</div>
+                                  <div className="rtl-v">${draft.price || 'N/A'}</div>
+                                </div>
+                                <div>
+                                  <div className="rtl-k">Condition</div>
+                                  <div className="rtl-v">{draft.selectedCondition || 'N/A'}</div>
+                                </div>
+                                <div>
+                                  <div className="rtl-k">Images</div>
+                                  <div className="rtl-v">{draft.imageBase64Array?.length || 0}</div>
+                                </div>
+                              </div>
+                              <div className="rtl-expanded-actions">
+                                <button
+                                  type="button"
+                                  className="rtl-inline-link"
+                                  onClick={() => setViewingImageGallery(index)}
+                                >
+                                  View images
+                                </button>
+                                <button
+                                  type="button"
+                                  className="rtl-inline-link"
+                                  onClick={() => setViewingItemSpecifics(index)}
+                                >
+                                  View item specifics
+                                </button>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
                   );
                 })}
               </tbody>
@@ -510,7 +607,7 @@ function ReadyToList({ onClose, onDraftCountChange }) {
             <button
               onClick={handleListToEbay}
               disabled={selectedDrafts.size === 0}
-              className="list-to-ebay-button"
+              className="rtl-list-to-ebay-button"
             >
               List to eBay ({selectedDrafts.size} selected)
             </button>

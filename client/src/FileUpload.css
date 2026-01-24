@@ -21,12 +21,90 @@ body {
   border: 1px solid #e5e7eb; /* Soft border */
 }
 
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 25px;
+  flex-wrap: wrap;
+  gap: 15px;
+}
+
 .card-title {
   font-size: 24px; /* Slightly smaller */
   font-weight: 600; /* Semi-bold */
-  margin-bottom: 25px; /* More space below title */
+  margin: 0; /* Remove bottom margin since header handles spacing */
   color: #111827; /* Darker text */
+  flex: 1;
+}
+
+/* Ready to List Button - Modern and Sleek */
+.ready-to-list-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.ready-to-list-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s;
+}
+
+.ready-to-list-button:hover::before {
+  left: 100%;
+}
+
+.ready-to-list-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+  background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+}
+
+.ready-to-list-button:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
+}
+
+.ready-to-list-icon {
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+}
+
+.ready-to-list-text {
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+
+.ready-to-list-badge {
+  background: rgba(255, 255, 255, 0.3);
+  backdrop-filter: blur(10px);
+  border-radius: 12px;
+  padding: 2px 8px;
+  font-size: 13px;
+  font-weight: 700;
+  min-width: 24px;
   text-align: center;
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 /* Form Sections */
@@ -383,8 +461,17 @@ body {
   .card {
     padding: 20px;
   }
+  .card-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
   .card-title {
-      font-size: 20px;
+    font-size: 20px;
+    text-align: center;
+  }
+  .ready-to-list-button {
+    width: 100%;
+    justify-content: center;
   }
   .flaws-grid {
     grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); /* Smaller columns on mobile */

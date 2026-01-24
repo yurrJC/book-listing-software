@@ -315,36 +315,23 @@ function FileUpload({ onSuccess, onOpenReadyToList, draftCount = 0 }) {
 
   return (
     <div className="file-upload-container" style={{ position: 'relative' }}>
-      {/* Ready to List Button - Always visible at top right */}
-      {onOpenReadyToList && (
-        <button
-          onClick={onOpenReadyToList}
-          className="ready-to-list-button"
-          style={{
-            position: 'absolute',
-            top: '20px',
-            right: '20px',
-            zIndex: 1000,
-            padding: '12px 24px',
-            backgroundColor: '#007bff',
-            color: 'white',
-            border: 'none',
-            borderRadius: '6px',
-            cursor: 'pointer',
-            fontSize: '16px',
-            fontWeight: '600',
-            boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-            transition: 'background-color 0.2s'
-          }}
-          onMouseOver={(e) => e.target.style.backgroundColor = '#0056b3'}
-          onMouseOut={(e) => e.target.style.backgroundColor = '#007bff'}
-        >
-          📋 Ready to List {draftCount > 0 && `(${draftCount})`}
-        </button>
-      )}
-      
       <div className="card"> {/* Wrap content in a card */}
-        <h2 className="card-title">Upload Book Details</h2>
+        {/* Header with title and Ready to List button */}
+        <div className="card-header">
+          <h2 className="card-title">Upload Book Details</h2>
+          {onOpenReadyToList && (
+            <button
+              onClick={onOpenReadyToList}
+              className="ready-to-list-button"
+            >
+              <span className="ready-to-list-icon">📋</span>
+              <span className="ready-to-list-text">Ready to List</span>
+              {draftCount > 0 && (
+                <span className="ready-to-list-badge">{draftCount}</span>
+              )}
+            </button>
+          )}
+        </div>
 
         {/* API Status indicator */}
         {apiStatus && (
