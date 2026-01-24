@@ -394,7 +394,18 @@ function FileUpload({ onSuccess, onOpenReadyToList, draftCount = 0 }) {
                                 onClick={() => handleImageClick(index)}
                                 style={{ cursor: 'pointer' }}
                               />
-                              <button onClick={() => handleDeleteMain(index)} className="delete-button" type="button">×</button>
+                              <button 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteMain(index);
+                                }} 
+                                className="delete-button" 
+                                type="button"
+                                title="Remove image"
+                                aria-label="Remove image"
+                              >
+                                ×
+                              </button>
                               {index === 0 && <span className="main-image-tag">Main</span>}
                             </div>
                           )}

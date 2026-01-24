@@ -119,25 +119,44 @@ body {
 
 .delete-button {
   position: absolute;
-  top: 4px;
-  right: 4px;
+  top: 6px;
+  right: 6px;
   border: none;
-  background: rgba(0, 0, 0, 0.6);
-  color: #fff;
-  width: 20px;
-  height: 20px;
+  background: rgba(255, 255, 255, 0.95);
+  color: #dc2626;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
   cursor: pointer;
-  font-size: 14px;
-  line-height: 20px; /* Center the 'x' */
+  font-size: 16px;
+  line-height: 1;
   text-align: center;
   padding: 0;
-  transition: background-color 0.2s ease;
-  z-index: 10; /* Ensure it's above the image */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  z-index: 10;
+  opacity: 0;
+  transform: scale(0.8);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  font-weight: 600;
+}
+
+.thumbnail-item:hover .delete-button {
+  opacity: 1;
+  transform: scale(1);
 }
 
 .delete-button:hover {
-  background: rgba(217, 45, 32, 0.9); /* Red on hover */
+  background: #dc2626;
+  color: #fff;
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.4);
+}
+
+.delete-button:active {
+  transform: scale(0.95);
 }
 
 .main-image-tag {
