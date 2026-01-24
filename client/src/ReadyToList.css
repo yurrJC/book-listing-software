@@ -105,6 +105,8 @@
   border-collapse: collapse;
   background: white;
   table-layout: fixed;
+  /* Prevent squishing on narrow screens: allow horizontal scroll instead of overlap */
+  min-width: 900px;
 }
 
 .drafts-table thead {
@@ -202,6 +204,8 @@
 
 /* Compact text cells (avoid multi-line table explosion) */
 .cell-truncate {
+  display: block;
+  max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -216,6 +220,28 @@
   width: 16px;
   height: 16px;
   accent-color: #2563eb;
+}
+
+/* Image column button (replaces thumbnails to avoid layout issues) */
+.rtl-images-button {
+  padding: 6px 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #111827;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background-color 0.2s, border-color 0.2s;
+}
+.rtl-images-button:hover:not(:disabled) {
+  background: #f3f4f6;
+  border-color: #d1d5db;
+}
+.rtl-images-button:disabled {
+  cursor: not-allowed;
+  color: #9ca3af;
+  background: #f9fafb;
 }
 
 /* Row expander */

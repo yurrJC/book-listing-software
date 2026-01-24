@@ -480,10 +480,10 @@ function ReadyToList({ onClose, onDraftCountChange }) {
               </thead>
               <tbody>
                 {drafts.map((draft, index) => {
-                  const firstImageUrl = getFirstImageUrl(draft);
                   const titleText = draft.listingTitle || draft.metadata?.title || 'N/A';
                   const authorText = draft.metadata?.author || 'N/A';
                   const isExpanded = expandedRows.has(index);
+                  const imageCount = draft.imageBase64Array?.length || 0;
                   return (
                     <React.Fragment key={index}>
                       <tr>
@@ -512,16 +512,15 @@ function ReadyToList({ onClose, onDraftCountChange }) {
                         </span>
                       </td>
                       <td>
-                        {firstImageUrl ? (
-                          <img
-                            src={firstImageUrl}
-                            alt="Book cover"
-                            className="draft-thumbnail"
-                            onClick={() => setViewingImageGallery(index)}
-                          />
-                        ) : (
-                          <div className="no-image-placeholder">No Image</div>
-                        )}
+                        <button
+                          type="button"
+                          className="rtl-images-button"
+                          onClick={() => setViewingImageGallery(index)}
+                          disabled={imageCount === 0}
+                          title={imageCount === 0 ? 'No images available' : `View ${imageCount} image(s)`}
+                        >
+                          View{imageCount > 0 ? ` (${imageCount})` : ''}
+                        </button>
                       </td>
                       <td>
                         <span className="cell-truncate" title={titleText}>
