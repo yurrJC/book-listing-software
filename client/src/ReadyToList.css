@@ -122,6 +122,7 @@
   font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.4px;
+  border-right: 1px solid #eef2f7;
 }
 
 .drafts-table td {
@@ -130,6 +131,12 @@
   vertical-align: middle;
   font-size: 13px;
   color: #111827;
+  border-right: 1px solid #f8fafc;
+}
+
+.drafts-table th:last-child,
+.drafts-table td:last-child {
+  border-right: none;
 }
 
 .drafts-table tbody tr:hover {

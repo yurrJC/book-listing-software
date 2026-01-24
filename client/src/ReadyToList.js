@@ -455,9 +455,9 @@ function ReadyToList({ onClose, onDraftCountChange }) {
           <div className="drafts-table-container">
             <table className="drafts-table">
               <colgroup>
-                <col style={{ width: '34px' }} />
-                <col style={{ width: '44px' }} />
-                <col style={{ width: '96px' }} />
+                <col style={{ width: '40px' }} />
+                <col style={{ width: '60px' }} />
+                <col style={{ width: '120px' }} />
                 <col style={{ width: '84px' }} />
                 <col />
                 <col style={{ width: '160px' }} />
