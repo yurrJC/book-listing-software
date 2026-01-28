@@ -392,7 +392,9 @@ function ReadyToList({ onClose, onDraftCountChange }) {
           formData.append('ebayTitle', draft.ebayTitle || '');
 
           formData.append('title', draft.metadata?.title || '');
-          formData.append('author', getAuthorAsString(draft.metadata?.author) || '');
+          // Author normalization: use first author if multiple (before comma), matching original behavior
+          const normalizedAuthor = (getAuthorAsString(draft.metadata?.author) || '').split(',')[0].trim();
+          formData.append('author', normalizedAuthor);
           formData.append('publisher', draft.metadata?.publisher || '');
           formData.append('publicationYear', String(draft.metadata?.publicationYear || ''));
           formData.append('synopsis', draft.metadata?.synopsis || '');

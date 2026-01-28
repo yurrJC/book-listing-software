@@ -290,8 +290,10 @@ function PriceSettingStep({
 
     // Append necessary metadata fields (use override if provided)
       formData.append('title', metadata?.title || '');
-    const authorValue = authorOverride !== null ? authorOverride : getAuthorAsString(metadata?.author);
-    formData.append('author', authorValue);
+    // Author normalization: use first author if multiple (before comma), matching original behavior
+    const rawAuthorValue = authorOverride !== null ? authorOverride : getAuthorAsString(metadata?.author);
+    const normalizedAuthor = (rawAuthorValue || '').split(',')[0].trim();
+    formData.append('author', normalizedAuthor);
       formData.append('publisher', metadata?.publisher || '');
       formData.append('publicationYear', String(metadata?.publishedDate || metadata?.publicationYear || ''));
       formData.append('synopsis', metadata?.synopsis || '');

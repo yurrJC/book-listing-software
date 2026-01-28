@@ -1489,75 +1489,88 @@ function isCategoryChangeError(errors) {
 /**
  * Helper function to check if the error is related to author being too long
  */
-// Helper function to safely extract author as string (similar to frontend)
-function getAuthorAsString(authorValue) {
-  // Handle null/undefined
-  if (!authorValue && authorValue !== 0 && authorValue !== false) return '';
+// Helper function to safely extract author as string and normalize to first author only
+function getAuthorAsString(authorValue, fallbackTitle = null) {
+  let authorStr = '';
   
+  // Handle null/undefined
+  if (!authorValue && authorValue !== 0 && authorValue !== false) {
+    authorStr = '';
+  }
   // Handle string values
-  if (typeof authorValue === 'string') {
+  else if (typeof authorValue === 'string') {
     // Handle the case where it's already "[object Object]" string
     if (authorValue === '[object Object]' || authorValue.trim() === '[object Object]') {
-      console.warn('Found "[object Object]" string for author, returning empty');
-      return '';
+      authorStr = '';
+    } else {
+      authorStr = authorValue.trim();
     }
-    return authorValue.trim();
   }
-  
   // Handle arrays
-  if (Array.isArray(authorValue)) {
-    if (authorValue.length === 0) return '';
-    // If array contains strings, join them
-    if (authorValue.every(item => typeof item === 'string')) {
-      return authorValue.join(', ');
-    }
-    // If array contains objects, try to extract names
-    const names = authorValue.map(item => {
-      if (typeof item === 'string') return item;
-      if (typeof item === 'object' && item !== null) {
-        return item.name || item.author || item.title || '';
-      }
-      return String(item);
-    }).filter(Boolean);
-    return names.join(', ');
-  }
-  
-  // Handle objects
-  if (typeof authorValue === 'object' && authorValue !== null) {
-    // Try common property names
-    if (authorValue.name) return String(authorValue.name);
-    if (authorValue.author) return String(authorValue.author);
-    if (authorValue.title) return String(authorValue.title);
-    
-    // Try to stringify and parse
-    try {
-      const str = JSON.stringify(authorValue);
-      // If it's a simple object with name/author, try to extract
-      if (str.includes('"name"') || str.includes('"author"')) {
-        const parsed = JSON.parse(str);
-        return parsed.name || parsed.author || '';
-      }
-      // If it looks like an array was stringified, try to parse it
-      if (str.startsWith('[') && str.includes('"')) {
-        const parsed = JSON.parse(str);
-        if (Array.isArray(parsed)) {
-          return parsed.map(a => typeof a === 'string' ? a : (a.name || a.author || '')).filter(Boolean).join(', ');
+  else if (Array.isArray(authorValue)) {
+    if (authorValue.length === 0) {
+      authorStr = '';
+    } else if (authorValue.every(item => typeof item === 'string')) {
+      authorStr = authorValue.join(', ');
+    } else {
+      // If array contains objects, try to extract names
+      const names = authorValue.map(item => {
+        if (typeof item === 'string') return item;
+        if (typeof item === 'object' && item !== null) {
+          return item.name || item.author || item.title || '';
         }
-      }
-    } catch (e) {
-      // JSON parsing failed, try toString
-      if (authorValue.toString && authorValue.toString() !== '[object Object]') {
-        return authorValue.toString();
+        return String(item);
+      }).filter(Boolean);
+      authorStr = names.join(', ');
+    }
+  }
+  // Handle objects
+  else if (typeof authorValue === 'object' && authorValue !== null) {
+    // Try common property names
+    if (authorValue.name) {
+      authorStr = String(authorValue.name);
+    } else if (authorValue.author) {
+      authorStr = String(authorValue.author);
+    } else {
+      // Try to stringify and parse
+      try {
+        const str = JSON.stringify(authorValue);
+        if (str.includes('"name"') || str.includes('"author"')) {
+          const parsed = JSON.parse(str);
+          authorStr = parsed.name || parsed.author || '';
+        } else if (str.startsWith('[') && str.includes('"')) {
+          const parsed = JSON.parse(str);
+          if (Array.isArray(parsed)) {
+            authorStr = parsed.map(a => typeof a === 'string' ? a : (a.name || a.author || '')).filter(Boolean).join(', ');
+          }
+        }
+      } catch (e) {
+        // JSON parsing failed
+        authorStr = '';
       }
     }
-    
-    // Last resort: return empty rather than "[object Object]"
-    console.warn('Could not extract author from object:', authorValue);
-    return '';
+  }
+  // Handle other types
+  else {
+    authorStr = String(authorValue);
   }
   
-  // Handle other types (numbers, booleans, etc.)
-  return String(authorValue);
+  // Normalize: take first author before comma (original behavior)
+  if (authorStr && authorStr.includes(',')) {
+    authorStr = authorStr.split(',')[0].trim();
+  }
+  
+  // If still empty and we have a fallback title, try to extract from title
+  if (!authorStr && fallbackTitle) {
+    // Pattern: "Title by Author Name Paperback..."
+    const byMatch = fallbackTitle.match(/\s+by\s+([^,]+?)(?:\s+(?:Paperback|Hardcover|Book|Hardback|Textbook))?$/i);
+    if (byMatch && byMatch[1]) {
+      authorStr = byMatch[1].trim();
+      console.log(`Extracted author from title: "${authorStr}"`);
+    }
+  }
+  
+  return authorStr;
 }
 
 function isAuthorTooLongError(errors) {
@@ -2636,6 +2649,9 @@ app.post('/api/createListing', upload.fields([{ name: 'imageFiles', maxCount: 24
         }
     } catch(e) { console.warn("Could not parse subjects string:", subjects, e); parsedSubjects = [];}
 
+    // Normalize author: convert to string, take first author before comma, fallback to title if needed
+    const normalizedAuthor = getAuthorAsString(author, ebayTitle || customTitle || '');
+    
     const listingData = {
       // Core data from body
       isbn, price, sku: sku || '', customTitle, selectedCondition,
@@ -2643,7 +2659,7 @@ app.post('/api/createListing', upload.fields([{ name: 'imageFiles', maxCount: 24
       // Image file objects from THIS request's upload
       imageFiles: imageFileObjects,
       // Metadata fields passed back from frontend (add fallbacks)
-      title: title || '', author: author || '', publisher: publisher || '', publicationYear,
+      title: title || '', author: normalizedAuthor, publisher: publisher || '', publicationYear,
       synopsis: synopsis || '', language: language || '', format: format || 'Paperback', // Add default format
       subjects: parsedSubjects, // Use parsed subjects
       ebayTitle, // Generated title passed back from frontend
@@ -2850,12 +2866,15 @@ app.post('/api/validateDraft', upload.fields([{ name: 'imageFiles', maxCount: 24
     if (imageFileObjects.length === 0) return res.status(400).json({ success: false, error: 'At least one image file is required' });
     if (!selectedCondition || !EBAY_CONDITION_MAP[selectedCondition]) return res.status(400).json({ success: false, error: 'A valid condition selection is required' });
     
+    // Normalize author: convert to string, take first author before comma, fallback to title if needed
+    const normalizedAuthor = getAuthorAsString(author, ebayTitle || customTitle || '');
+    
     // --- Prepare listingData ---
     const listingData = {
       isbn, price, sku: sku || '', customTitle, selectedCondition,
       selectedFlawKeys, ocrText: ocrText || '',
       imageFiles: imageFileObjects,
-      title: title || '', author: author || '', publisher: publisher || '', publicationYear,
+      title: title || '', author: normalizedAuthor, publisher: publisher || '', publicationYear,
       synopsis: synopsis || '', language: language || '', format: format || 'Paperback',
       subjects: parsedSubjects,
       ebayTitle, customDescriptionNote: customDescriptionNote || '',
@@ -3070,21 +3089,10 @@ app.post('/api/saveDraft', upload.fields([{ name: 'imageFiles', maxCount: 24 }])
       return res.status(400).json({ success: false, error: 'No valid image files were provided' });
     }
 
-    // Ensure author is a string, not an object
-    let authorString = author || '';
-    if (typeof authorString !== 'string') {
-      if (Array.isArray(authorString)) {
-        authorString = authorString.join(', ');
-      } else if (typeof authorString === 'object' && authorString !== null) {
-        authorString = authorString.name || authorString.author || JSON.stringify(authorString);
-      } else {
-        authorString = String(authorString);
-      }
-    }
-    // Also check if it's the string "[object Object]" and handle it
-    if (authorString === '[object Object]') {
-      console.warn('⚠️ Received "[object Object]" as author string, attempting to recover from metadata');
-      authorString = '';
+    // Normalize author: convert to string, take first author before comma, fallback to title if needed
+    const authorString = getAuthorAsString(author, ebayTitle || customTitle || '');
+    if (!authorString) {
+      console.warn('⚠️ Author is empty after normalization, using fallback from title');
     }
 
     const draft = {
