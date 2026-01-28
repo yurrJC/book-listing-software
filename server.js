@@ -1489,6 +1489,77 @@ function isCategoryChangeError(errors) {
 /**
  * Helper function to check if the error is related to author being too long
  */
+// Helper function to safely extract author as string (similar to frontend)
+function getAuthorAsString(authorValue) {
+  // Handle null/undefined
+  if (!authorValue && authorValue !== 0 && authorValue !== false) return '';
+  
+  // Handle string values
+  if (typeof authorValue === 'string') {
+    // Handle the case where it's already "[object Object]" string
+    if (authorValue === '[object Object]' || authorValue.trim() === '[object Object]') {
+      console.warn('Found "[object Object]" string for author, returning empty');
+      return '';
+    }
+    return authorValue.trim();
+  }
+  
+  // Handle arrays
+  if (Array.isArray(authorValue)) {
+    if (authorValue.length === 0) return '';
+    // If array contains strings, join them
+    if (authorValue.every(item => typeof item === 'string')) {
+      return authorValue.join(', ');
+    }
+    // If array contains objects, try to extract names
+    const names = authorValue.map(item => {
+      if (typeof item === 'string') return item;
+      if (typeof item === 'object' && item !== null) {
+        return item.name || item.author || item.title || '';
+      }
+      return String(item);
+    }).filter(Boolean);
+    return names.join(', ');
+  }
+  
+  // Handle objects
+  if (typeof authorValue === 'object' && authorValue !== null) {
+    // Try common property names
+    if (authorValue.name) return String(authorValue.name);
+    if (authorValue.author) return String(authorValue.author);
+    if (authorValue.title) return String(authorValue.title);
+    
+    // Try to stringify and parse
+    try {
+      const str = JSON.stringify(authorValue);
+      // If it's a simple object with name/author, try to extract
+      if (str.includes('"name"') || str.includes('"author"')) {
+        const parsed = JSON.parse(str);
+        return parsed.name || parsed.author || '';
+      }
+      // If it looks like an array was stringified, try to parse it
+      if (str.startsWith('[') && str.includes('"')) {
+        const parsed = JSON.parse(str);
+        if (Array.isArray(parsed)) {
+          return parsed.map(a => typeof a === 'string' ? a : (a.name || a.author || '')).filter(Boolean).join(', ');
+        }
+      }
+    } catch (e) {
+      // JSON parsing failed, try toString
+      if (authorValue.toString && authorValue.toString() !== '[object Object]') {
+        return authorValue.toString();
+      }
+    }
+    
+    // Last resort: return empty rather than "[object Object]"
+    console.warn('Could not extract author from object:', authorValue);
+    return '';
+  }
+  
+  // Handle other types (numbers, booleans, etc.)
+  return String(authorValue);
+}
+
 function isAuthorTooLongError(errors) {
   if (!errors) return false;
   
@@ -1855,7 +1926,7 @@ async function validateEbayListing(listingData) {
     // Build the base ItemSpecifics NameValueList
     const nameValueList = [
       { 'Name': 'Format', 'Value': listingData.format || 'Paperback' },
-      { 'Name': 'Author', 'Value': listingData.author },
+      { 'Name': 'Author', 'Value': getAuthorAsString(listingData.author) },
       { 'Name': 'Book Title', 'Value': listingData.title.length > 65 
           ? listingData.title.substring(0, 62) + '...' 
           : listingData.title }
@@ -2071,7 +2142,7 @@ async function createEbayDraftListing(listingData) {
     // Build the base ItemSpecifics NameValueList
     const nameValueList = [
       { 'Name': 'Format', 'Value': listingData.format || 'Paperback' },
-      { 'Name': 'Author', 'Value': listingData.author },
+      { 'Name': 'Author', 'Value': getAuthorAsString(listingData.author) },
       { 'Name': 'Book Title', 'Value': listingData.title.length > 65 
           ? listingData.title.substring(0, 62) + '...' 
           : listingData.title }
