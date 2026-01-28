@@ -22,34 +22,129 @@ function ReadyToList({ onClose, onDraftCountChange }) {
   const [viewingImageGallery, setViewingImageGallery] = useState(null);
   const [viewingItemSpecifics, setViewingItemSpecifics] = useState(null);
 
-  // Helper function to safely extract author as string
-  const getAuthorAsString = (authorValue) => {
-    if (!authorValue) return '';
-    if (typeof authorValue === 'string') {
-      // Handle the case where it's already "[object Object]" string
-      if (authorValue === '[object Object]') return '';
-      return authorValue;
+  // Helper function to get images from draft (supports both URL and base64 formats)
+  const getDraftImages = (draft) => {
+    // New format: imageUrls
+    if (draft.imageUrls && draft.imageUrls.length > 0) {
+      return draft.imageUrls;
     }
-    if (Array.isArray(authorValue)) return authorValue.join(', ');
-    if (typeof authorValue === 'object' && authorValue !== null) {
-      // Try to extract name property or stringify
-      if (authorValue.name) return authorValue.name;
-      if (authorValue.author) return authorValue.author;
-      if (authorValue.toString && authorValue.toString() !== '[object Object]') {
-        return authorValue.toString();
-      }
-      // Last resort: try JSON.stringify and extract meaningful parts
-      const str = JSON.stringify(authorValue);
-      if (str.includes('"name"') || str.includes('"author"')) {
+    // Old format: base64
+    if (draft.imageBase64Array && draft.imageBase64Array.length > 0) {
+      return draft.imageBase64Array;
+    }
+    return [];
+  };
+
+  // Helper function to convert draft images to File objects for upload
+  const convertDraftImagesToFiles = async (draft) => {
+    const files = [];
+    
+    // New format: fetch from URLs
+    if (draft.imageUrls && draft.imageUrls.length > 0) {
+      for (let i = 0; i < draft.imageUrls.length; i++) {
         try {
-          const parsed = JSON.parse(str);
-          return parsed.name || parsed.author || str;
-        } catch (e) {
-          return str;
+          const response = await fetch(draft.imageUrls[i]);
+          const blob = await response.blob();
+          const fileName = draft.imageFileNames?.[i] || `image_${i + 1}.jpg`;
+          const file = new File([blob], fileName, { type: blob.type });
+          files.push(file);
+        } catch (error) {
+          console.error(`Error fetching image ${i + 1}:`, error);
         }
       }
-      return str;
     }
+    // Old format: convert from base64
+    else if (draft.imageBase64Array && draft.imageBase64Array.length > 0) {
+      draft.imageBase64Array.forEach((base64Data, imgIndex) => {
+        try {
+          const byteString = atob(base64Data.split(',')[1]);
+          const mimeString = base64Data.split(',')[0].split(':')[1].split(';')[0];
+          const ab = new ArrayBuffer(byteString.length);
+          const ia = new Uint8Array(ab);
+          for (let j = 0; j < byteString.length; j++) {
+            ia[j] = byteString.charCodeAt(j);
+          }
+          const blob = new Blob([ab], { type: mimeString });
+          const fileName = draft.imageFileNames?.[imgIndex] || `image_${imgIndex}.jpg`;
+          const file = new File([blob], fileName, { type: mimeString });
+          files.push(file);
+        } catch (error) {
+          console.error(`Error converting base64 image ${imgIndex}:`, error);
+        }
+      });
+    }
+    
+    return files;
+  };
+
+  // Helper function to safely extract author as string
+  const getAuthorAsString = (authorValue) => {
+    // Handle null/undefined
+    if (!authorValue && authorValue !== 0 && authorValue !== false) return '';
+    
+    // Handle string values
+    if (typeof authorValue === 'string') {
+      // Handle the case where it's already "[object Object]" string
+      if (authorValue === '[object Object]' || authorValue.trim() === '[object Object]') {
+        console.warn('Found "[object Object]" string for author, returning empty');
+        return '';
+      }
+      return authorValue.trim();
+    }
+    
+    // Handle arrays
+    if (Array.isArray(authorValue)) {
+      if (authorValue.length === 0) return '';
+      // If array contains strings, join them
+      if (authorValue.every(item => typeof item === 'string')) {
+        return authorValue.join(', ');
+      }
+      // If array contains objects, try to extract names
+      const names = authorValue.map(item => {
+        if (typeof item === 'string') return item;
+        if (typeof item === 'object' && item !== null) {
+          return item.name || item.author || item.title || '';
+        }
+        return String(item);
+      }).filter(Boolean);
+      return names.join(', ');
+    }
+    
+    // Handle objects
+    if (typeof authorValue === 'object' && authorValue !== null) {
+      // Try common property names
+      if (authorValue.name) return String(authorValue.name);
+      if (authorValue.author) return String(authorValue.author);
+      if (authorValue.title) return String(authorValue.title);
+      
+      // Try to stringify and parse
+      try {
+        const str = JSON.stringify(authorValue);
+        // If it's a simple object with name/author, try to extract
+        if (str.includes('"name"') || str.includes('"author"')) {
+          const parsed = JSON.parse(str);
+          return parsed.name || parsed.author || '';
+        }
+        // If it looks like an array was stringified, try to parse it
+        if (str.startsWith('[') && str.includes('"')) {
+          const parsed = JSON.parse(str);
+          if (Array.isArray(parsed)) {
+            return parsed.map(a => typeof a === 'string' ? a : (a.name || a.author || '')).filter(Boolean).join(', ');
+          }
+        }
+      } catch (e) {
+        // JSON parsing failed, try toString
+        if (authorValue.toString && authorValue.toString() !== '[object Object]') {
+          return authorValue.toString();
+        }
+      }
+      
+      // Last resort: return empty rather than "[object Object]"
+      console.warn('Could not extract author from object:', authorValue);
+      return '';
+    }
+    
+    // Handle other types (numbers, booleans, etc.)
     return String(authorValue);
   };
 
@@ -133,23 +228,17 @@ function ReadyToList({ onClose, onDraftCountChange }) {
         });
 
         try {
-          // Convert base64 images back to File objects for upload
+          // Convert draft images to File objects for upload
           const formData = new FormData();
           
-          // Convert base64 images to blobs and append to FormData
-          if (draft.imageBase64Array && draft.imageBase64Array.length > 0) {
-            draft.imageBase64Array.forEach((base64Data, imgIndex) => {
-              const byteString = atob(base64Data.split(',')[1]);
-              const mimeString = base64Data.split(',')[0].split(':')[1].split(';')[0];
-              const ab = new ArrayBuffer(byteString.length);
-              const ia = new Uint8Array(ab);
-              for (let j = 0; j < byteString.length; j++) {
-                ia[j] = byteString.charCodeAt(j);
-              }
-              const blob = new Blob([ab], { type: mimeString });
-              const fileName = draft.imageFileNames?.[imgIndex] || `image_${imgIndex}.jpg`;
-              formData.append('imageFiles', blob, fileName);
-            });
+          // Convert images (from URLs or base64) to File objects
+          const imageFiles = await convertDraftImagesToFiles(draft);
+          imageFiles.forEach(file => {
+            formData.append('imageFiles', file);
+          });
+          
+          if (imageFiles.length === 0) {
+            throw new Error('No images found in draft');
           }
 
           // Append all other data
@@ -288,8 +377,9 @@ function ReadyToList({ onClose, onDraftCountChange }) {
   };
 
   const getFirstImageUrl = (draft) => {
-    if (draft.imageBase64Array && draft.imageBase64Array.length > 0) {
-      return draft.imageBase64Array[0];
+    const images = getDraftImages(draft);
+    if (images.length > 0) {
+      return images[0];
     }
     if (draft.metadata?.coverUrl) {
       return draft.metadata.coverUrl;
@@ -298,9 +388,21 @@ function ReadyToList({ onClose, onDraftCountChange }) {
   };
 
   const getItemSpecifics = (draft) => {
+    let authorText = getAuthorAsString(draft.metadata?.author);
+    
+    // If author is empty or "[object Object]", try to extract from listingTitle
+    if (!authorText || authorText === '[object Object]') {
+      const listingTitle = draft.listingTitle || draft.metadata?.title || '';
+      // Try to extract author from "Title by Author Name" pattern
+      const byMatch = listingTitle.match(/\s+by\s+([^,]+?)(?:\s+(?:Paperback|Hardcover|Book|Hardback))?$/i);
+      if (byMatch && byMatch[1]) {
+        authorText = byMatch[1].trim();
+      }
+    }
+    
     return {
       title: draft.listingTitle || draft.metadata?.title || 'N/A',
-      author: getAuthorAsString(draft.metadata?.author) || 'N/A',
+      author: authorText || 'N/A',
       format: draft.metadata?.format || draft.metadata?.binding || 'N/A',
       condition: draft.selectedCondition || 'N/A',
       price: draft.price || 'N/A',
@@ -380,7 +482,7 @@ function ReadyToList({ onClose, onDraftCountChange }) {
 
   if (viewingImageGallery !== null) {
     const draft = drafts[viewingImageGallery];
-    const images = draft?.imageBase64Array || [];
+    const images = getDraftImages(draft);
     
     return (
       <div className="image-gallery-modal">
@@ -512,9 +614,21 @@ function ReadyToList({ onClose, onDraftCountChange }) {
               <tbody>
                 {drafts.map((draft, index) => {
                   const titleText = draft.listingTitle || draft.metadata?.title || 'N/A';
-                  const authorText = getAuthorAsString(draft.metadata?.author) || 'N/A';
+                  let authorText = getAuthorAsString(draft.metadata?.author);
+                  
+                  // If author is empty or "[object Object]", try to extract from listingTitle
+                  if (!authorText || authorText === '[object Object]') {
+                    const listingTitle = draft.listingTitle || draft.metadata?.title || '';
+                    // Try to extract author from "Title by Author Name" pattern
+                    const byMatch = listingTitle.match(/\s+by\s+([^,]+?)(?:\s+(?:Paperback|Hardcover|Book|Hardback))?$/i);
+                    if (byMatch && byMatch[1]) {
+                      authorText = byMatch[1].trim();
+                    }
+                  }
+                  
+                  authorText = authorText || 'N/A';
                   const isExpanded = expandedRows.has(index);
-                  const imageCount = draft.imageBase64Array?.length || 0;
+                  const imageCount = getDraftImages(draft).length;
                   return (
                     <React.Fragment key={index}>
                       <tr>
@@ -604,7 +718,7 @@ function ReadyToList({ onClose, onDraftCountChange }) {
                                 </div>
                                 <div>
                                   <div className="rtl-k">Images</div>
-                                  <div className="rtl-v">{draft.imageBase64Array?.length || 0}</div>
+                                  <div className="rtl-v">{getDraftImages(draft).length}</div>
                                 </div>
                               </div>
                               <div className="rtl-expanded-actions">

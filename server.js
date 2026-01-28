@@ -144,6 +144,14 @@ app.get('/test', (req, res) => {
 // Serve static files from the uploads directory
 app.use('/uploads', express.static('uploads'));
 
+// Create drafts-images directory if it doesn't exist (for draft image storage)
+const DRAFTS_IMAGES_DIR = path.join(__dirname, 'drafts-images');
+if (!fs.existsSync(DRAFTS_IMAGES_DIR)) {
+  fs.mkdirSync(DRAFTS_IMAGES_DIR, { recursive: true });
+}
+// Serve draft images statically
+app.use('/drafts-images', express.static(DRAFTS_IMAGES_DIR));
+
 // API status endpoint
 app.get('/api/status', (req, res) => {
   res.json({
@@ -2719,6 +2727,19 @@ function saveDrafts(drafts) {
   }
 }
 
+// Helper function to delete a draft's image directory
+function deleteDraftImages(draftId) {
+  try {
+    const draftImageDir = path.join(DRAFTS_IMAGES_DIR, draftId);
+    if (fs.existsSync(draftImageDir)) {
+      fs.rmSync(draftImageDir, { recursive: true, force: true });
+      console.log(`Deleted image directory for draft ${draftId}`);
+    }
+  } catch (error) {
+    console.error(`Error deleting images for draft ${draftId}:`, error);
+  }
+}
+
 // API endpoint to validate draft before saving
 app.post('/api/validateDraft', upload.fields([{ name: 'imageFiles', maxCount: 24 }]), async (req, res) => {
   try {
@@ -2918,11 +2939,21 @@ app.post('/api/saveDraft', upload.fields([{ name: 'imageFiles', maxCount: 24 }])
       parsedSubjects = [];
     }
 
-    // Convert images to base64
-    const imageBase64Array = [];
-    const imageFileNames = [];
+    // Generate draft ID first
+    const draftId = Date.now().toString() + '-' + Math.random().toString(36).substr(2, 9);
     
-    for (const file of imageFileObjects) {
+    // Create directory for this draft's images
+    const draftImageDir = path.join(DRAFTS_IMAGES_DIR, draftId);
+    if (!fs.existsSync(draftImageDir)) {
+      fs.mkdirSync(draftImageDir, { recursive: true });
+    }
+    
+    // Save images as files instead of base64
+    const imageFileNames = [];
+    const imagePaths = [];
+    
+    for (let i = 0; i < imageFileObjects.length; i++) {
+      const file = imageFileObjects[i];
       try {
         if (!file || !file.path) {
           console.warn('Skipping invalid file object:', file);
@@ -2934,11 +2965,17 @@ app.post('/api/saveDraft', upload.fields([{ name: 'imageFiles', maxCount: 24 }])
           continue;
         }
         
-        const imageBuffer = fs.readFileSync(file.path);
-        const base64 = imageBuffer.toString('base64');
-        const mimeType = file.mimetype || 'image/jpeg';
-        imageBase64Array.push(`data:${mimeType};base64,${base64}`);
-        imageFileNames.push(file.originalname || file.filename || 'image.jpg');
+        // Get file extension from original name or mimetype
+        const originalName = file.originalname || file.filename || 'image.jpg';
+        const ext = path.extname(originalName) || (file.mimetype?.includes('png') ? '.png' : '.jpg');
+        const imageFileName = `image_${i + 1}${ext}`;
+        const targetPath = path.join(draftImageDir, imageFileName);
+        
+        // Copy file to draft images directory
+        fs.copyFileSync(file.path, targetPath);
+        
+        imageFileNames.push(originalName);
+        imagePaths.push(imageFileName); // Store relative path within draft directory
         
         // Delete temporary file
         try {
@@ -2952,7 +2989,13 @@ app.post('/api/saveDraft', upload.fields([{ name: 'imageFiles', maxCount: 24 }])
       }
     }
     
-    if (imageBase64Array.length === 0) {
+    if (imagePaths.length === 0) {
+      // Clean up empty directory if no images were saved
+      try {
+        fs.rmSync(draftImageDir, { recursive: true, force: true });
+      } catch (e) {
+        // Ignore cleanup errors
+      }
       return res.status(400).json({ success: false, error: 'No valid image files were provided' });
     }
 
@@ -2974,7 +3017,7 @@ app.post('/api/saveDraft', upload.fields([{ name: 'imageFiles', maxCount: 24 }])
     }
 
     const draft = {
-      id: Date.now().toString() + '-' + Math.random().toString(36).substr(2, 9),
+      id: draftId,
       timestamp: new Date().toISOString(),
       isbn: isbn || '',
       price: price,
@@ -2999,7 +3042,8 @@ app.post('/api/saveDraft', upload.fields([{ name: 'imageFiles', maxCount: 24 }])
       customDescriptionNote: customDescriptionNote || '',
       selectedTopic: selectedTopic || '',
       selectedGenre: selectedGenre || '',
-      imageBase64Array: imageBase64Array,
+      // Store image paths instead of base64
+      imagePaths: imagePaths,
       imageFileNames: imageFileNames
     };
 
@@ -3019,7 +3063,7 @@ app.post('/api/saveDraft', upload.fields([{ name: 'imageFiles', maxCount: 24 }])
 app.get('/api/drafts', (req, res) => {
   try {
     const drafts = loadDrafts();
-    // Don't send full base64 images in list - just metadata
+    // Don't send full images in list - just metadata
     const draftsList = drafts.map(draft => ({
       id: draft.id,
       timestamp: draft.timestamp,
@@ -3030,8 +3074,9 @@ app.get('/api/drafts', (req, res) => {
       metadata: draft.metadata,
       selectedTopic: draft.selectedTopic,
       selectedGenre: draft.selectedGenre,
-      hasImages: draft.imageBase64Array && draft.imageBase64Array.length > 0,
-      imageCount: draft.imageBase64Array ? draft.imageBase64Array.length : 0
+      // Support both old (base64) and new (file paths) formats
+      hasImages: (draft.imagePaths && draft.imagePaths.length > 0) || (draft.imageBase64Array && draft.imageBase64Array.length > 0),
+      imageCount: draft.imagePaths ? draft.imagePaths.length : (draft.imageBase64Array ? draft.imageBase64Array.length : 0)
     }));
     res.json({ success: true, drafts: draftsList });
   } catch (error) {
@@ -3049,7 +3094,24 @@ app.get('/api/drafts/:id', (req, res) => {
     if (!draft) {
       return res.status(404).json({ success: false, error: 'Draft not found' });
     }
-    res.json({ success: true, draft });
+    
+    // Convert image paths to URLs for new format, or keep base64 for old format
+    const draftResponse = { ...draft };
+    
+    if (draft.imagePaths && draft.imagePaths.length > 0) {
+      // New format: convert paths to URLs
+      const baseUrl = req.protocol + '://' + req.get('host');
+      draftResponse.imageUrls = draft.imagePaths.map(imgPath => 
+        `${baseUrl}/drafts-images/${draft.id}/${imgPath}`
+      );
+      // Remove imagePaths from response (frontend uses imageUrls)
+      delete draftResponse.imagePaths;
+    } else if (draft.imageBase64Array) {
+      // Old format: keep base64 for backward compatibility
+      // No conversion needed
+    }
+    
+    res.json({ success: true, draft: draftResponse });
   } catch (error) {
     console.error('Error loading draft:', error);
     const errorMessage = error?.message || error?.toString() || 'An unknown error occurred while loading the draft';
@@ -3060,9 +3122,14 @@ app.get('/api/drafts/:id', (req, res) => {
 // API endpoint to delete a draft
 app.delete('/api/drafts/:id', (req, res) => {
   try {
+    const draftId = req.params.id;
     const drafts = loadDrafts();
-    const filteredDrafts = drafts.filter(d => d.id !== req.params.id);
+    const filteredDrafts = drafts.filter(d => d.id !== draftId);
     saveDrafts(filteredDrafts);
+    
+    // Delete associated image files
+    deleteDraftImages(draftId);
+    
     res.json({ success: true });
   } catch (error) {
     console.error('Error deleting draft:', error);
@@ -3080,6 +3147,12 @@ app.post('/api/drafts/delete', (req, res) => {
     }
     const drafts = loadDrafts();
     const filteredDrafts = drafts.filter(d => !ids.includes(d.id));
+    
+    // Delete image files for all deleted drafts
+    ids.forEach(draftId => {
+      deleteDraftImages(draftId);
+    });
+    
     saveDrafts(filteredDrafts);
     res.json({ success: true, deleted: drafts.length - filteredDrafts.length });
   } catch (error) {
