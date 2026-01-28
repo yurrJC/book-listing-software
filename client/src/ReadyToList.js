@@ -39,22 +39,38 @@ function ReadyToList({ onClose, onDraftCountChange }) {
   const convertDraftImagesToFiles = async (draft) => {
     const files = [];
     
+    console.log('Converting draft images to files:', {
+      hasImageUrls: !!draft.imageUrls,
+      imageUrlsLength: draft.imageUrls?.length || 0,
+      hasImageBase64Array: !!draft.imageBase64Array,
+      imageBase64ArrayLength: draft.imageBase64Array?.length || 0,
+      hasImagePaths: !!draft.imagePaths,
+      imagePathsLength: draft.imagePaths?.length || 0
+    });
+    
     // New format: fetch from URLs
     if (draft.imageUrls && draft.imageUrls.length > 0) {
+      console.log(`Fetching ${draft.imageUrls.length} images from URLs`);
       for (let i = 0; i < draft.imageUrls.length; i++) {
         try {
           const response = await fetch(draft.imageUrls[i]);
+          if (!response.ok) {
+            console.error(`Failed to fetch image ${i + 1}: ${response.status} ${response.statusText}`);
+            continue;
+          }
           const blob = await response.blob();
           const fileName = draft.imageFileNames?.[i] || `image_${i + 1}.jpg`;
           const file = new File([blob], fileName, { type: blob.type });
           files.push(file);
+          console.log(`Successfully converted image ${i + 1} from URL`);
         } catch (error) {
-          console.error(`Error fetching image ${i + 1}:`, error);
+          console.error(`Error fetching image ${i + 1} from ${draft.imageUrls[i]}:`, error);
         }
       }
     }
     // Old format: convert from base64
     else if (draft.imageBase64Array && draft.imageBase64Array.length > 0) {
+      console.log(`Converting ${draft.imageBase64Array.length} images from base64`);
       draft.imageBase64Array.forEach((base64Data, imgIndex) => {
         try {
           const byteString = atob(base64Data.split(',')[1]);
@@ -68,12 +84,36 @@ function ReadyToList({ onClose, onDraftCountChange }) {
           const fileName = draft.imageFileNames?.[imgIndex] || `image_${imgIndex}.jpg`;
           const file = new File([blob], fileName, { type: mimeString });
           files.push(file);
+          console.log(`Successfully converted base64 image ${imgIndex + 1}`);
         } catch (error) {
           console.error(`Error converting base64 image ${imgIndex}:`, error);
         }
       });
     }
+    // Check for imagePaths (fallback - shouldn't happen but just in case)
+    else if (draft.imagePaths && draft.imagePaths.length > 0) {
+      console.warn('Draft has imagePaths but no imageUrls - this should not happen');
+      // Try to construct URLs from paths
+      const baseUrl = API_BASE_URL;
+      for (let i = 0; i < draft.imagePaths.length; i++) {
+        try {
+          const imageUrl = `${baseUrl}/drafts-images/${draft.id}/${draft.imagePaths[i]}`;
+          const response = await fetch(imageUrl);
+          if (!response.ok) {
+            console.error(`Failed to fetch image ${i + 1} from path: ${response.status}`);
+            continue;
+          }
+          const blob = await response.blob();
+          const fileName = draft.imageFileNames?.[i] || `image_${i + 1}.jpg`;
+          const file = new File([blob], fileName, { type: blob.type });
+          files.push(file);
+        } catch (error) {
+          console.error(`Error fetching image ${i + 1} from path:`, error);
+        }
+      }
+    }
     
+    console.log(`Total files converted: ${files.length}`);
     return files;
   };
 
@@ -163,7 +203,24 @@ function ReadyToList({ onClose, onDraftCountChange }) {
           data.drafts.map(async (draftSummary) => {
             const detailResponse = await fetch(`${API_BASE_URL}/api/drafts/${draftSummary.id}`);
             const detailData = await detailResponse.json();
-            return detailData.success ? detailData.draft : null;
+            if (detailData.success && detailData.draft) {
+              const draft = detailData.draft;
+              // Log draft image status for debugging
+              const hasImages = (draft.imageUrls && draft.imageUrls.length > 0) || 
+                                (draft.imageBase64Array && draft.imageBase64Array.length > 0);
+              if (!hasImages) {
+                console.warn(`Draft ${draft.id} has no images:`, {
+                  hasImageUrls: !!draft.imageUrls,
+                  imageUrlsLength: draft.imageUrls?.length || 0,
+                  hasImageBase64Array: !!draft.imageBase64Array,
+                  imageBase64ArrayLength: draft.imageBase64Array?.length || 0,
+                  hasImagePaths: !!draft.imagePaths,
+                  imagePathsLength: draft.imagePaths?.length || 0
+                });
+              }
+              return draft;
+            }
+            return null;
           })
         );
         const validDrafts = fullDrafts.filter(d => d !== null);
@@ -210,6 +267,19 @@ function ReadyToList({ onClose, onDraftCountChange }) {
 
     const selectedIndices = Array.from(selectedDrafts).sort((a, b) => a - b);
     const draftsToUpload = selectedIndices.map(index => drafts[index]);
+    
+    // Check if any drafts are missing images before starting
+    const draftsWithoutImages = draftsToUpload.filter(draft => {
+      const hasImages = (draft.imageUrls && draft.imageUrls.length > 0) || 
+                       (draft.imageBase64Array && draft.imageBase64Array.length > 0);
+      return !hasImages;
+    });
+    
+    if (draftsWithoutImages.length > 0) {
+      const draftTitles = draftsWithoutImages.map(d => d.listingTitle || d.metadata?.title || 'Unknown').join('\n');
+      alert(`Cannot upload ${draftsWithoutImages.length} draft(s) - they have no images:\n\n${draftTitles}\n\nPlease delete these drafts and recreate them with images.`);
+      return;
+    }
 
     setUploading(true);
     setUploadProgress({ current: 0, total: draftsToUpload.length, currentTitle: '' });
@@ -233,13 +303,23 @@ function ReadyToList({ onClose, onDraftCountChange }) {
           
           // Convert images (from URLs or base64) to File objects
           const imageFiles = await convertDraftImagesToFiles(draft);
+          
+          if (imageFiles.length === 0) {
+            console.error('No images found in draft:', {
+              draftId: draft.id,
+              hasImageUrls: !!draft.imageUrls,
+              imageUrlsLength: draft.imageUrls?.length || 0,
+              hasImageBase64Array: !!draft.imageBase64Array,
+              imageBase64ArrayLength: draft.imageBase64Array?.length || 0,
+              hasImagePaths: !!draft.imagePaths,
+              imagePathsLength: draft.imagePaths?.length || 0
+            });
+            throw new Error('No images found in draft');
+          }
+          
           imageFiles.forEach(file => {
             formData.append('imageFiles', file);
           });
-          
-          if (imageFiles.length === 0) {
-            throw new Error('No images found in draft');
-          }
 
           // Append all other data
           formData.append('isbn', draft.isbn || '');

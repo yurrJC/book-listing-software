@@ -3106,9 +3106,14 @@ app.get('/api/drafts/:id', (req, res) => {
       );
       // Remove imagePaths from response (frontend uses imageUrls)
       delete draftResponse.imagePaths;
-    } else if (draft.imageBase64Array) {
+      console.log(`Draft ${draft.id}: Converted ${draft.imagePaths.length} image paths to URLs`);
+    } else if (draft.imageBase64Array && draft.imageBase64Array.length > 0) {
       // Old format: keep base64 for backward compatibility
-      // No conversion needed
+      // No conversion needed - imageBase64Array is already in the response
+      console.log(`Draft ${draft.id}: Using old base64 format with ${draft.imageBase64Array.length} images`);
+    } else {
+      // No images found - log warning
+      console.warn(`Draft ${draft.id}: No images found (no imagePaths or imageBase64Array)`);
     }
     
     res.json({ success: true, draft: draftResponse });
