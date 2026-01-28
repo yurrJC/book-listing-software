@@ -2837,12 +2837,23 @@ app.post('/api/validateDraft', upload.fields([{ name: 'imageFiles', maxCount: 24
       // Check if this is an "author too long" error
       if (validationResponse?.errors && isAuthorTooLongError(validationResponse.errors)) {
         console.log('⚠️ Author too long error detected. Requesting user to edit author.');
+        // Ensure author is a string, not an object
+        let authorString = author || '';
+        if (typeof authorString !== 'string') {
+          if (Array.isArray(authorString)) {
+            authorString = authorString.join(', ');
+          } else if (typeof authorString === 'object' && authorString !== null) {
+            authorString = authorString.name || authorString.author || JSON.stringify(authorString);
+          } else {
+            authorString = String(authorString);
+          }
+        }
         return res.status(400).json({
           success: false,
           error: errorMessage,
           requiresAuthorEdit: true,
           currentData: {
-            author: author || '',
+            author: authorString,
             title: title || '',
             language: language || 'English'
           },

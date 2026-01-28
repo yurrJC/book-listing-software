@@ -237,6 +237,32 @@ function PriceSettingStep({
     }
   };
 
+  // Helper function to safely extract author as string
+  const getAuthorAsString = (authorValue) => {
+    if (!authorValue) return '';
+    if (typeof authorValue === 'string') return authorValue;
+    if (Array.isArray(authorValue)) return authorValue.join(', ');
+    if (typeof authorValue === 'object') {
+      // Try to extract name property or stringify
+      if (authorValue.name) return authorValue.name;
+      if (authorValue.toString && authorValue.toString() !== '[object Object]') {
+        return authorValue.toString();
+      }
+      // Last resort: try JSON.stringify and extract meaningful parts
+      const str = JSON.stringify(authorValue);
+      if (str.includes('"name"') || str.includes('"author"')) {
+        try {
+          const parsed = JSON.parse(str);
+          return parsed.name || parsed.author || str;
+        } catch (e) {
+          return str;
+        }
+      }
+      return str;
+    }
+    return String(authorValue);
+  };
+
   // Helper function to prepare FormData
   const prepareFormData = (authorOverride = null) => {
       const formData = new FormData();
@@ -264,7 +290,8 @@ function PriceSettingStep({
 
     // Append necessary metadata fields (use override if provided)
       formData.append('title', metadata?.title || '');
-    formData.append('author', authorOverride !== null ? authorOverride : (metadata?.author || ''));
+    const authorValue = authorOverride !== null ? authorOverride : getAuthorAsString(metadata?.author);
+    formData.append('author', authorValue);
       formData.append('publisher', metadata?.publisher || '');
       formData.append('publicationYear', String(metadata?.publishedDate || metadata?.publicationYear || ''));
       formData.append('synopsis', metadata?.synopsis || '');
@@ -330,12 +357,16 @@ function PriceSettingStep({
         // Check if this is an author too long error
         if (validateData.requiresAuthorEdit || isAuthorTooLongError(validateData.details)) {
           console.log('⚠️ Author too long error detected. Showing popup to edit author.');
+          // Ensure author is a string, not an object
+          const currentAuthor = validateData.currentData?.author || 
+            (authorOverride !== null ? authorOverride : getAuthorAsString(metadata?.author));
+          
           setMissingFieldsData({
             missingFields: ['Author'],
-            currentData: validateData.currentData || {
-              author: authorOverride !== null ? authorOverride : (metadata?.author || ''),
-              title: metadata?.title || '',
-              language: metadata?.language || 'English'
+            currentData: {
+              author: typeof currentAuthor === 'string' ? currentAuthor : getAuthorAsString(currentAuthor),
+              title: validateData.currentData?.title || metadata?.title || '',
+              language: validateData.currentData?.language || metadata?.language || 'English'
             },
             isAuthorEdit: true
           });
@@ -448,8 +479,9 @@ function PriceSettingStep({
     if (manualData.author && metadata) {
       metadata.author = manualData.author;
     }
-    // Retry saving draft with the edited author
-    await handleSaveDraft(manualData.author || metadata?.author || '');
+    // Retry saving draft with the edited author (ensure it's a string)
+    const authorToUse = manualData.author || getAuthorAsString(metadata?.author) || '';
+    await handleSaveDraft(authorToUse);
   };
 
   const handleRequiredFieldsCancel = () => {
@@ -544,7 +576,7 @@ function PriceSettingStep({
            <div className="book-info">
              {/* Display Title and Author */}
              <h3 className="book-title-display">{metadata?.title || 'Book Title Not Available'}</h3>
-             <p className="book-author-display">by {metadata?.author || 'Unknown Author'}</p>
+             <p className="book-author-display">by {getAuthorAsString(metadata?.author) || 'Unknown Author'}</p>
 
              {/* Display Subjects */}
              {metadata?.subjects && metadata.subjects.length > 0 ? (
