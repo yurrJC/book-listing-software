@@ -22,6 +22,37 @@ function ReadyToList({ onClose, onDraftCountChange }) {
   const [viewingImageGallery, setViewingImageGallery] = useState(null);
   const [viewingItemSpecifics, setViewingItemSpecifics] = useState(null);
 
+  // Helper function to safely extract author as string
+  const getAuthorAsString = (authorValue) => {
+    if (!authorValue) return '';
+    if (typeof authorValue === 'string') {
+      // Handle the case where it's already "[object Object]" string
+      if (authorValue === '[object Object]') return '';
+      return authorValue;
+    }
+    if (Array.isArray(authorValue)) return authorValue.join(', ');
+    if (typeof authorValue === 'object' && authorValue !== null) {
+      // Try to extract name property or stringify
+      if (authorValue.name) return authorValue.name;
+      if (authorValue.author) return authorValue.author;
+      if (authorValue.toString && authorValue.toString() !== '[object Object]') {
+        return authorValue.toString();
+      }
+      // Last resort: try JSON.stringify and extract meaningful parts
+      const str = JSON.stringify(authorValue);
+      if (str.includes('"name"') || str.includes('"author"')) {
+        try {
+          const parsed = JSON.parse(str);
+          return parsed.name || parsed.author || str;
+        } catch (e) {
+          return str;
+        }
+      }
+      return str;
+    }
+    return String(authorValue);
+  };
+
   // Load drafts from server on mount
   useEffect(() => {
     loadDrafts();
@@ -135,7 +166,7 @@ function ReadyToList({ onClose, onDraftCountChange }) {
           formData.append('ebayTitle', draft.ebayTitle || '');
 
           formData.append('title', draft.metadata?.title || '');
-          formData.append('author', draft.metadata?.author || '');
+          formData.append('author', getAuthorAsString(draft.metadata?.author) || '');
           formData.append('publisher', draft.metadata?.publisher || '');
           formData.append('publicationYear', String(draft.metadata?.publicationYear || ''));
           formData.append('synopsis', draft.metadata?.synopsis || '');
@@ -269,7 +300,7 @@ function ReadyToList({ onClose, onDraftCountChange }) {
   const getItemSpecifics = (draft) => {
     return {
       title: draft.listingTitle || draft.metadata?.title || 'N/A',
-      author: draft.metadata?.author || 'N/A',
+      author: getAuthorAsString(draft.metadata?.author) || 'N/A',
       format: draft.metadata?.format || draft.metadata?.binding || 'N/A',
       condition: draft.selectedCondition || 'N/A',
       price: draft.price || 'N/A',
@@ -481,7 +512,7 @@ function ReadyToList({ onClose, onDraftCountChange }) {
               <tbody>
                 {drafts.map((draft, index) => {
                   const titleText = draft.listingTitle || draft.metadata?.title || 'N/A';
-                  const authorText = draft.metadata?.author || 'N/A';
+                  const authorText = getAuthorAsString(draft.metadata?.author) || 'N/A';
                   const isExpanded = expandedRows.has(index);
                   const imageCount = draft.imageBase64Array?.length || 0;
                   return (

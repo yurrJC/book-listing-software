@@ -2956,6 +2956,23 @@ app.post('/api/saveDraft', upload.fields([{ name: 'imageFiles', maxCount: 24 }])
       return res.status(400).json({ success: false, error: 'No valid image files were provided' });
     }
 
+    // Ensure author is a string, not an object
+    let authorString = author || '';
+    if (typeof authorString !== 'string') {
+      if (Array.isArray(authorString)) {
+        authorString = authorString.join(', ');
+      } else if (typeof authorString === 'object' && authorString !== null) {
+        authorString = authorString.name || authorString.author || JSON.stringify(authorString);
+      } else {
+        authorString = String(authorString);
+      }
+    }
+    // Also check if it's the string "[object Object]" and handle it
+    if (authorString === '[object Object]') {
+      console.warn('⚠️ Received "[object Object]" as author string, attempting to recover from metadata');
+      authorString = '';
+    }
+
     const draft = {
       id: Date.now().toString() + '-' + Math.random().toString(36).substr(2, 9),
       timestamp: new Date().toISOString(),
@@ -2970,7 +2987,7 @@ app.post('/api/saveDraft', upload.fields([{ name: 'imageFiles', maxCount: 24 }])
       customTitle: customTitle || null,
       metadata: {
         title: title || '',
-        author: author || '',
+        author: authorString,
         publisher: publisher || '',
         publicationYear: publicationYear || '',
         synopsis: synopsis || '',
