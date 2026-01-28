@@ -154,11 +154,58 @@ app.use('/drafts-images', express.static(DRAFTS_IMAGES_DIR));
 
 // API status endpoint
 app.get('/api/status', (req, res) => {
-  res.json({
-    status: 'ok',
-    message: 'Book Listing API is running',
-    timestamp: new Date().toISOString()
-  });
+  try {
+    const drafts = loadDrafts();
+    const jsonSize = JSON.stringify(drafts).length;
+    const jsonSizeMB = (jsonSize / 1024 / 1024).toFixed(2);
+    
+    // Calculate disk usage for draft images
+    let totalImageFiles = 0;
+    let estimatedImageSizeMB = 0;
+    try {
+      if (fs.existsSync(DRAFTS_IMAGES_DIR)) {
+        const draftDirs = fs.readdirSync(DRAFTS_IMAGES_DIR);
+        draftDirs.forEach(dir => {
+          const dirPath = path.join(DRAFTS_IMAGES_DIR, dir);
+          if (fs.statSync(dirPath).isDirectory()) {
+            const files = fs.readdirSync(dirPath);
+            totalImageFiles += files.length;
+            files.forEach(file => {
+              const filePath = path.join(dirPath, file);
+              try {
+                const stats = fs.statSync(filePath);
+                estimatedImageSizeMB += stats.size / 1024 / 1024;
+              } catch (e) {
+                // Ignore errors reading individual files
+              }
+            });
+          }
+        });
+      }
+    } catch (e) {
+      // Ignore errors calculating disk usage
+    }
+    
+    res.json({
+      status: 'ok',
+      message: 'Book Listing API is running',
+      timestamp: new Date().toISOString(),
+      drafts: {
+        count: drafts.length,
+        jsonSizeMB: parseFloat(jsonSizeMB),
+        imageFiles: totalImageFiles,
+        estimatedImageSizeMB: parseFloat(estimatedImageSizeMB.toFixed(2)),
+        estimatedTotalMB: parseFloat((parseFloat(jsonSizeMB) + estimatedImageSizeMB).toFixed(2))
+      }
+    });
+  } catch (error) {
+    res.json({
+      status: 'ok',
+      message: 'Book Listing API is running',
+      timestamp: new Date().toISOString(),
+      error: 'Could not calculate draft stats'
+    });
+  }
 });
 
 // Set up Multer for handling file uploads
@@ -3129,6 +3176,16 @@ app.post('/api/saveDraft', upload.fields([{ name: 'imageFiles', maxCount: 24 }])
     const drafts = loadDrafts();
     drafts.push(draft);
     saveDrafts(drafts);
+    
+    // Log memory stats after saving
+    const jsonSize = JSON.stringify(drafts).length;
+    const jsonSizeMB = (jsonSize / 1024 / 1024).toFixed(2);
+    console.log(`💾 Draft saved: ${drafts.length} total drafts, JSON size: ${jsonSizeMB}MB`);
+    
+    // Warn if JSON is getting large (but shouldn't happen with file-based storage)
+    if (jsonSizeMB > 10) {
+      console.warn(`⚠️ Warning: Draft JSON file is ${jsonSizeMB}MB. Consider cleaning up old drafts.`);
+    }
 
     res.json({ success: true, draftId: draft.id });
   } catch (error) {
@@ -3142,6 +3199,22 @@ app.post('/api/saveDraft', upload.fields([{ name: 'imageFiles', maxCount: 24 }])
 app.get('/api/drafts', (req, res) => {
   try {
     const drafts = loadDrafts();
+    
+    // Calculate memory usage stats for monitoring
+    const stats = {
+      totalDrafts: drafts.length,
+      draftsWithFileImages: drafts.filter(d => d.imagePaths && d.imagePaths.length > 0).length,
+      draftsWithBase64Images: drafts.filter(d => d.imageBase64Array && d.imageBase64Array.length > 0).length,
+      totalImageFiles: drafts.reduce((sum, d) => sum + (d.imagePaths?.length || 0), 0),
+      estimatedJsonSize: JSON.stringify(drafts).length,
+      estimatedJsonSizeMB: (JSON.stringify(drafts).length / 1024 / 1024).toFixed(2)
+    };
+    
+    // Log stats every 10 drafts for monitoring
+    if (stats.totalDrafts > 0 && stats.totalDrafts % 10 === 0) {
+      console.log(`📊 Draft Stats: ${stats.totalDrafts} drafts, ${stats.estimatedJsonSizeMB}MB JSON, ${stats.totalImageFiles} image files`);
+    }
+    
     // Don't send full images in list - just metadata
     const draftsList = drafts.map(draft => ({
       id: draft.id,
@@ -3157,7 +3230,7 @@ app.get('/api/drafts', (req, res) => {
       hasImages: (draft.imagePaths && draft.imagePaths.length > 0) || (draft.imageBase64Array && draft.imageBase64Array.length > 0),
       imageCount: draft.imagePaths ? draft.imagePaths.length : (draft.imageBase64Array ? draft.imageBase64Array.length : 0)
     }));
-    res.json({ success: true, drafts: draftsList });
+    res.json({ success: true, drafts: draftsList, stats });
   } catch (error) {
     console.error('Error loading drafts:', error);
     const errorMessage = error?.message || error?.toString() || 'An unknown error occurred while loading drafts';
