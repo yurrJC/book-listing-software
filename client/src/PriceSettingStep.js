@@ -237,30 +237,8 @@ function PriceSettingStep({
     }
   };
 
-  // Handler for saving draft
-  const handleSaveDraft = async () => {
-    setLoading(true);
-    setError(null);
-
-    // --- Validation ---
-    if (!selectedCondition) { setError("Condition is missing."); setLoading(false); return; }
-    if (!price || isNaN(parseFloat(price)) || parseFloat(price) <= 0) { setError("Valid price is required."); setLoading(false); return; }
-    if (!listingTitle || listingTitle.trim().length === 0) { setError("Listing title is required."); setLoading(false); return; }
-    if (listingTitle.trim().length > 80) { 
-      setError(`Listing title is too long (${listingTitle.trim().length} characters). eBay allows a maximum of 80 characters.`); 
-      setLoading(false); 
-      return; 
-    }
-    if (!imageFileObjects || imageFileObjects.length === 0) {
-      setError('No image files available for listing. Please go back.');
-      setLoading(false);
-      return;
-    }
-    // Note: Author length validation will be done by eBay API when listing is actually created
-    // --- End Validation ---
-
-    try {
-      // Prepare FormData to send to server
+  // Helper function to prepare FormData
+  const prepareFormData = (authorOverride = null) => {
       const formData = new FormData();
 
       // Append Image Files
@@ -284,9 +262,9 @@ function PriceSettingStep({
       }
       formData.append('ebayTitle', ebayTitle || '');
 
-      // Append necessary metadata fields
+    // Append necessary metadata fields (use override if provided)
       formData.append('title', metadata?.title || '');
-      formData.append('author', metadata?.author || '');
+    formData.append('author', authorOverride !== null ? authorOverride : (metadata?.author || ''));
       formData.append('publisher', metadata?.publisher || '');
       formData.append('publicationYear', String(metadata?.publishedDate || metadata?.publicationYear || ''));
       formData.append('synopsis', metadata?.synopsis || '');
@@ -307,22 +285,87 @@ function PriceSettingStep({
         formData.append('selectedGenre', selectedGenre);
       }
 
-      // Send to server
-      const response = await fetch(`${API_BASE_URL}/api/saveDraft`, {
+    return formData;
+  };
+
+  // Handler for saving draft
+  const handleSaveDraft = async (authorOverride = null) => {
+    setLoading(true);
+    setError(null);
+
+    // --- Validation ---
+    if (!selectedCondition) { setError("Condition is missing."); setLoading(false); return; }
+    if (!price || isNaN(parseFloat(price)) || parseFloat(price) <= 0) { setError("Valid price is required."); setLoading(false); return; }
+    if (!listingTitle || listingTitle.trim().length === 0) { setError("Listing title is required."); setLoading(false); return; }
+    if (listingTitle.trim().length > 80) { 
+      setError(`Listing title is too long (${listingTitle.trim().length} characters). eBay allows a maximum of 80 characters.`); 
+      setLoading(false); 
+      return; 
+    }
+    if (!imageFileObjects || imageFileObjects.length === 0) {
+      setError('No image files available for listing. Please go back.');
+      setLoading(false);
+      return;
+    }
+    // --- End Validation ---
+
+    try {
+      // First, validate with eBay
+      const formData = prepareFormData(authorOverride);
+      
+      const validateResponse = await fetch(`${API_BASE_URL}/api/validateDraft`, {
         method: 'POST',
         body: formData,
       });
 
-      const responseText = await response.text();
-      let data;
+      const validateResponseText = await validateResponse.text();
+      let validateData;
       try {
-        data = JSON.parse(responseText);
+        validateData = JSON.parse(validateResponseText);
+      } catch (parseErr) {
+        throw new Error('Invalid response from validation server');
+      }
+
+      if (!validateResponse.ok || !validateData.success) {
+        // Check if this is an author too long error
+        if (validateData.requiresAuthorEdit || isAuthorTooLongError(validateData.details)) {
+          console.log('⚠️ Author too long error detected. Showing popup to edit author.');
+          setMissingFieldsData({
+            missingFields: ['Author'],
+            currentData: validateData.currentData || {
+              author: authorOverride !== null ? authorOverride : (metadata?.author || ''),
+              title: metadata?.title || '',
+              language: metadata?.language || 'English'
+            },
+            isAuthorEdit: true
+          });
+          setShowRequiredFieldsPopup(true);
+          setLoading(false);
+          return;
+        }
+        
+        // Other validation errors
+        throw new Error(validateData.error || 'Validation failed');
+      }
+
+      // Validation passed, now save the draft
+      const saveFormData = prepareFormData(authorOverride);
+      
+      const saveResponse = await fetch(`${API_BASE_URL}/api/saveDraft`, {
+        method: 'POST',
+        body: saveFormData,
+      });
+
+      const saveResponseText = await saveResponse.text();
+      let saveData;
+      try {
+        saveData = JSON.parse(saveResponseText);
       } catch (parseErr) {
         throw new Error('Invalid response from server');
       }
 
-      if (!response.ok || !data.success) {
-        throw new Error(data.error || 'Failed to save draft');
+      if (!saveResponse.ok || !saveData.success) {
+        throw new Error(saveData.error || 'Failed to save draft');
       }
 
       // Success - silently go back to intake page (no popup)
@@ -336,6 +379,27 @@ function PriceSettingStep({
     } finally {
       setLoading(false);
     }
+  };
+
+  // Helper function to check if error is author too long
+  const isAuthorTooLongError = (errors) => {
+    if (!errors) return false;
+    const errorArray = Array.isArray(errors) ? errors : [errors];
+    for (const error of errorArray) {
+      const longMessage = (error.LongMessage || '').toLowerCase();
+      const shortMessage = (error.ShortMessage || '').toLowerCase();
+      const allMessages = `${longMessage} ${shortMessage}`.toLowerCase();
+      const hasAuthor = allMessages.includes('author');
+      const hasLengthIssue = 
+        allMessages.includes('too long') || 
+        allMessages.includes('exceeds') || 
+        allMessages.includes('maximum length') ||
+        allMessages.includes('length limit');
+      if (hasAuthor && hasLengthIssue) {
+        return true;
+      }
+    }
+    return false;
   };
 
   // Handler for form submission to create listing (kept for backward compatibility if needed)
@@ -380,77 +444,12 @@ function PriceSettingStep({
   // Required fields popup handlers
   const handleRequiredFieldsConfirm = async (manualData) => {
     setShowRequiredFieldsPopup(false);
-    setLoading(true);
-    
-    try {
-      // Retry the listing creation with manual data
-      const formData = new FormData();
-
-      // Append Image Files from props
-      imageFileObjects.forEach((file, index) => {
-        const fileName = file.name || `image_${index}.jpg`;
-        const fileType = file.type || 'image/jpeg';
-        formData.append('imageFiles', file, fileName);
-      });
-
-      // Append Other Data as Fields with manual overrides
-      formData.append('isbn', isbn || '');
-      formData.append('price', price);
-      formData.append('sku', sku || '');
-      formData.append('selectedCondition', selectedCondition);
-      formData.append('selectedFlawKeys', JSON.stringify(selectedFlawKeys || []));
-      formData.append('ocrText', ocrText || '');
-
-      // Handle custom vs generated title
-      if (listingTitle.trim() !== (ebayTitle || '').trim()) {
-        formData.append('customTitle', listingTitle.trim());
-      }
-      formData.append('ebayTitle', ebayTitle || '');
-
-      // Append metadata fields with manual overrides
-      formData.append('title', manualData.title || metadata?.title || '');
-      formData.append('author', manualData.author || metadata?.author || '');
-      formData.append('publisher', metadata?.publisher || '');
-      formData.append('publicationYear', String(metadata?.publishedDate || metadata?.publicationYear || ''));
-      formData.append('synopsis', metadata?.synopsis || '');
-      formData.append('language', manualData.language || metadata?.language || '');
-      formData.append('format', metadata?.binding || metadata?.format || 'Paperback');
-      formData.append('subjects', JSON.stringify(metadata?.subjects || []));
-
-      // Append custom description note if provided
-      if (customDescriptionNote && customDescriptionNote.trim()) {
-        formData.append('customDescriptionNote', customDescriptionNote.trim());
-      }
-
-      // Append selected topic and genre
-      if (selectedTopic) {
-        formData.append('selectedTopic', selectedTopic);
-      }
-      if (selectedGenre) {
-        formData.append('selectedGenre', selectedGenre);
-      }
-
-      // Retry the request
-      const response = await fetch(`${API_BASE_URL}/api/createListing`, {
-        method: 'POST',
-        body: formData,
-      });
-
-      const responseText = await response.text();
-      
-      if (!response.ok) {
-        throw new Error(`Listing creation failed: ${responseText}`);
-      }
-
-      const data = JSON.parse(responseText);
-      onSubmit(data);
-      
-    } catch (err) {
-      console.error('Error during retry listing creation:', err);
-      setError(err.message || 'An unknown error occurred during listing creation.');
-    } finally {
-      setLoading(false);
+    // Update metadata with edited author if provided
+    if (manualData.author && metadata) {
+      metadata.author = manualData.author;
     }
+    // Retry saving draft with the edited author
+    await handleSaveDraft(manualData.author || metadata?.author || '');
   };
 
   const handleRequiredFieldsCancel = () => {

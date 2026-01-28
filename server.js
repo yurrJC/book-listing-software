@@ -1735,9 +1735,50 @@ const response = await axios({
   return result;
 }
 
-async function createEbayDraftListing(listingData) {
+async function submitEbayValidation(requestObj, appId, devId, certId) {
+  const builder = new xml2js.Builder({
+    rootName: 'VerifyAddItemRequest',
+    xmldec: { version: '1.0', encoding: 'UTF-8' },
+    renderOpts: { pretty: true, indent: '  ', newline: '\n' },
+    headless: false
+  });
+    
+    const xml = builder.buildObject(requestObj);
+    
+    console.log('VerifyAddItem XML Payload:', xml);
+    
+    const apiEndpoint = isProduction
+  ? 'https://api.ebay.com/ws/api.dll'
+  : 'https://api.sandbox.ebay.com/ws/api.dll';
+
+console.log(`Validating eBay listing at: ${apiEndpoint}`);
+
+const response = await axios({
+  method: 'post',
+  url: apiEndpoint,
+  headers: {
+    'X-EBAY-API-CALL-NAME': 'VerifyAddItem',
+    'X-EBAY-API-APP-NAME': appId,
+    'X-EBAY-API-DEV-NAME': devId,
+    'X-EBAY-API-CERT-NAME': certId,
+    'X-EBAY-API-SITEID': '15',
+    'X-EBAY-API-COMPATIBILITY-LEVEL': '1155',
+    'Content-Type': 'text/xml'
+  },
+  data: xml
+});
+    
+    const parser = new xml2js.Parser({ explicitArray: false });
+    const result = await parser.parseStringPromise(response.data);
+    
+    console.log('eBay VerifyAddItem Response:', result);
+  
+  return result;
+}
+
+async function validateEbayListing(listingData) {
   try {
-    console.log('Creating eBay draft book listing with data:', listingData);
+    console.log('Validating eBay listing data:', listingData);
     const { selectedCondition = 'Good', selectedFlawKeys = [] } = listingData;
     const imagesToDelete = [...listingData.imageFiles];
     const uploadedImages = await uploadPhotosToEbay(listingData.imageFiles);
@@ -1767,7 +1808,7 @@ async function createEbayDraftListing(listingData) {
       bookTopics = [listingData.selectedTopic];
       bookGenres = [listingData.selectedGenre];
       narrativeType = await determineNarrativeTypeUsingGPT(listingData);
-    listingData.narrativeType = narrativeType;
+      listingData.narrativeType = narrativeType;
       console.log(`✅ Using user-selected values:
        - Topic: "${listingData.selectedTopic}"
        - Genre: "${listingData.selectedGenre}"
@@ -1832,25 +1873,241 @@ async function createEbayDraftListing(listingData) {
     }
     
     // Log the number of topics and genres
-console.log(`Adding ${bookTopics.length} topics and ${bookGenres.length} genres`);
+    console.log(`Adding ${bookTopics.length} topics and ${bookGenres.length} genres`);
 
-// Add topics - using original approach but with more detailed logging
-bookTopics.forEach((topic, index) => {
-  console.log(`Adding topic ${index + 1}/${bookTopics.length}: "${topic}"`);
-  nameValueList.push({
-    'Name': 'Topic',
-    'Value': topic
-  });
-});
+    // Add topics - using original approach but with more detailed logging
+    bookTopics.forEach((topic, index) => {
+      console.log(`Adding topic ${index + 1}/${bookTopics.length}: "${topic}"`);
+      nameValueList.push({
+        'Name': 'Topic',
+        'Value': topic
+      });
+    });
 
-// Add genres - using original approach but with more detailed logging
-bookGenres.forEach((genre, index) => {
-  console.log(`Adding genre ${index + 1}/${bookGenres.length}: "${genre}"`);
-  nameValueList.push({
-    'Name': 'Genre',
-    'Value': genre
-  });
-});
+    // Add genres - using original approach but with more detailed logging
+    bookGenres.forEach((genre, index) => {
+      console.log(`Adding genre ${index + 1}/${bookGenres.length}: "${genre}"`);
+      nameValueList.push({
+        'Name': 'Genre',
+        'Value': genre
+      });
+    });
+    
+    // Add other item specifics
+    if (listingData.publisher && listingData.publisher !== 'Unknown') {
+      nameValueList.push({
+        'Name': 'Publisher',
+        'Value': listingData.publisher
+      });
+    }
+
+    if (listingData.language) {
+      nameValueList.push({
+        'Name': 'Language',
+        'Value': formatLanguage(listingData.language)
+      });
+    } else {
+      nameValueList.push({
+        'Name': 'Language',
+        'Value': 'English'
+      });
+    }
+
+    if (listingData.publicationYear) {
+      nameValueList.push({
+        'Name': 'Publication Year',
+        'Value': listingData.publicationYear
+      });
+    }
+
+    // Try validation with ISBN first
+    let requestObj = await buildEbayListingRequest(listingData, {
+      includeISBN: true,
+      categoryMappingAllowed: true,
+      selectedCondition,
+      selectedFlawKeys,
+      ebayTitle,
+      nameValueList,
+      bookTopics,
+      bookGenres,
+      narrativeType,
+      epsImageUrls,
+      authToken,
+      shippingPolicyId,
+      returnPolicyId,
+      paymentPolicyId
+    });
+
+    let result = await submitEbayValidation(requestObj, appId, devId, certId);
+    
+    // Check if we got the category change error
+    if (result.VerifyAddItemResponse && result.VerifyAddItemResponse.Ack !== 'Success' && 
+        result.VerifyAddItemResponse.Ack !== 'Warning' &&
+        isCategoryChangeError(result.VerifyAddItemResponse.Errors)) {
+      
+      console.log('⚠️ Category change error detected. Retrying without ISBN and forcing book category...');
+      
+      // Retry without ISBN and with category mapping disabled
+      requestObj = await buildEbayListingRequest(listingData, {
+        includeISBN: false, // Don't include ISBN
+        categoryMappingAllowed: false, // Force the category
+        selectedCondition,
+        selectedFlawKeys,
+        ebayTitle,
+        nameValueList,
+        bookTopics,
+        bookGenres,
+        narrativeType,
+        epsImageUrls,
+        authToken,
+        shippingPolicyId,
+        returnPolicyId,
+        paymentPolicyId
+      });
+
+      result = await submitEbayValidation(requestObj, appId, devId, certId);
+    }
+    
+    // Clean up uploaded images after validation (they're not needed if we're just validating)
+    deleteUploadedImages(imagesToDelete);
+    
+    if (result.VerifyAddItemResponse && (result.VerifyAddItemResponse.Ack === 'Success' || 
+        result.VerifyAddItemResponse.Ack === 'Warning')) {
+      return {
+        success: true
+      };
+    } else {
+      console.error('eBay Validation Error:', result.VerifyAddItemResponse?.Errors || result.Errors);
+      return {
+        success: false,
+        errors: result.VerifyAddItemResponse?.Errors || result.Errors
+      };
+    }
+  } catch (error) {
+    console.error('Error validating eBay listing:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+async function createEbayDraftListing(listingData) {
+  try {
+    console.log('Creating eBay draft book listing with data:', listingData);
+    const { selectedCondition = 'Good', selectedFlawKeys = [] } = listingData;
+    const imagesToDelete = [...listingData.imageFiles];
+    const uploadedImages = await uploadPhotosToEbay(listingData.imageFiles);
+    const epsImageUrls = uploadedImages.map(img => img.epsUrl);
+    // Explicitly log SKU to verify it's present
+    console.log('SKU value being used:', listingData.sku);
+    console.log('Number of uploaded images:', uploadedImages.length);
+    console.log('Image URLs to include in listing:', epsImageUrls);
+    console.log('Main image URL:', epsImageUrls.length > 0 ? epsImageUrls[0] : 'No images');
+    const devId = process.env.EBAY_DEV_ID;
+    const appId = process.env.EBAY_APP_ID;
+    const certId = process.env.EBAY_CERT_ID;
+    const authToken = process.env.EBAY_AUTH_TOKEN;
+    // Get policy IDs from environment variables
+    const shippingPolicyId = process.env.EBAY_SHIPPING_POLICY_ID;
+    const returnPolicyId = process.env.EBAY_RETURN_POLICY_ID;
+    const paymentPolicyId = process.env.EBAY_PAYMENT_POLICY_ID;
+    console.log("Auth Token Length:", authToken ? authToken.length : 0);
+    console.log("Auth Token Preview:", authToken ? authToken.substring(0, 20) + "..." : "Not found");
+    // Use user-selected topic and genre, or fallback to AI generation if not provided
+    let bookTopics = [];
+    let bookGenres = [];
+    let narrativeType = '';
+    
+    if (listingData.selectedTopic && listingData.selectedGenre) {
+      // Use user-selected values, but still determine narrative type for the item specific
+      bookTopics = [listingData.selectedTopic];
+      bookGenres = [listingData.selectedGenre];
+      narrativeType = await determineNarrativeTypeUsingGPT(listingData);
+      listingData.narrativeType = narrativeType;
+      console.log(`✅ Using user-selected values:
+       - Topic: "${listingData.selectedTopic}"
+       - Genre: "${listingData.selectedGenre}"
+       - Narrative Type: "${narrativeType}"`);
+    } else {
+      // Fallback to AI generation (for backwards compatibility)
+      console.log('User selections not provided, falling back to AI generation...');
+      narrativeType = await determineNarrativeTypeUsingGPT(listingData);
+      listingData.narrativeType = narrativeType;
+      bookTopics = await determineBookTopicsUsingGPT(listingData);
+      bookGenres = await determineBookGenresUsingGPT(listingData);
+      console.log(`AI-generated categorization results:
+     - Narrative Type: ${narrativeType}
+     - Topics (${bookTopics.length}): ${bookTopics.join(', ')}
+     - Genres (${bookGenres.length}): ${bookGenres.join(', ')}`);
+    }
+    
+    // Check if customTitle was provided and use it, otherwise use the pre-generated title
+    let ebayTitle;
+    if (listingData.customTitle) {
+      ebayTitle = listingData.customTitle;
+      console.log(`Using custom title: "${ebayTitle}"`);
+    } else if (listingData.ebayTitle) {
+      // Use the pre-generated title from the first call
+      ebayTitle = listingData.ebayTitle;
+      console.log(`Using pre-generated title: "${ebayTitle}"`);
+    } else {
+      // Fallback: generate a new title if somehow we don't have one
+      ebayTitle = await generateStepwiseEbayTitle(listingData);
+      console.log(`Generated new eBay title using stepwise approach: "${ebayTitle}"`);
+    }
+    
+    // Add it to the listingData object so the description function can access it
+    listingData.ebayTitle = ebayTitle;
+    
+    // Build the base ItemSpecifics NameValueList
+    const nameValueList = [
+      { 'Name': 'Format', 'Value': listingData.format || 'Paperback' },
+      { 'Name': 'Author', 'Value': listingData.author },
+      { 'Name': 'Book Title', 'Value': listingData.title.length > 65 
+          ? listingData.title.substring(0, 62) + '...' 
+          : listingData.title }
+    ];
+    
+    // Add SKU to item specifics if provided
+    if (listingData.sku !== undefined && listingData.sku !== null) {
+      console.log('Adding SKU to item specifics:', listingData.sku);
+      nameValueList.push({
+        'Name': 'SKU',
+        'Value': String(listingData.sku) // Convert to string to ensure it's valid
+      });
+    } else {
+      console.log('SKU not provided or is null/undefined, not adding to item specifics');
+    }
+
+    // Add Narrative Type
+    if (narrativeType) {
+      nameValueList.push({
+        'Name': 'Narrative Type',
+        'Value': narrativeType
+      });
+    }
+    
+    // Log the number of topics and genres
+    console.log(`Adding ${bookTopics.length} topics and ${bookGenres.length} genres`);
+
+    // Add topics - using original approach but with more detailed logging
+    bookTopics.forEach((topic, index) => {
+      console.log(`Adding topic ${index + 1}/${bookTopics.length}: "${topic}"`);
+      nameValueList.push({
+        'Name': 'Topic',
+        'Value': topic
+      });
+    });
+
+    // Add genres - using original approach but with more detailed logging
+    bookGenres.forEach((genre, index) => {
+      console.log(`Adding genre ${index + 1}/${bookGenres.length}: "${genre}"`);
+      nameValueList.push({
+        'Name': 'Genre',
+        'Value': genre
+      });
+    });
     
     // Add other item specifics
     if (listingData.publisher && listingData.publisher !== 'Unknown') {
@@ -1960,19 +2217,20 @@ bookGenres.forEach((genre, index) => {
   } catch (error) {
     console.error('Error creating eBay listing:', error);
     // If there's an error specifically related to SKU, provide a clearer message
-  if (error.message && error.message.includes('sku')) {
-    console.error('SKU-related error detected:', error.message);
-    return {
-      success: false,
-      error: 'There was an issue with the SKU field: ' + error.message
-    };
-  }
+    if (error.message && error.message.includes('sku')) {
+      console.error('SKU-related error detected:', error.message);
+      return {
+        success: false,
+        error: 'There was an issue with the SKU field: ' + error.message
+      };
+    }
     return {
       success: false,
       error: error.message
     };
   }
 }
+
 app.get('/', (req, res) => {
   res.send('Hello from the Express server!');
 });
@@ -2460,6 +2718,161 @@ function saveDrafts(drafts) {
     return false;
   }
 }
+
+// API endpoint to validate draft before saving
+app.post('/api/validateDraft', upload.fields([{ name: 'imageFiles', maxCount: 24 }]), async (req, res) => {
+  try {
+    const imageFileObjects = req.files?.imageFiles || [];
+    const {
+      isbn, price, sku, customTitle, selectedCondition, ocrText,
+      title, author, publisher, publicationYear, synopsis, language,
+      format, subjects, ebayTitle, customDescriptionNote,
+      selectedTopic, selectedGenre
+    } = req.body;
+
+    let selectedFlawKeys = [];
+    try {
+      if (req.body.selectedFlawKeys) {
+        selectedFlawKeys = JSON.parse(req.body.selectedFlawKeys);
+        if (!Array.isArray(selectedFlawKeys)) selectedFlawKeys = [];
+      }
+    } catch (e) {
+      console.error("Failed to parse selectedFlawKeys:", e);
+    }
+
+    let parsedSubjects = [];
+    try {
+      if (subjects && typeof subjects === 'string') {
+        parsedSubjects = JSON.parse(subjects);
+        if (!Array.isArray(parsedSubjects)) parsedSubjects = [];
+      } else if (Array.isArray(subjects)) {
+        parsedSubjects = subjects;
+      }
+    } catch(e) {
+      parsedSubjects = [];
+    }
+
+    // --- Validation ---
+    if (!isbn || !isValidISBN(isbn)) return res.status(400).json({ success: false, error: 'Valid ISBN is required' });
+    if (!price || isNaN(parseFloat(price)) || parseFloat(price) <= 0) return res.status(400).json({ success: false, error: 'Valid price is required' });
+    if (imageFileObjects.length === 0) return res.status(400).json({ success: false, error: 'At least one image file is required' });
+    if (!selectedCondition || !EBAY_CONDITION_MAP[selectedCondition]) return res.status(400).json({ success: false, error: 'A valid condition selection is required' });
+    
+    // --- Prepare listingData ---
+    const listingData = {
+      isbn, price, sku: sku || '', customTitle, selectedCondition,
+      selectedFlawKeys, ocrText: ocrText || '',
+      imageFiles: imageFileObjects,
+      title: title || '', author: author || '', publisher: publisher || '', publicationYear,
+      synopsis: synopsis || '', language: language || '', format: format || 'Paperback',
+      subjects: parsedSubjects,
+      ebayTitle, customDescriptionNote: customDescriptionNote || '',
+      selectedTopic: selectedTopic || '', selectedGenre: selectedGenre || ''
+    };
+
+    // --- Validate Required eBay Fields ---
+    console.log('Validating required eBay fields...');
+    
+    // Ensure Language has a default value
+    if (!listingData.language || listingData.language.trim() === '') {
+      listingData.language = 'English';
+      console.log('⚠️ Language was missing, defaulting to English');
+    }
+    
+    const requiredFields = {
+      author: listingData.author,
+      title: listingData.title,
+      language: listingData.language
+    };
+    
+    const missingFields = [];
+    if (!requiredFields.author || requiredFields.author.trim() === '') {
+      missingFields.push('Author');
+    }
+    if (!requiredFields.title || requiredFields.title.trim() === '') {
+      missingFields.push('Book Title');
+    }
+    if (!requiredFields.language || requiredFields.language.trim() === '') {
+      missingFields.push('Language');
+    }
+    
+    if (missingFields.length > 0) {
+      const errorMessage = `Missing required eBay fields: ${missingFields.join(', ')}. Please provide these fields to continue.`;
+      console.error('❌ Required field validation failed:', errorMessage);
+      return res.status(400).json({
+        success: false,
+        error: errorMessage,
+        missingFields: missingFields,
+        requiresManualInput: true,
+        currentData: {
+          author: listingData.author || '',
+          title: listingData.title || '',
+          language: listingData.language || 'English'
+        }
+      });
+    }
+    
+    console.log('✅ Required eBay fields validation passed:', {
+      author: requiredFields.author,
+      title: requiredFields.title,
+      language: requiredFields.language
+    });
+
+    // --- Validate with eBay ---
+    console.log('Calling validateEbayListing with prepared data...');
+    const validationResponse = await validateEbayListing(listingData);
+    console.log('Received response from validateEbayListing:', validationResponse);
+
+    // --- Check success / Send Response ---
+    if (!validationResponse || !validationResponse.success) {
+      console.error('validateEbayListing indicated failure:', validationResponse);
+      let statusCode = 500;
+      let errorMessage = validationResponse?.error || 'Failed to validate listing with eBay.';
+      if (validationResponse?.errors) {
+        const ebayError = Array.isArray(validationResponse.errors) ? validationResponse.errors[0] : validationResponse.errors;
+        if (ebayError?.SeverityCode === 'Error') statusCode = 400;
+        errorMessage = ebayError?.LongMessage || ebayError?.ShortMessage || errorMessage;
+      }
+      
+      // Check if this is an "author too long" error
+      if (validationResponse?.errors && isAuthorTooLongError(validationResponse.errors)) {
+        console.log('⚠️ Author too long error detected. Requesting user to edit author.');
+        return res.status(400).json({
+          success: false,
+          error: errorMessage,
+          requiresAuthorEdit: true,
+          currentData: {
+            author: author || '',
+            title: title || '',
+            language: language || 'English'
+          },
+          details: validationResponse?.errors
+        });
+      }
+      
+      return res.status(statusCode).json({
+        success: false,
+        error: errorMessage,
+        details: validationResponse?.errors
+      });
+    } else {
+      // SUCCESS: validation passed
+      console.log('Sending success response from /api/validateDraft');
+      res.json({
+        success: true
+      });
+    }
+
+  } catch (error) {
+    console.error('!!! Unexpected error in /api/validateDraft endpoint handler !!!');
+    console.error('Error Message:', error.message);
+    console.error('Error Stack:', error.stack);
+    res.status(500).json({
+      success: false,
+      error: `Validation failed unexpectedly: ${error.message || 'Unknown server error'}`
+    });
+  }
+});
 
 // API endpoint to save draft
 app.post('/api/saveDraft', upload.fields([{ name: 'imageFiles', maxCount: 24 }]), async (req, res) => {

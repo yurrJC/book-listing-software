@@ -134,7 +134,7 @@ const RequiredFieldsPopup = ({
             onClick={handleConfirm}
             className="btn btn-primary"
           >
-            Continue with Listing
+            {isAuthorEdit ? 'Save Draft' : 'Continue with Listing'}
           </button>
         </div>
       </div>
