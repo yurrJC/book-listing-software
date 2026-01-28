@@ -3175,9 +3175,9 @@ app.get('/api/drafts/:id', (req, res) => {
       draftResponse.imageUrls = draft.imagePaths.map(imgPath => 
         `${baseUrl}/drafts-images/${draft.id}/${imgPath}`
       );
-      // Remove imagePaths from response (frontend uses imageUrls)
-      delete draftResponse.imagePaths;
-      console.log(`Draft ${draft.id}: Converted ${draft.imagePaths.length} image paths to URLs`);
+      // Keep imagePaths as fallback for frontend
+      // Don't delete imagePaths - frontend may need them if imageUrls fail
+      console.log(`Draft ${draft.id}: Converted ${draft.imagePaths.length} image paths to URLs:`, draftResponse.imageUrls);
     } else if (draft.imageBase64Array && draft.imageBase64Array.length > 0) {
       // Old format: keep base64 for backward compatibility
       // No conversion needed - imageBase64Array is already in the response

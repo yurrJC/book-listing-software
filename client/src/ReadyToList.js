@@ -221,8 +221,19 @@ function ReadyToList({ onClose, onDraftCountChange }) {
             if (detailData.success && detailData.draft) {
               const draft = detailData.draft;
               // Log draft image status for debugging
+              console.log(`Loaded draft ${draft.id}:`, {
+                hasImageUrls: !!draft.imageUrls,
+                imageUrlsLength: draft.imageUrls?.length || 0,
+                imageUrls: draft.imageUrls,
+                hasImageBase64Array: !!draft.imageBase64Array,
+                imageBase64ArrayLength: draft.imageBase64Array?.length || 0,
+                hasImagePaths: !!draft.imagePaths,
+                imagePathsLength: draft.imagePaths?.length || 0,
+                imagePaths: draft.imagePaths
+              });
               const hasImages = (draft.imageUrls && draft.imageUrls.length > 0) || 
-                                (draft.imageBase64Array && draft.imageBase64Array.length > 0);
+                                (draft.imageBase64Array && draft.imageBase64Array.length > 0) ||
+                                (draft.imagePaths && draft.imagePaths.length > 0);
               if (!hasImages) {
                 console.warn(`Draft ${draft.id} has no images:`, {
                   hasImageUrls: !!draft.imageUrls,
