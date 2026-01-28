@@ -40,31 +40,46 @@ function ReadyToList({ onClose, onDraftCountChange }) {
     const files = [];
     
     console.log('Converting draft images to files:', {
+      draftId: draft.id,
       hasImageUrls: !!draft.imageUrls,
       imageUrlsLength: draft.imageUrls?.length || 0,
+      imageUrls: draft.imageUrls,
       hasImageBase64Array: !!draft.imageBase64Array,
       imageBase64ArrayLength: draft.imageBase64Array?.length || 0,
       hasImagePaths: !!draft.imagePaths,
+      imagePaths: draft.imagePaths,
       imagePathsLength: draft.imagePaths?.length || 0
     });
     
+    // If we have imagePaths but no imageUrls, construct URLs from paths
+    let imageUrls = draft.imageUrls;
+    if (!imageUrls && draft.imagePaths && draft.imagePaths.length > 0) {
+      console.log('Constructing imageUrls from imagePaths');
+      imageUrls = draft.imagePaths.map(imgPath => 
+        `${API_BASE_URL}/drafts-images/${draft.id}/${imgPath}`
+      );
+      console.log('Constructed imageUrls:', imageUrls);
+    }
+    
     // New format: fetch from URLs
-    if (draft.imageUrls && draft.imageUrls.length > 0) {
-      console.log(`Fetching ${draft.imageUrls.length} images from URLs`);
-      for (let i = 0; i < draft.imageUrls.length; i++) {
+    if (imageUrls && imageUrls.length > 0) {
+      console.log(`Fetching ${imageUrls.length} images from URLs:`, imageUrls);
+      for (let i = 0; i < imageUrls.length; i++) {
         try {
-          const response = await fetch(draft.imageUrls[i]);
+          console.log(`Fetching image ${i + 1}/${imageUrls.length} from: ${imageUrls[i]}`);
+          const response = await fetch(imageUrls[i]);
           if (!response.ok) {
-            console.error(`Failed to fetch image ${i + 1}: ${response.status} ${response.statusText}`);
+            console.error(`Failed to fetch image ${i + 1}: ${response.status} ${response.statusText} from ${imageUrls[i]}`);
             continue;
           }
           const blob = await response.blob();
+          console.log(`Got blob for image ${i + 1}:`, { size: blob.size, type: blob.type });
           const fileName = draft.imageFileNames?.[i] || `image_${i + 1}.jpg`;
-          const file = new File([blob], fileName, { type: blob.type });
+          const file = new File([blob], fileName, { type: blob.type || 'image/jpeg' });
           files.push(file);
-          console.log(`Successfully converted image ${i + 1} from URL`);
+          console.log(`Successfully converted image ${i + 1} from URL:`, fileName, file.size, 'bytes');
         } catch (error) {
-          console.error(`Error fetching image ${i + 1} from ${draft.imageUrls[i]}:`, error);
+          console.error(`Error fetching image ${i + 1} from ${imageUrls[i]}:`, error);
         }
       }
     }
@@ -302,17 +317,34 @@ function ReadyToList({ onClose, onDraftCountChange }) {
           const formData = new FormData();
           
           // Convert images (from URLs or base64) to File objects
+          console.log('About to convert images for draft:', draft.id, {
+            hasImageUrls: !!draft.imageUrls,
+            imageUrls: draft.imageUrls,
+            imageUrlsLength: draft.imageUrls?.length || 0,
+            hasImageBase64Array: !!draft.imageBase64Array,
+            imageBase64ArrayLength: draft.imageBase64Array?.length || 0,
+            hasImagePaths: !!draft.imagePaths,
+            imagePaths: draft.imagePaths,
+            imagePathsLength: draft.imagePaths?.length || 0
+          });
+          
           const imageFiles = await convertDraftImagesToFiles(draft);
+          
+          console.log(`Converted ${imageFiles.length} image files for draft ${draft.id}`);
           
           if (imageFiles.length === 0) {
             console.error('No images found in draft:', {
               draftId: draft.id,
+              draftTitle: draft.listingTitle,
               hasImageUrls: !!draft.imageUrls,
+              imageUrls: draft.imageUrls,
               imageUrlsLength: draft.imageUrls?.length || 0,
               hasImageBase64Array: !!draft.imageBase64Array,
               imageBase64ArrayLength: draft.imageBase64Array?.length || 0,
               hasImagePaths: !!draft.imagePaths,
-              imagePathsLength: draft.imagePaths?.length || 0
+              imagePaths: draft.imagePaths,
+              imagePathsLength: draft.imagePaths?.length || 0,
+              fullDraft: JSON.stringify(draft, null, 2)
             });
             throw new Error('No images found in draft');
           }
