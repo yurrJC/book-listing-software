@@ -3171,7 +3171,10 @@ app.get('/api/drafts/:id', (req, res) => {
     
     if (draft.imagePaths && draft.imagePaths.length > 0) {
       // New format: convert paths to URLs
-      const baseUrl = req.protocol + '://' + req.get('host');
+      // Use https if behind proxy (Render, etc.) or if x-forwarded-proto header indicates https
+      const protocol = req.get('x-forwarded-proto') || req.protocol || 'https';
+      const host = req.get('host');
+      const baseUrl = `${protocol}://${host}`;
       draftResponse.imageUrls = draft.imagePaths.map(imgPath => 
         `${baseUrl}/drafts-images/${draft.id}/${imgPath}`
       );

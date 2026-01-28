@@ -61,6 +61,20 @@ function ReadyToList({ onClose, onDraftCountChange }) {
       console.log('Constructed imageUrls:', imageUrls);
     }
     
+    // Fix mixed content issue: convert HTTP URLs to HTTPS if page is HTTPS
+    if (imageUrls && imageUrls.length > 0) {
+      const isHttpsPage = window.location.protocol === 'https:';
+      if (isHttpsPage) {
+        imageUrls = imageUrls.map(url => {
+          if (url.startsWith('http://')) {
+            return url.replace('http://', 'https://');
+          }
+          return url;
+        });
+        console.log('Converted HTTP URLs to HTTPS:', imageUrls);
+      }
+    }
+    
     // New format: fetch from URLs
     if (imageUrls && imageUrls.length > 0) {
       console.log(`Fetching ${imageUrls.length} images from URLs:`, imageUrls);
