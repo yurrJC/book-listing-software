@@ -1926,7 +1926,7 @@ async function validateEbayListing(listingData) {
     // Build the base ItemSpecifics NameValueList
     const nameValueList = [
       { 'Name': 'Format', 'Value': listingData.format || 'Paperback' },
-      { 'Name': 'Author', 'Value': getAuthorAsString(listingData.author) },
+      { 'Name': 'Author', 'Value': listingData.author },
       { 'Name': 'Book Title', 'Value': listingData.title.length > 65 
           ? listingData.title.substring(0, 62) + '...' 
           : listingData.title }
@@ -2142,7 +2142,7 @@ async function createEbayDraftListing(listingData) {
     // Build the base ItemSpecifics NameValueList
     const nameValueList = [
       { 'Name': 'Format', 'Value': listingData.format || 'Paperback' },
-      { 'Name': 'Author', 'Value': getAuthorAsString(listingData.author) },
+      { 'Name': 'Author', 'Value': listingData.author },
       { 'Name': 'Book Title', 'Value': listingData.title.length > 65 
           ? listingData.title.substring(0, 62) + '...' 
           : listingData.title }
