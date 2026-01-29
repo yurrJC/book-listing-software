@@ -237,14 +237,17 @@ function PriceSettingStep({
     }
   };
 
-  // Helper function to safely extract author as string
+  // Helper function to safely extract author as string (always returns a string)
   const getAuthorAsString = (authorValue) => {
     if (!authorValue) return '';
     if (typeof authorValue === 'string') return authorValue;
-    if (Array.isArray(authorValue)) return authorValue.join(', ');
+    if (Array.isArray(authorValue)) return authorValue.map(a => typeof a === 'string' ? a : (a?.name ?? a?.author ?? String(a))).filter(Boolean).join(', ');
     if (typeof authorValue === 'object') {
-      // Try to extract name property or stringify
-      if (authorValue.name) return authorValue.name;
+      // Try to extract name property or stringify (ensure string: name/author can be nested objects)
+      const nameVal = authorValue.name;
+      if (nameVal != null) return typeof nameVal === 'string' ? nameVal : String(nameVal);
+      const authorVal = authorValue.author;
+      if (authorVal != null) return typeof authorVal === 'string' ? authorVal : String(authorVal);
       if (authorValue.toString && authorValue.toString() !== '[object Object]') {
         return authorValue.toString();
       }
@@ -253,7 +256,8 @@ function PriceSettingStep({
       if (str.includes('"name"') || str.includes('"author"')) {
         try {
           const parsed = JSON.parse(str);
-          return parsed.name || parsed.author || str;
+          const v = parsed.name ?? parsed.author ?? str;
+          return typeof v === 'string' ? v : String(v);
         } catch (e) {
           return str;
         }
@@ -292,7 +296,7 @@ function PriceSettingStep({
       formData.append('title', metadata?.title || '');
     // Author normalization: use first author if multiple (before comma), matching original behavior
     const rawAuthorValue = authorOverride !== null ? authorOverride : getAuthorAsString(metadata?.author);
-    const normalizedAuthor = (rawAuthorValue || '').split(',')[0].trim();
+    const normalizedAuthor = (typeof rawAuthorValue === 'string' ? rawAuthorValue : String(rawAuthorValue ?? '')).split(',')[0].trim();
     formData.append('author', normalizedAuthor);
       formData.append('publisher', metadata?.publisher || '');
       formData.append('publicationYear', String(metadata?.publishedDate || metadata?.publicationYear || ''));
